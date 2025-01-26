@@ -1,17 +1,23 @@
 {
-  "name": "basic-website",
-  "version": "1.0.0",
-  "description": "A basic website project styled with Tailwind CSS and includes an RSS feed.",
-  "main": "src/index.html",
-  "scripts": {
-    "build": "tailwindcss build src/styles/tailwind.css -o src/styles/output.css",
-    "watch": "tailwindcss build src/styles/tailwind.css -o src/styles/output.css --watch"
-  },
-  "dependencies": {
-    "tailwindcss": "^2.2.19"
-  },
-  "devDependencies": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+	"name": "basic-website",
+	"version": "1.0.0",
+	"description": "A basic website project styled with Tailwind CSS and includes an RSS feed.",
+	"scripts": {
+		"build": "parcel build src/index.html --dist-dir dist",
+		"start": "parcel src/index.html",
+		"build:css": "postcss src/styles/tailwind.css -o styles/tailwind.css",
+		"watch:css": "postcss src/styles/tailwind.css -o styles/tailwind.css --watch"
+	},
+	"dependencies": {
+		"autoprefixer": "^10.4.20",
+		"postcss-cli": "^11.0.0",
+		"tailwindcss": "^2.2.19"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"parcel": "^2.13.3",
+		"svgo": "^3.3.2"
+	}
 }
