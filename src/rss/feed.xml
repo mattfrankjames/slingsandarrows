@@ -1,0 +1,22 @@
+<rss version="2.0">
+  <channel>
+    <title>Your Website Title</title>
+    <link>https://www.yourwebsite.com</link>
+    <description>Your website description goes here.</description>
+    <language>en-us</language>
+    <item>
+      <title>First Post Title</title>
+      <link>https://www.yourwebsite.com/first-post</link>
+      <description>This is a description of the first post.</description>
+      <pubDate>Mon, 01 Jan 2023 00:00:00 GMT</pubDate>
+      <guid>https://www.yourwebsite.com/first-post</guid>
+    </item>
+    <item>
+      <title>Second Post Title</title>
+      <link>https://www.yourwebsite.com/second-post</link>
+      <description>This is a description of the second post.</description>
+      <pubDate>Tue, 02 Jan 2023 00:00:00 GMT</pubDate>
+      <guid>https://www.yourwebsite.com/second-post</guid>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,17 @@
+{
+  "name": "basic-website",
+  "version": "1.0.0",
+  "description": "A basic website project styled with Tailwind CSS and includes an RSS feed.",
+  "main": "src/index.html",
+  "scripts": {
+    "build": "tailwindcss build src/styles/tailwind.css -o src/styles/output.css",
+    "watch": "tailwindcss build src/styles/tailwind.css -o src/styles/output.css --watch"
+  },
+  "dependencies": {
+    "tailwindcss": "^2.2.19"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
