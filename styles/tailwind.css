@@ -28,7 +28,7 @@ img {
 }
 
 .wrapper {
-  background: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .5) 100%), url(../images/hero.jpg);
+  background: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .5) 100%), url(https://res.cloudinary.com/mjtestrun/image/upload/v1738006890/hero_paeruh.avif);
   background-size: cover;
   background-position: 0 0;
   min-height: 100svh;
@@ -106,7 +106,7 @@ header {
   position: relative;
   position: relative;
   color: transparent;
-  background: url('../images/static-bg.jpg') repeat;
+  background: url('https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif') repeat;
   -webkit-background-clip: text;
   background-clip: text;
   background-size: cover;
