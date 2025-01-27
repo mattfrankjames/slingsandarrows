@@ -8,14 +8,14 @@
     <link href="../styles/tailwind.css" rel="stylesheet">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
-    <link rel="description" href="data:text/plain,This is a placeholder description for Slings & Arrows.">
+    <meta name="description" content="Atmospheric, dark & dreamy instrumentals from the Midwest">
 
 </head>
 <body class="min-h-full">
     <div class="wrapper min-h-screen">
         <header class="p-4 text-white">
         </header>
-        <main class="p-4">
+        <main class="p-4" id="main-content">
                 <h1 class="glitch">
                     <span aria-hidden="true">Slings & Arrows</span>
                     Slings & Arrows
@@ -58,19 +58,22 @@
                 </footer>
 </div>
 <!-- Add the audio element -->
-<audio id="background-audio" src="./media/anhedonia.m4a" autoplay loop></audio>
+<audio id="background-audio" src="./media/anhedonia.m4a"></audio>
 
 <!-- Add a script to ensure autoplay -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const audio = document.getElementById('background-audio');
-        window.addEventListener('click', function () {
-            if (audio.paused) {
-                audio.play().catch(error => {
-                    console.log('Autoplay was prevented:', error);
-                });
-            } else {
-                audio.pause();
+        const main = document.getElementById('main-content');
+        main.addEventListener('click', function (event) {
+            if (event.target.tagName !== 'A' && event.target.tagName !== 'BUTTON') {
+                if (audio.paused) {
+                    audio.play().catch(error => {
+                        console.log('Autoplay was prevented:', error);
+                    });
+                } else {
+                    audio.pause();
+                }
             }
         });
     });
