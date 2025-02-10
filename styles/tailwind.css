@@ -58,6 +58,11 @@ footer {
   }
 }
 
+.social-icons {
+  display: flex;
+  gap: 1em;
+}
+
 footer a:hover {
   text-decoration: underline;
 }
@@ -113,7 +118,7 @@ header {
   background-position: 0 0;
   text-shadow: 0.05em 0 0 color(display-p3 0.704 0.735 0.8), -0.03em -0.04em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
 		0.025em 0.04em 0 #2e2d34;
-  animation: glitch 725ms infinite;
+  animation: 725ms glitch 1s 5;
 }
 
 @media(min-width: 640px) {
@@ -139,14 +144,14 @@ header {
 }
 
 .glitch span:first-child {
-  animation: glitch 600ms infinite;
+  animation: 600ms glitch 1s 5;
   clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
   transform: translate(-0.04em, -0.03em);
   opacity: 0.75;
 }
 
 .glitch span:last-child {
-  animation: glitch 475ms infinite;
+  animation: 475ms glitch 1s 5;
   clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
   transform: translate(0.04em, 0.03em);
   opacity: 0.75;
