@@ -28,7 +28,7 @@ img {
 }
 
 .wrapper {
-  background: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .5) 100%), url(https://res.cloudinary.com/mjtestrun/image/upload/v1738006890/hero_paeruh.avif);
+  background: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .5) 100%), url(https://res.cloudinary.com/mjtestrun/image/upload/v1738006890/hero_paeruh.webp);
   background-size: cover;
   background-position: 0 0;
   min-height: 100svh;
@@ -103,6 +103,12 @@ h1 {
 header {
   background: color(display-p3 0 0 0 / 0.9);
   min-height: 1rem;
+  padding: 1rem 0.5rem;
+    text-align: center;
+  
+    a {
+      color: inherit
+    }
 }
 
 .glitch {
@@ -118,7 +124,7 @@ header {
   background-position: 0 0;
   text-shadow: 0.05em 0 0 color(display-p3 0.704 0.735 0.8), -0.03em -0.04em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
 		0.025em 0.04em 0 #2e2d34;
-  animation: 725ms glitch 1s 5;
+  animation: 725ms glitch 2s 5;
 }
 
 @media(min-width: 640px) {
