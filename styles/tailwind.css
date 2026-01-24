@@ -126,7 +126,14 @@ header {
 		0.025em 0.04em 0 #2e2d34;
   animation: 725ms glitch 2s 5;
 }
+header .glitch {
+  width: fit-content;
+  margin: 0 auto;
+}
 
+main {
+  padding-block-start: 1em;
+}
 @media(min-width: 640px) {
   .glitch {
     font-size: 6rem;
@@ -206,4 +213,7 @@ header p {
   width: 95%;
   max-width: 700px;
   margin: 0 auto;
+}
+#concerts main {
+  backdrop-filter: blur(50px);
 }

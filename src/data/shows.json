@@ -1,0 +1,62 @@
+[
+	{
+		"date": "2024-09-07",
+		"venue": "The Heavy Anchor",
+		"lineup": ["Soft Crisis", "Glass Mattress", "Matt Harnish"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2024-11-30",
+		"venue": "The Barnett",
+		"lineup": ["The Kick Down"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2024-12-05",
+		"venue": "The Sinkhole",
+		"lineup": ["Hopeful Utopian", "Ezumekun", "Sounds Like Noise"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-04-12",
+		"venue": "The Record Space // Record Store Day",
+		"lineup": ["Lunar Waves", "Solar Flare", "Cosmic Drift"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-06-20",
+		"venue": "Red Flag",
+		"lineup": ["Crash Planet", "Brave New World", "Party Hat Club"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-07-24",
+		"venue": "The Tap Room",
+		"lineup": ["What We Won't See"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-09-06",
+		"venue": "CBGB",
+		"lineup": ["Bella Larson & the Scene Kids", "Zach TBD", "Instant Oatmeal"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-09-24",
+		"venue": "The Vortex",
+		"lineup": ["Laveda", "Goo Man"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-10-04",
+		"venue": "Artica STL/Hap's Stage",
+		"lineup": ["<placeholder>"],
+		"setlist": ["<placeholder>"]
+	},
+	{
+		"date": "2025-11-15",
+		"venue": "CBGB",
+		"lineup": ["Future Modern", "Permanent Vacation", "Sounds Like a Bummer"],
+		"setlist": ["<placeholder>"]
+	}
+]
