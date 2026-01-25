@@ -34,7 +34,7 @@
 			<div class="shows" id="shows">
 				<h2 class="text-2xl font-bold mb-4">Upcoming Shows</h2>
 				<div id="upcoming-shows"></div>
-			
+
 				<h2 class="text-2xl font-bold mt-8 mb-4">Past Shows</h2>
 				<div id="past-shows"></div>
 			</div>
@@ -95,23 +95,9 @@
 		</footer>
 	</div>
 </body>
-<script>
-	async function getData() {
-		const url = "./data/shows.json";
-		let data;
-		try {
-			const response = await fetch(url);
-			if (!response.ok) {
-				throw new Error(`Response status: ${response.status}`);
-			}
+<script type="module">
+	import showsData from './data/shows.json' assert { type: 'json' };
 
-			data = await response.json();
-			buildList(data)
-			console.log(data);
-		} catch (error) {
-			console.error(error.message);
-		}
-	}
 	function buildList(shows) {
 		// Separate shows into upcoming and past
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
@@ -138,7 +124,8 @@
 		createShowList(upcomingShows, "upcoming-shows");
 		createShowList(pastShows, "past-shows");
 	}
-	getData();
+			buildList(showsData)
+			// getData();
 </script>
 
 </html>
