@@ -3,8 +3,8 @@
 	"version": "1.0.0",
 	"description": "A basic website project styled with Tailwind CSS and includes an RSS feed.",
 	"scripts": {
-		"build": "parcel build src/index.html --dist-dir dist",
-		"start": "parcel src/index.html",
+		"build": "parcel build src/*.html --dist-dir dist",
+		"start": "parcel src/*.html",
 		"build:css": "postcss src/styles/tailwind.css -o styles/tailwind.css",
 		"watch:css": "postcss src/styles/tailwind.css -o styles/tailwind.css --watch"
 	},
