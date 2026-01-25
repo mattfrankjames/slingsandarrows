@@ -101,7 +101,7 @@
 	function buildList(shows) {
 		// Separate shows into upcoming and past
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
-		const pastShows = shows.filter(show => show.status === "past");
+		const pastShows = shows.filter(show => show.status === "past").reverse();
 
 		// Function to create a list of shows
 		const createShowList = (shows, containerId) => {
