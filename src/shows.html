@@ -11,6 +11,7 @@
 	<link rel="preload" href="https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif"
 		as="image">
 	<link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+	<link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
 	<link href="../styles/tailwind.css" rel="stylesheet">
 	<link rel="icon"
 		href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
@@ -21,14 +22,22 @@
 <body id="concerts">
 	<div class="wrapper min-h-screen">
 		<header class="p-4 text-white">
-			<h2 class="glitch">
-				<span aria-hidden="true">Slings & Arrows</span>
-				Slings & Arrows
-				<span aria-hidden="true">Slings & Arrows</span>
-			</h2>
+			<h1 class="glitch">
+				<a href="/">
+					<span aria-hidden="true">Slings & Arrows</span>
+					Slings & Arrows
+					<span aria-hidden="true">Slings & Arrows</span>
+				</a>
+				</h1>
 		</header>
 		<main class="p-4" id="main-content">
-			<div id="shows"></div>
+			<div class="shows" id="shows">
+				<h2 class="text-2xl font-bold mb-4">Upcoming Shows</h2>
+				<div id="upcoming-shows"></div>
+			
+				<h2 class="text-2xl font-bold mt-8 mb-4">Past Shows</h2>
+				<div id="past-shows"></div>
+			</div>
 			<!-- <h1 class="glitch">
 				<span aria-hidden="true">Slings & Arrows</span>
 				Slings & Arrows
@@ -104,16 +113,30 @@
 		}
 	}
 	function buildList(shows) {
-		shows.map((show) => {
-			const showDiv = document.createElement("div");
-			showDiv.classList.add("show", "mb-4", "p-4", "border", "border-white", "rounded");
-			showDiv.innerHTML = `
-								<h3 class="text-xl font-bold mb-2">${show.date} - ${show.venue}</h3>
-								<p class="mb-1">${show.location}</p>
-								<a href="${show.link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">More Info</a>
-						`;
-			document.getElementById("shows").appendChild(showDiv);
-		})
+		// Separate shows into upcoming and past
+		const upcomingShows = shows.filter(show => show.status === "upcoming");
+		const pastShows = shows.filter(show => show.status === "past");
+
+		// Function to create a list of shows
+		const createShowList = (shows, containerId) => {
+			const container = document.getElementById(containerId);
+			shows.forEach((show) => {
+				const showDiv = document.createElement("div");
+				showDiv.classList.add("show", "mb-4", "p-4", "border", "border-white", "rounded");
+				showDiv.innerHTML = `
+                <h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>
+                <h4 class="mb-0">With:</h4>
+                <ul class="lineup mb-1">
+                    ${show.lineup.map(artist => `<li>${artist}</li>`).join('//')}
+                </ul>
+            `;
+				container.appendChild(showDiv);
+			});
+		};
+
+		// Create separate lists for upcoming and past shows
+		createShowList(upcomingShows, "upcoming-shows");
+		createShowList(pastShows, "past-shows");
 	}
 	getData();
 </script>
