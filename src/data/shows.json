@@ -74,6 +74,10 @@
 		"venue": "Platypus",
 		"lineup": ["Night Parks", "Hopeful Utopian", "Bonus Sandwich"],
 		"setlist": ["<placeholder>"],
-		"status": "upcoming"
+		"status": "upcoming",
+		"venueHref": "https://www.drinkplatypus.com/events",
+		"doorTime": "7:00PM",
+		"showTime": "7:30PM",
+		"cost": "$10"
 	}
 ]

@@ -80,7 +80,10 @@ h1,
 h2 {
   text-transform: uppercase;
 }
-
+h2 {
+  font-size: clamp(2rem, 1.5vw + 1rem, 4rem);
+  margin-block-end: 0.5em;
+}
 h4 {
   margin-block-end: 0.5em;
 }
@@ -243,6 +246,7 @@ header p {
     justify-content: flex-start;
     list-style: none;
     gap: 1em;
+    margin-block-end: .25em;
   }
 
   .show:not(:last-child) {
@@ -252,6 +256,9 @@ header p {
 }
 #upcoming-shows {
   margin-block-end: 1em;
+  .show {
+      margin-block-end: 1em;
+    }
 }
 
 #upcoming-shows::after {
@@ -261,4 +268,11 @@ header p {
   height: 3px;
   background: url('https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif') repeat;
   ;
+}
+.subtext {
+  font-size: .9em;
+
+  span {
+    font-weight: bold;
+  }
 }

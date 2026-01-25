@@ -38,20 +38,6 @@
 				<h2 class="text-2xl font-bold mt-8 mb-4">Past Shows</h2>
 				<div id="past-shows"></div>
 			</div>
-			<!-- <h1 class="glitch">
-				<span aria-hidden="true">Slings & Arrows</span>
-				Slings & Arrows
-				<span aria-hidden="true">Slings & Arrows</span>
-			</h1>
-			<p class="text-emphasis mb-2">Midwestern atmospheric instrumentals</p> -->
-			<!-- <p class="text-sm">
-                    < --- Click anywhere for sound ---&nbsp;>
-                </p> -->
-			<!-- <div class="iframe-container">
-				<iframe style="border: 0; width: 100%; height: 42px; margin: 0 auto;"
-					src="https://bandcamp.com/EmbeddedPlayer/album=3777887117/size=small/bgcol=ffffff/linkcol=0687f5/transparent=true/"
-					seamless><a href="https://slingsarrows.bandcamp.com/album/demo-ep">Demo EP by Slings &amp; Arrows</a></iframe>
-			</div> -->
 		</main>
 		<footer class="p-4 text-white text-center">
 			<p>&copy;
@@ -98,34 +84,38 @@
 <script type="module">
 	import showsData from './data/shows.json' assert { type: 'json' };
 
-	function buildList(shows) {
-		// Separate shows into upcoming and past
+								function buildList(shows) {
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
 		const pastShows = shows.filter(show => show.status === "past").reverse();
 
-		// Function to create a list of shows
-		const createShowList = (shows, containerId) => {
+								function createShowList(shows, containerId) {
 			const container = document.getElementById(containerId);
+								const isUpcoming = containerId === "upcoming-shows";
+
 			shows.forEach((show) => {
 				const showDiv = document.createElement("div");
 				showDiv.classList.add("show", "mb-4", "p-4", "border", "border-white", "rounded");
+
+				const heading = isUpcoming && show.venueHref
+					? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
+					: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
+				const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
 				showDiv.innerHTML = `
-                <h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>
+                ${heading}
                 <h4 class="mb-0">With:</h4>
                 <ul class="lineup mb-1">
                     ${show.lineup.map(artist => `<li>${artist}</li>`).join('//')}
                 </ul>
+								${showDetails}
             `;
 				container.appendChild(showDiv);
 			});
-		};
+							}
 
-		// Create separate lists for upcoming and past shows
 		createShowList(upcomingShows, "upcoming-shows");
 		createShowList(pastShows, "past-shows");
 	}
-			buildList(showsData)
-			// getData();
+										buildList(showsData)
 </script>
 
 </html>
