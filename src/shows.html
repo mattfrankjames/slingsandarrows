@@ -82,40 +82,48 @@
 	</div>
 </body>
 <script type="module">
-	import showsData from './data/shows.json' assert { type: 'json' };
+			import showsData from './data/shows.json';
 
-								function buildList(shows) {
+			function buildList(shows) {
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
 		const pastShows = shows.filter(show => show.status === "past").reverse();
 
-								function createShowList(shows, containerId) {
+			const upcomingHeading = document.querySelector('#shows h2:first-of-type');
+			if (upcomingShows.length === 0) {
+				upcomingHeading.style.display = 'none';
+			} else {
+				upcomingHeading.style.display = 'block';
+			}
+
+			function createShowList(shows, containerId) {
 			const container = document.getElementById(containerId);
-								const isUpcoming = containerId === "upcoming-shows";
+			const isUpcoming = containerId === "upcoming-shows";
 
 			shows.forEach((show) => {
 				const showDiv = document.createElement("div");
 				showDiv.classList.add("show", "mb-4", "p-4", "border", "border-white", "rounded");
 
-				const heading = isUpcoming && show.venueHref
-					? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
-					: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
-				const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
-				showDiv.innerHTML = `
-                ${heading}
-                <h4 class="mb-0">With:</h4>
-                <ul class="lineup mb-1">
-                    ${show.lineup.map(artist => `<li>${artist}</li>`).join('//')}
-                </ul>
-								${showDetails}
-            `;
-				container.appendChild(showDiv);
-			});
-							}
+					const heading = isUpcoming && show.venueHref
+						? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
+						: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
+					const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
+					showDiv.innerHTML = `
+									${heading}
+									<h4 class="mb-0">With:</h4>
+									<ul class="lineup mb-1">
+											${show.lineup.map(artist => `<li>${artist}</li>`).join('//')}
+									</ul>
+									${showDetails}
+							`;
+					container.appendChild(showDiv);
+				});
+		}
 
 		createShowList(upcomingShows, "upcoming-shows");
 		createShowList(pastShows, "past-shows");
 	}
-										buildList(showsData)
+
+	buildList(showsData);
 </script>
 
 </html>
