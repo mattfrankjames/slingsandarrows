@@ -81,9 +81,6 @@
 		"venue": "CBGB",
 		"lineup": ["B'RR", "Sounds Like Noise", "Behindlings"],
 		"setlist": ["<placeholder>"],
-		"status": "upcoming",
-		"doorTime": "7pm",
-		"showTime": "8pm",
-		"cost": "donations"
+		"status": "past"
 	}
 ]
