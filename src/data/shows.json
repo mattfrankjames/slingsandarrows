@@ -82,5 +82,12 @@
 		"lineup": ["B'RR", "Sounds Like Noise", "Behindlings"],
 		"setlist": ["<placeholder>"],
 		"status": "past"
+	},
+	{
+		"date": "2026-08-15",
+		"venue": "Off Broadway",
+		"lineup": ["Future Modern", "Hopeful Utopian"],
+		"setlist": ["<placeholder>"],
+		"status": "upcoming"
 	}
 ]
