@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Compose</title>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="preconnect" href="https://res.cloudinary.com">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../../styles/tailwind.css" rel="stylesheet">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <meta name="description" content="Slings & Arrows post composer">
+
+  <!-- Netlify Identity Widget — enable Identity in your Netlify dashboard first -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+  <style>
+    .app-shell {
+      width: 95%;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #auth-section,
+    #composer-section,
+    #install-section {
+      margin-block-end: 2rem;
+    }
+    #install-banner {
+      display: none;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 4px;
+      padding: 1rem 1.25rem;
+      margin-block-end: 1.5rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    #install-banner p {
+      margin: 0;
+      font-size: .9em;
+    }
+    #install-banner.visible {
+      display: flex;
+    }
+    .btn {
+      font-family: "ballinger-mono", sans-serif;
+      font-size: .9rem;
+      cursor: pointer;
+      border: 1px solid white;
+      border-radius: 3px;
+      padding: .4rem .9rem;
+      background: transparent;
+      color: white;
+      letter-spacing: -.05ch;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: white;
+      color: black;
+    }
+    .btn-ghost {
+      border-color: rgba(255,255,255,.4);
+      color: rgba(255,255,255,.6);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,.1);
+      color: white;
+    }
+    .composer form {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .composer input,
+    .composer textarea {
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 3px;
+      color: white;
+      padding: .6rem .75rem;
+      width: 100%;
+      letter-spacing: -.05ch;
+    }
+    .composer input::placeholder,
+    .composer textarea::placeholder {
+      color: rgba(255,255,255,.35);
+    }
+    .composer input:focus,
+    .composer textarea:focus {
+      outline: none;
+      border-color: white;
+    }
+    .composer textarea {
+      min-height: 160px;
+      resize: vertical;
+    }
+    #feedback {
+      font-size: .9em;
+      min-height: 1.4em;
+    }
+    #feedback.ok { color: #7fff7f; }
+    #feedback.err { color: #ff8080; }
+    .auth-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .auth-row p { margin: 0; font-size: .9em; opacity: .7; }
+    #gate {
+      text-align: center;
+      padding: 2rem 0;
+      opacity: .7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+    </header>
+
+    <main class="p-4" id="main-content">
+      <div class="app-shell">
+
+        <!-- Install banner (shown when browser fires beforeinstallprompt) -->
+        <div id="install-banner" role="banner">
+          <p>Add Slings & Arrows to your home screen.</p>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn" id="install-btn">Install</button>
+            <button class="btn btn-ghost" id="install-dismiss">✕</button>
+          </div>
+        </div>
+
+        <!-- Auth row -->
+        <div id="auth-section">
+          <div class="auth-row">
+            <p id="auth-status">Checking login…</p>
+            <button class="btn" id="auth-btn" style="display:none"></button>
+          </div>
+        </div>
+
+        <!-- Composer (shown only when logged in) -->
+        <div id="composer-section" style="display:none" class="composer">
+          <h2>New Post</h2>
+          <form id="post-form">
+            <input type="text" id="post-title" placeholder="Title (optional)" maxlength="200">
+            <textarea id="post-body" placeholder="What's on your mind?" required maxlength="10000"></textarea>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <button type="submit" class="btn" id="submit-btn">Publish</button>
+              <span id="feedback"></span>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gate (shown when not logged in) -->
+        <div id="gate">
+          <p>Log in to write posts.</p>
+        </div>
+
+        <p style="margin-top:2rem;font-size:.9em;">
+          <a href="/posts.html">← View all posts</a>
+        </p>
+      </div>
+    </main>
+
+    <footer class="p-4 text-white text-center">
+      <p>&copy;
+        <script>document.write(new Date().getFullYear())</script> Slings & Arrows
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // ── Install prompt ────────────────────────────────────────────────────────
+    let deferredPrompt = null;
+    const banner = document.getElementById('install-banner');
+    const installBtn = document.getElementById('install-btn');
+    const dismissBtn = document.getElementById('install-dismiss');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      banner.classList.add('visible');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (outcome === 'accepted') banner.classList.remove('visible');
+    });
+
+    dismissBtn.addEventListener('click', () => banner.classList.remove('visible'));
+
+    window.addEventListener('appinstalled', () => banner.classList.remove('visible'));
+
+    // ── Netlify Identity ──────────────────────────────────────────────────────
+    const authStatus = document.getElementById('auth-status');
+    const authBtn = document.getElementById('auth-btn');
+    const composerSection = document.getElementById('composer-section');
+    const gate = document.getElementById('gate');
+
+    function showComposer(user) {
+      authStatus.textContent = `Logged in as ${user.email}`;
+      authBtn.textContent = 'Log out';
+      authBtn.style.display = '';
+      composerSection.style.display = '';
+      gate.style.display = 'none';
+    }
+
+    function showGate() {
+      authStatus.textContent = 'Not logged in';
+      authBtn.textContent = 'Log in';
+      authBtn.style.display = '';
+      composerSection.style.display = 'none';
+      gate.style.display = '';
+    }
+
+    window.netlifyIdentity.on('init', (user) => {
+      user ? showComposer(user) : showGate();
+    });
+
+    window.netlifyIdentity.on('login', (user) => {
+      window.netlifyIdentity.close();
+      showComposer(user);
+    });
+
+    window.netlifyIdentity.on('logout', () => showGate());
+
+    authBtn.addEventListener('click', () => {
+      const user = window.netlifyIdentity.currentUser();
+      user ? window.netlifyIdentity.logout() : window.netlifyIdentity.open();
+    });
+
+    // ── Post form ─────────────────────────────────────────────────────────────
+    const form = document.getElementById('post-form');
+    const titleInput = document.getElementById('post-title');
+    const bodyInput = document.getElementById('post-body');
+    const submitBtn = document.getElementById('submit-btn');
+    const feedback = document.getElementById('feedback');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = window.netlifyIdentity.currentUser();
+      if (!user) return;
+
+      submitBtn.disabled = true;
+      feedback.textContent = 'Publishing…';
+      feedback.className = '';
+
+      try {
+        const token = await user.jwt();
+        const res = await fetch('/api/create-post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: titleInput.value,
+            text: bodyInput.value,
+          }),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        feedback.textContent = 'Published!';
+        feedback.className = 'ok';
+        form.reset();
+      } catch (err) {
+        feedback.textContent = `Error: ${err.message}`;
+        feedback.className = 'err';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -15,6 +15,7 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
     <meta name="description" content="Atmospheric, dark & dreamy instrumentals from the Midwest">
+    <link rel="manifest" href="manifest.json">
 
 </head>
 <body>
@@ -44,7 +45,10 @@
                     <p>&copy;
                         <script>document.write(new Date().getFullYear())</script> Slings & Arrows
                     </p>
-                    <div class="social-icons flex justify-between gap-2">
+                    <nav style="margin-block-end:.5rem;">
+                    <a href="./shows.html">Shows</a> &nbsp;·&nbsp; <a href="./posts.html">Posts</a>
+                </nav>
+                <div class="social-icons flex justify-between gap-2">
                         <a href="mailto:mattjamesmedia@gmail.com" aria-label="email slings and arrows">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-envelope"
                                 viewBox="0 0 16 16">
@@ -80,6 +84,11 @@
                     </div>
                 </footer>
 </div>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script>
 <!-- Add the audio element -->
 <!-- <audio id="background-audio" src="./media/anhedonia.m4a"></audio> -->
 

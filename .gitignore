@@ -60,12 +60,14 @@ coverage/
 *.tar.gz
 *.rar
 
-# Compiled JavaScript
+# Compiled JavaScript (but allow source JS that needs to be committed)
 *.js
 *.jsx
 *.ts
 *.tsx
 *.map
+!netlify/**/*.js
+!src/sw.js
 
 # Static site builds
 public/
