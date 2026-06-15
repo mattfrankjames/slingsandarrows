@@ -74,6 +74,58 @@
       font-size: 0.85em;
       padding: 0.4em 1em;
     }
+    .composer input[type="file"] {
+      background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      padding: 0.5em;
+    }
+    .composer input[type="file"]::-webkit-file-upload-button {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      padding: 0.3em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-inline-end: 0.75em;
+    }
+    #image-preview-wrap {
+      position: relative;
+      display: inline-block;
+      margin-block-start: -0.5em;
+      margin-block-end: 1.25em;
+    }
+    #preview-img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 4px;
+      display: block;
+    }
+    #remove-image-btn {
+      position: absolute;
+      top: 0.3em;
+      right: 0.3em;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 50%;
+      width: 1.6em;
+      height: 1.6em;
+      font-size: 0.85em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #upload-status {
+      font-size: 0.85em;
+      min-height: 1.2em;
+      margin-block-start: -1em;
+      margin-block-end: 1em;
+    }
+    #upload-status.uploading { opacity: 0.6; }
+    #upload-status.error { color: #f5a8a8; }
     #status-msg {
       margin-block-start: 1em;
       min-height: 1.5em;
@@ -154,6 +206,13 @@
             <input type="text" id="post-title" name="title" placeholder="Leave blank to post without a title">
             <label for="post-body">Body *</label>
             <textarea id="post-body" name="body" placeholder="What's happening with the band?" required></textarea>
+            <label for="post-image">Photo (optional)</label>
+            <input type="file" id="post-image" name="image" accept="image/*">
+            <div id="image-preview-wrap" hidden>
+              <img id="preview-img" src="" alt="Photo preview">
+              <button type="button" id="remove-image-btn" aria-label="Remove photo">✕</button>
+            </div>
+            <p id="upload-status" aria-live="polite"></p>
             <button type="submit" class="btn" id="submit-btn">Publish Post</button>
             <p id="status-msg" role="status" aria-live="polite"></p>
           </form>

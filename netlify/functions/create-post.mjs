@@ -61,7 +61,7 @@ export default async (req, context) => {
       });
     }
 
-    const { title, body: postBody } = body;
+    const { title, body: postBody, imageUrl } = body;
     if (!postBody || !postBody.trim()) {
       return new Response(JSON.stringify({ error: 'Post body is required' }), {
         status: 400,
@@ -69,11 +69,16 @@ export default async (req, context) => {
       });
     }
 
+    // Only allow Cloudinary URLs — reject anything else
+    const rawImage = (imageUrl || '').trim();
+    const safeImageUrl = rawImage.startsWith('https://res.cloudinary.com/') ? rawImage : '';
+
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const post = {
       id,
       title: (title || '').trim(),
       body: postBody.trim(),
+      imageUrl: safeImageUrl,
       author: user.email,
       createdAt: new Date().toISOString(),
     };

@@ -3,12 +3,8 @@ const loading    = document.getElementById('loading');
 const emptyState = document.getElementById('empty-state');
 const errorState = document.getElementById('error-state');
 
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function isCloudinaryUrl(url) {
+  return typeof url === 'string' && url.startsWith('https://res.cloudinary.com/');
 }
 
 function formatDate(iso) {
@@ -22,11 +18,33 @@ function formatDate(iso) {
 function renderPost(post) {
   const article = document.createElement('article');
   article.className = 'post-card';
-  article.innerHTML = `
-    ${post.title ? `<h3 class="post-title">${escapeHtml(post.title)}</h3>` : ''}
-    <p class="post-body">${escapeHtml(post.body)}</p>
-    <p class="post-meta">${formatDate(post.createdAt)}</p>
-  `;
+
+  if (post.title) {
+    const h3 = document.createElement('h3');
+    h3.className = 'post-title';
+    h3.textContent = post.title;
+    article.appendChild(h3);
+  }
+
+  if (isCloudinaryUrl(post.imageUrl)) {
+    const img = document.createElement('img');
+    img.className = 'post-image';
+    img.src = post.imageUrl;
+    img.alt = post.title || '';
+    img.loading = 'lazy';
+    article.appendChild(img);
+  }
+
+  const p = document.createElement('p');
+  p.className = 'post-body';
+  p.textContent = post.body;
+  article.appendChild(p);
+
+  const meta = document.createElement('p');
+  meta.className = 'post-meta';
+  meta.textContent = formatDate(post.createdAt);
+  article.appendChild(meta);
+
   return article;
 }
 
