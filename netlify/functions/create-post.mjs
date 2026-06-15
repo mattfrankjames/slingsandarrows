@@ -1,18 +1,17 @@
-const { getStore } = require('@netlify/blobs');
+import { getStore } from '@netlify/blobs';
 
-exports.handler = async (event, context) => {
+export default async (req, context) => {
   try {
-    if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method Not Allowed' };
+    if (req.method !== 'POST') {
+      return new Response('Method Not Allowed', { status: 405 });
     }
 
     const { user } = context.clientContext || {};
     if (!user) {
-      return {
-        statusCode: 401,
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Unauthorized' }),
-      };
+      });
     }
 
     const allowed = (process.env.ALLOWED_AUTHORS || '')
@@ -21,31 +20,28 @@ exports.handler = async (event, context) => {
       .filter(Boolean);
 
     if (!allowed.includes((user.email || '').toLowerCase())) {
-      return {
-        statusCode: 403,
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Forbidden' }),
-      };
+      });
     }
 
-    let parsed;
+    let body;
     try {
-      parsed = JSON.parse(event.body);
+      body = await req.json();
     } catch {
-      return {
-        statusCode: 400,
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Invalid JSON body' }),
-      };
+      });
     }
 
-    const { title, body: postBody } = parsed;
+    const { title, body: postBody } = body;
     if (!postBody || !postBody.trim()) {
-      return {
-        statusCode: 400,
+      return new Response(JSON.stringify({ error: 'Post body is required' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Post body is required' }),
-      };
+      });
     }
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -60,17 +56,17 @@ exports.handler = async (event, context) => {
     const store = getStore('posts');
     await store.setJSON(id, post);
 
-    return {
-      statusCode: 201,
+    return new Response(JSON.stringify(post), {
+      status: 201,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(post),
-    };
+    });
   } catch (err) {
     console.error('create-post error:', err);
-    return {
-      statusCode: 500,
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    };
+    });
   }
 };
+
+export const config = { path: '/api/create-post' };
