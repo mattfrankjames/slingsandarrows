@@ -1,4 +1,4 @@
-import netlifyIdentity from 'netlify-identity-widget';
+const netlifyIdentity = window.netlifyIdentity;
 
 netlifyIdentity.init();
 
