@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Post Composer</title>
+  <link rel="manifest" href="./manifest.json">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <meta name="description" content="Post composer for Slings & Arrows">
+  <style>
+    .composer {
+      width: 95%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .composer label {
+      display: block;
+      margin-block-end: 0.25em;
+      font-size: 0.9em;
+      opacity: 0.7;
+    }
+    .composer input,
+    .composer textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.75em;
+      border-radius: 4px;
+      margin-block-end: 1.25em;
+      resize: vertical;
+    }
+    .composer input::placeholder,
+    .composer textarea::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+    .composer input:focus,
+    .composer textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+    .composer textarea {
+      min-height: 200px;
+    }
+    .btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.6em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-sm {
+      font-size: 0.85em;
+      padding: 0.4em 1em;
+    }
+    #status-msg {
+      margin-block-start: 1em;
+      min-height: 1.5em;
+      font-size: 0.9em;
+    }
+    #status-msg.success { color: #a8f5a8; }
+    #status-msg.error   { color: #f5a8a8; }
+    #auth-gate {
+      text-align: center;
+      padding: 3em 1em;
+    }
+    #auth-gate p {
+      margin-block-end: 1em;
+      opacity: 0.7;
+    }
+    .user-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-block-end: 1.5em;
+      padding-block-end: 0.75em;
+      border-block-end: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .user-email {
+      font-size: 0.85em;
+      opacity: 0.6;
+    }
+    #install-banner {
+      display: flex;
+      gap: 1em;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 0.75em 1em;
+      margin-block-end: 1.5em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+    </header>
+    <main class="p-4" id="main-content">
+      <div class="composer">
+
+        <div id="install-banner" hidden>
+          <span>Add to Home Screen for quick access</span>
+          <div style="display:flex;gap:0.5em;">
+            <button class="btn btn-sm" id="install-btn">Install</button>
+            <button class="btn btn-sm" id="install-dismiss" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+
+        <div id="auth-gate">
+          <p>Sign in to publish posts</p>
+          <button class="btn" id="login-btn">Sign In</button>
+        </div>
+
+        <div id="composer-panel" hidden>
+          <div class="user-bar">
+            <span class="user-email" id="user-email"></span>
+            <button class="btn btn-sm" id="logout-btn">Sign Out</button>
+          </div>
+          <h2>New Post</h2>
+          <form id="post-form">
+            <label for="post-title">Title (optional)</label>
+            <input type="text" id="post-title" name="title" placeholder="Leave blank to post without a title">
+            <label for="post-body">Body *</label>
+            <textarea id="post-body" name="body" placeholder="What's happening with the band?" required></textarea>
+            <button type="submit" class="btn" id="submit-btn">Publish Post</button>
+            <p id="status-msg" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+      </div>
+    </main>
+    <footer class="p-4 text-white text-center">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
+    </footer>
+  </div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

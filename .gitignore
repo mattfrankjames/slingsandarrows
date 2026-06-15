@@ -60,12 +60,16 @@ coverage/
 *.tar.gz
 *.rar
 
-# Compiled JavaScript
-*.js
+# Compiled JavaScript (exceptions below allow source JS files)
 *.jsx
 *.ts
 *.tsx
 *.map
+
+# Allow netlify functions and src JS modules
+!netlify/functions/*.js
+!src/js/*.js
+!src/sw.js
 
 # Static site builds
 public/
