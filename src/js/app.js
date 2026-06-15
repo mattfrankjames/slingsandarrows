@@ -1,6 +1,6 @@
 const netlifyIdentity = window.netlifyIdentity;
 
-netlifyIdentity.init();
+netlifyIdentity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
 
 const authGate      = document.getElementById('auth-gate');
 const composerPanel = document.getElementById('composer-panel');
