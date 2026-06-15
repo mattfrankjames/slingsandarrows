@@ -86,7 +86,7 @@
 </div>
 <script type="module">
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register(new URL('/sw.js', import.meta.url));
+    navigator.serviceWorker.register(new URL('./sw.js', import.meta.url));
   }
 </script>
 <!-- Add the audio element -->
