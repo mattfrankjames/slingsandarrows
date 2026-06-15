@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "mkdir -p src/styles && cp styles/tailwind.css src/styles/tailwind.css"
+  publish = "src"
   functions = "netlify/functions"
 
 [[redirects]]
