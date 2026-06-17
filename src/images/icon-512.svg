@@ -1,4 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Safe zone fill covers the full tile for maskable use -->
   <rect width="512" height="512" fill="#000000"/>
-  <text x="256" y="256" dy=".35em" text-anchor="middle" font-size="420" fill="white" font-family="sans-serif">*</text>
+  <!-- Inner circle keeps the glyph inside the maskable safe zone (80% = 410px) -->
+  <circle cx="256" cy="256" r="205" fill="#111111"/>
+  <!-- Asterisk glyph — sized to sit comfortably inside the safe zone -->
+  <text
+    x="256" y="256"
+    dy=".35em"
+    text-anchor="middle"
+    font-size="320"
+    fill="white"
+    font-family="Georgia, serif"
+    font-weight="bold"
+  >*</text>
 </svg>
