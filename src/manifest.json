@@ -44,15 +44,6 @@
       "purpose": "any"
     }
   ],
-  "screenshots": [
-    {
-      "src": "./images/screenshot-composer.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Post Composer"
-    }
-  ],
   "shortcuts": [
     {
       "name": "New Post",
