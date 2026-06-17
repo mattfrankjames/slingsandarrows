@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!--
+    Maskable icon — the entire canvas is the "safe zone background".
+    The glyph must stay within the inner 80 % circle (r ≈ 77 px from centre).
+    Full-bleed solid fill ensures no white/transparent bleed on any mask shape.
+  -->
+  <rect width="192" height="192" fill="#000000"/>
+  <text
+    x="96" y="96"
+    dy=".35em"
+    text-anchor="middle"
+    font-size="100"
+    fill="white"
+    font-family="Georgia, serif"
+    font-weight="bold"
+  >*</text>
+</svg>

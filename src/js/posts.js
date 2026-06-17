@@ -69,3 +69,12 @@ async function loadPosts() {
 }
 
 loadPosts();
+
+// ── Service Worker registration ───────────────────────────────────────────────
+// Register on the public posts page so the SW can cache assets here too.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .then(reg => console.log('[SW] Registered on /posts. Scope:', reg.scope))
+    .catch(err => console.warn('[SW] Registration failed:', err));
+}
