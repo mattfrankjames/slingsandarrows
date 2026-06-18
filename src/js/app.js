@@ -1,165 +1,482 @@
-const netlifyIdentity = window.netlifyIdentity;
+// ─── IndexedDB offline queue ──────────────────────────────────────────────────
+class PostQueue {
+  constructor() {
+    this._db = null;
+  }
 
-netlifyIdentity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
+  async init() {
+    if (this._db) return;
+    this._db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('SlingsArrows', 1);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(req.result);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('pending-posts')) {
+          db.createObjectStore('pending-posts', { keyPath: 'id' });
+        }
+      };
+    });
+  }
 
-const authGate        = document.getElementById('auth-gate');
-const composerPanel   = document.getElementById('composer-panel');
-const userEmailEl     = document.getElementById('user-email');
-const loginBtn        = document.getElementById('login-btn');
-const logoutBtn       = document.getElementById('logout-btn');
-const postForm        = document.getElementById('post-form');
-const submitBtn       = document.getElementById('submit-btn');
-const statusMsg       = document.getElementById('status-msg');
-const installBanner   = document.getElementById('install-banner');
-const installBtn      = document.getElementById('install-btn');
-const installDismiss  = document.getElementById('install-dismiss');
-const imageInput      = document.getElementById('post-image');
-const imagePreviewWrap = document.getElementById('image-preview-wrap');
-const previewImg      = document.getElementById('preview-img');
-const removeImageBtn  = document.getElementById('remove-image-btn');
-const uploadStatus    = document.getElementById('upload-status');
+  _tx(mode) {
+    return this._db.transaction(['pending-posts'], mode).objectStore('pending-posts');
+  }
 
-// Tracks the Cloudinary URL from a successful upload
-let pendingImageUrl = null;
+  add(postData, token) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const record = { id, data: postData, token, createdAt: new Date().toISOString() };
+    return new Promise((resolve, reject) => {
+      const req = this._tx('readwrite').add(record);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(record);
+    });
+  }
 
-function setAuthUI(user) {
-  if (user) {
-    authGate.hidden = true;
-    composerPanel.hidden = false;
-    userEmailEl.textContent = user.email;
-  } else {
-    authGate.hidden = false;
-    composerPanel.hidden = true;
-    userEmailEl.textContent = '';
+  remove(id) {
+    return new Promise((resolve, reject) => {
+      const req = this._tx('readwrite').delete(id);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve();
+    });
+  }
+
+  getAll() {
+    return new Promise((resolve, reject) => {
+      const req = this._tx('readonly').getAll();
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(req.result || []);
+    });
   }
 }
 
-setAuthUI(netlifyIdentity.currentUser());
+// ─── Media helpers ────────────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
 
-netlifyIdentity.on('login', user => {
-  setAuthUI(user);
-  netlifyIdentity.close();
-});
+/**
+ * Compress an image File to WebP at ≤1920×1080, quality 0.82.
+ * Returns a Blob.
+ */
+async function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ev => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const MAX_W = 1920;
+        const MAX_H = 1080;
+        let { width, height } = img;
 
-netlifyIdentity.on('logout', () => setAuthUI(null));
+        if (width > MAX_W) { height = Math.round(height * MAX_W / width); width = MAX_W; }
+        if (height > MAX_H) { width = Math.round(width * MAX_H / height); height = MAX_H; }
 
-loginBtn.addEventListener('click', () => netlifyIdentity.open('login'));
-logoutBtn.addEventListener('click', () => netlifyIdentity.logout());
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+          'image/webp',
+          0.82
+        );
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-// Image upload
+/**
+ * Return the duration (seconds) of a video File without loading the full file.
+ */
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const src = URL.createObjectURL(file);
+    video.onloadedmetadata = () => { URL.revokeObjectURL(src); resolve(video.duration); };
+    video.onerror = () => { URL.revokeObjectURL(src); reject(new Error('Could not read video')); };
+    video.src = src;
+  });
+}
+
+/**
+ * Upload a File/Blob to Cloudinary using the unsigned upload preset.
+ * Uses the "auto" resource type so both images and videos are handled.
+ * Returns the Cloudinary response JSON.
+ */
 async function uploadToCloudinary(file) {
-  const cloudName   = process.env.CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', uploadPreset);
+  if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
+    throw new Error('Cloudinary env vars not set');
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
 
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-    { method: 'POST', body: formData }
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
+    { method: 'POST', body: fd }
   );
-  if (!res.ok) throw new Error('Upload failed');
-  const data = await res.json();
-  return data.secure_url;
-}
-
-function clearImageState() {
-  pendingImageUrl = null;
-  imageInput.value = '';
-  imagePreviewWrap.hidden = true;
-  previewImg.src = '';
-  uploadStatus.className = '';
-  uploadStatus.textContent = '';
-}
-
-imageInput.addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  uploadStatus.className = 'uploading';
-  uploadStatus.textContent = 'Uploading photo…';
-  imagePreviewWrap.hidden = true;
-  pendingImageUrl = null;
-
-  try {
-    const url = await uploadToCloudinary(file);
-    pendingImageUrl = url;
-    previewImg.src = url;
-    imagePreviewWrap.hidden = false;
-    uploadStatus.className = '';
-    uploadStatus.textContent = '';
-  } catch {
-    uploadStatus.className = 'error';
-    uploadStatus.textContent = 'Photo upload failed — you can still publish without one.';
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail?.error?.message || `Cloudinary upload failed (${res.status})`);
   }
-});
+  return res.json();
+}
 
-removeImageBtn.addEventListener('click', clearImageState);
+// ─── Globals ──────────────────────────────────────────────────────────────────
+const postQueue = new PostQueue();
+let deferredInstallPrompt = null;
 
-// Form submit
-postForm.addEventListener('submit', async e => {
-  e.preventDefault();
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+(async () => {
+  await postQueue.init();
+  initAuth();
+  initInstallPrompt();
+  registerServiceWorker();
+  listenForSWMessages();
+  listenForOnline();
+})();
 
-  const title = document.getElementById('post-title').value;
-  const body  = document.getElementById('post-body').value;
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+function initAuth() {
+  const identity = window.netlifyIdentity;
+  identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
 
-  submitBtn.disabled = true;
-  statusMsg.className = '';
-  statusMsg.textContent = 'Publishing…';
+  const authGate      = document.getElementById('auth-gate');
+  const composerPanel = document.getElementById('composer-panel');
+  const userEmailEl   = document.getElementById('user-email');
+  const loginBtn      = document.getElementById('login-btn');
+  const logoutBtn     = document.getElementById('logout-btn');
 
-  try {
-    const user  = netlifyIdentity.currentUser();
-    const token = await user.jwt();
+  function applyUser(user) {
+    if (user) {
+      authGate.hidden      = true;
+      composerPanel.hidden = false;
+      userEmailEl.textContent = user.email;
+    } else {
+      authGate.hidden      = false;
+      composerPanel.hidden = true;
+      userEmailEl.textContent = '';
+    }
+  }
 
-    const res = await fetch('/api/create-post', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title, body, imageUrl: pendingImageUrl || '' }),
-    });
+  // Restore session on page load
+  applyUser(identity.currentUser());
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || 'Unknown error');
+  identity.on('init',   user => applyUser(user));
+  identity.on('login',  user => { applyUser(user); identity.close(); });
+  identity.on('logout', ()   => applyUser(null));
+
+  loginBtn.addEventListener('click',  () => identity.open('login'));
+  logoutBtn.addEventListener('click', () => identity.logout());
+
+  // Wire the post form once (it's always in the DOM)
+  initPostForm();
+}
+
+// ─── Post Form ────────────────────────────────────────────────────────────────
+function initPostForm() {
+  const form          = document.getElementById('post-form');
+  const titleInput    = document.getElementById('post-title');
+  const bodyInput     = document.getElementById('post-body');
+  const mediaInput    = document.getElementById('post-image');
+  const previewWrap   = document.getElementById('image-preview-wrap');
+  const previewImg    = document.getElementById('preview-img');
+  const removeBtn     = document.getElementById('remove-image-btn');
+  const uploadStatus  = document.getElementById('upload-status');
+  const statusMsg     = document.getElementById('status-msg');
+  const submitBtn     = document.getElementById('submit-btn');
+
+  // selectedMedia: { file: File, type: 'image'|'video' } | null
+  let selectedMedia = null;
+
+  // ── Media picker ──────────────────────────────────────────────────────────
+  mediaInput.accept = 'image/*,video/*';
+
+  mediaInput.addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    clearUploadStatus(uploadStatus);
+    selectedMedia = null;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      setUploadStatus(uploadStatus, 'Only images and videos are supported.', 'error');
+      mediaInput.value = '';
+      return;
     }
 
-    statusMsg.className = 'success';
-    statusMsg.textContent = 'Post published!';
-    postForm.reset();
-    clearImageState();
+    if (isVideo) {
+      try {
+        const duration = await getVideoDuration(file);
+        if (duration > 120) {
+          setUploadStatus(uploadStatus, 'Videos must be under 2 minutes.', 'error');
+          mediaInput.value = '';
+          return;
+        }
+      } catch {
+        setUploadStatus(uploadStatus, 'Could not read video metadata.', 'error');
+        mediaInput.value = '';
+        return;
+      }
+    }
+
+    selectedMedia = { file, type: isImage ? 'image' : 'video' };
+
+    // Show local preview immediately (before upload)
+    const objectUrl = URL.createObjectURL(file);
+    previewImg.src = objectUrl;
+    previewImg.alt = isVideo ? 'Video preview' : 'Image preview';
+    previewWrap.hidden = false;
+  });
+
+  removeBtn.addEventListener('click', () => {
+    selectedMedia = null;
+    mediaInput.value = '';
+    previewWrap.hidden = true;
+    previewImg.src = '';
+    clearUploadStatus(uploadStatus);
+  });
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    await handleSubmit({
+      title:       titleInput.value,
+      body:        bodyInput.value,
+      media:       selectedMedia,
+      form,
+      submitBtn,
+      uploadStatus,
+      statusMsg,
+      onSuccess:   () => { selectedMedia = null; },
+    });
+  });
+}
+
+async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus, statusMsg, onSuccess }) {
+  submitBtn.disabled = true;
+  setStatus(statusMsg, 'Publishing…', '');
+
+  try {
+    let mediaUrl = '';
+
+    if (media) {
+      let fileToUpload = media.file;
+
+      if (media.type === 'image') {
+        setUploadStatus(uploadStatus, 'Compressing image…', 'uploading');
+        try {
+          fileToUpload = await compressImage(media.file);
+        } catch {
+          // Compression failed — fall back to original
+          fileToUpload = media.file;
+        }
+      }
+
+      setUploadStatus(uploadStatus, 'Uploading media…', 'uploading');
+      try {
+        const result = await uploadToCloudinary(fileToUpload);
+        mediaUrl = result.secure_url;
+        clearUploadStatus(uploadStatus);
+      } catch (err) {
+        setUploadStatus(uploadStatus, `Media upload failed: ${err.message}`, 'error');
+        // Allow posting without media rather than blocking entirely
+      }
+    }
+
+    const postData = {
+      title: title.trim(),
+      body:  body.trim(),
+      imageUrl: mediaUrl,
+    };
+
+    const identity = window.netlifyIdentity;
+    const user     = identity.currentUser();
+    let token      = '';
+    try {
+      token = user ? await user.jwt() : '';
+    } catch {
+      // jwt() can fail if the session expired; let the server reject it
+    }
+
+    if (!navigator.onLine) {
+      // Queue immediately without attempting the network call
+      await queueOfflinePost(postData, token, statusMsg);
+      form.reset();
+      onSuccess();
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/create-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || `Server error (${res.status})`);
+      }
+
+      setStatus(statusMsg, '✓ Post published!', 'success');
+      form.reset();
+      onSuccess();
+      setTimeout(() => setStatus(statusMsg, '', ''), 4000);
+    } catch (err) {
+      if (!navigator.onLine) {
+        // Went offline between the check and the fetch
+        await queueOfflinePost(postData, token, statusMsg);
+        form.reset();
+        onSuccess();
+      } else {
+        throw err;
+      }
+    }
   } catch (err) {
-    statusMsg.className = 'error';
-    statusMsg.textContent = `Error: ${err.message}`;
+    console.error('[app] Post error:', err);
+    setStatus(statusMsg, `✕ ${err.message}`, 'error');
   } finally {
     submitBtn.disabled = false;
   }
-});
+}
 
-// PWA install prompt
-let deferredPrompt = null;
+async function queueOfflinePost(postData, token, statusMsg) {
+  await postQueue.add(postData, token);
+  setStatus(statusMsg, '📱 Saved offline — will publish when back online.', 'success');
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBanner.hidden = false;
-});
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.sync.register('sync-posts');
+    } catch {
+      // Background sync not available — online listener will retry
+    }
+  }
+}
 
-installBtn.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') installBanner.hidden = true;
-  deferredPrompt = null;
-});
+// ─── Retry queued posts when back online ──────────────────────────────────────
+function listenForOnline() {
+  window.addEventListener('online', async () => {
+    const pending = await postQueue.getAll().catch(() => []);
+    if (!pending.length) return;
 
-installDismiss.addEventListener('click', () => {
-  installBanner.hidden = true;
-});
+    for (const record of pending) {
+      try {
+        const res = await fetch('/api/create-post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(record.token ? { Authorization: `Bearer ${record.token}` } : {}),
+          },
+          body: JSON.stringify(record.data),
+        });
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { scope: '/' })
-    .catch(err => console.warn('SW registration failed:', err));
+        if (res.ok) {
+          await postQueue.remove(record.id);
+        } else if (res.status >= 400 && res.status < 500) {
+          // Unrecoverable — drop it
+          await postQueue.remove(record.id);
+        }
+      } catch {
+        // Still offline or transient error — leave in queue
+      }
+    }
+  });
+}
+
+// ─── Service Worker messages ──────────────────────────────────────────────────
+function listenForSWMessages() {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.addEventListener('message', e => {
+    const { type } = e.data || {};
+    if (type === 'POST_SYNCED') {
+      console.log('[app] Background sync published post:', e.data.postId);
+      // Remove from local queue in case the online listener didn't catch it
+      postQueue.remove(e.data.postId).catch(() => {});
+    }
+    if (type === 'POST_SYNC_FAILED') {
+      console.warn('[app] Background sync permanently failed for post:', e.data.postId);
+    }
+  });
+}
+
+// ─── PWA install prompt ───────────────────────────────────────────────────────
+function initInstallPrompt() {
+  const banner     = document.getElementById('install-banner');
+  const installBtn = document.getElementById('install-btn');
+  const dismissBtn = document.getElementById('install-dismiss');
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (banner) banner.hidden = false;
+  });
+
+  installBtn?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    console.log('[app] Install prompt outcome:', outcome);
+    deferredInstallPrompt = null;
+    if (banner) banner.hidden = true;
+  });
+
+  dismissBtn?.addEventListener('click', () => {
+    if (banner) banner.hidden = true;
+  });
+
+  window.addEventListener('appinstalled', () => {
+    console.log('[app] PWA installed');
+    deferredInstallPrompt = null;
+    if (banner) banner.hidden = true;
+  });
+}
+
+// ─── Service Worker registration ──────────────────────────────────────────────
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker
+    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .then(reg => {
+      console.log('[app] SW registered, scope:', reg.scope);
+
+      // Attempt to sync any queued posts on load (covers case where SW sync
+      // fired while the page was closed and we now have stale queue entries)
+      postQueue.getAll().then(pending => {
+        if (pending.length && navigator.onLine && 'SyncManager' in window) {
+          reg.sync.register('sync-posts').catch(() => {});
+        }
+      });
+    })
+    .catch(err => console.warn('[app] SW registration failed:', err));
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setStatus(el, text, cls) {
+  el.textContent = text;
+  el.className   = cls;
+}
+
+function setUploadStatus(el, text, cls) {
+  el.textContent = text;
+  el.className   = cls;
+}
+
+function clearUploadStatus(el) {
+  el.textContent = '';
+  el.className   = '';
 }

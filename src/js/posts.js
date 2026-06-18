@@ -3,51 +3,136 @@ const loading    = document.getElementById('loading');
 const emptyState = document.getElementById('empty-state');
 const errorState = document.getElementById('error-state');
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function isCloudinaryUrl(url) {
   return typeof url === 'string' && url.startsWith('https://res.cloudinary.com/');
 }
 
+function isCloudinaryVideo(url) {
+  if (!isCloudinaryUrl(url)) return false;
+  // Cloudinary video URLs contain /video/upload/ in the path
+  return url.includes('/video/upload/');
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
+    year:  'numeric',
     month: 'long',
-    day: 'numeric',
+    day:   'numeric',
   });
 }
 
-function renderPost(post) {
+// ─── Render a single post card ────────────────────────────────────────────────
+function renderPost(post, { pending = false } = {}) {
   const article = document.createElement('article');
   article.className = 'post-card';
+  if (pending) {
+    article.dataset.pendingId = post.id;
+    article.classList.add('post-card--pending');
+  }
 
   if (post.title) {
     const h3 = document.createElement('h3');
-    h3.className = 'post-title';
+    h3.className   = 'post-title';
     h3.textContent = post.title;
     article.appendChild(h3);
   }
 
+  // Media — image or video
   if (isCloudinaryUrl(post.imageUrl)) {
-    const img = document.createElement('img');
-    img.className = 'post-image';
-    img.src = post.imageUrl;
-    img.alt = post.title || '';
-    img.loading = 'lazy';
-    article.appendChild(img);
+    if (isCloudinaryVideo(post.imageUrl)) {
+      const video = document.createElement('video');
+      video.className = 'post-image';
+      video.controls  = true;
+      video.preload   = 'metadata';
+      video.setAttribute('playsinline', '');
+
+      const source = document.createElement('source');
+      source.src  = post.imageUrl;
+      // Let the browser figure out the MIME type from the URL extension
+      video.appendChild(source);
+      article.appendChild(video);
+    } else {
+      const img = document.createElement('img');
+      img.className = 'post-image';
+      img.src       = post.imageUrl;
+      img.alt       = post.title || '';
+      img.loading   = 'lazy';
+      article.appendChild(img);
+    }
   }
 
   const p = document.createElement('p');
-  p.className = 'post-body';
+  p.className   = 'post-body';
   p.textContent = post.body;
   article.appendChild(p);
 
   const meta = document.createElement('p');
   meta.className = 'post-meta';
-  meta.textContent = formatDate(post.createdAt);
+  if (pending) {
+    meta.textContent = '⏳ Pending sync…';
+    meta.classList.add('post-meta--pending');
+  } else {
+    meta.textContent = formatDate(post.createdAt);
+  }
   article.appendChild(meta);
 
   return article;
 }
 
+// ─── Pending-posts banner (offline queue) ─────────────────────────────────────
+async function showPendingPosts() {
+  let db;
+  try {
+    db = await openDB();
+  } catch {
+    return; // IndexedDB unavailable — skip silently
+  }
+
+  const pending = await getAllPending(db);
+  if (!pending.length) return;
+
+  // Insert a notice at the top of the feed
+  const notice = document.createElement('p');
+  notice.id        = 'pending-notice';
+  notice.className = 'pending-notice';
+  notice.textContent = `${pending.length} post${pending.length > 1 ? 's' : ''} queued — will publish when back online.`;
+  feed.before(notice);
+
+  // Render each queued post as a greyed-out optimistic card
+  for (const record of pending) {
+    feed.insertBefore(
+      renderPost({ ...record.data, id: record.id, createdAt: record.createdAt }, { pending: true }),
+      feed.firstChild
+    );
+  }
+}
+
+// ─── Listen for SW sync messages ──────────────────────────────────────────────
+function listenForSWMessages() {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.addEventListener('message', e => {
+    const { type, postId, post } = e.data || {};
+
+    if (type === 'POST_SYNCED') {
+      // Replace the pending card with the real published post
+      const pendingCard = feed.querySelector(`[data-pending-id="${postId}"]`);
+      if (pendingCard && post) {
+        pendingCard.replaceWith(renderPost(post));
+      } else if (pendingCard) {
+        pendingCard.remove();
+      }
+
+      // Remove notice if no more pending cards
+      if (!feed.querySelector('[data-pending-id]')) {
+        document.getElementById('pending-notice')?.remove();
+      }
+    }
+  });
+}
+
+// ─── Load published posts from API ───────────────────────────────────────────
 async function loadPosts() {
   try {
     const res = await fetch('/api/get-posts');
@@ -56,7 +141,7 @@ async function loadPosts() {
 
     loading.hidden = true;
 
-    if (posts.length === 0) {
+    if (posts.length === 0 && !feed.querySelector('[data-pending-id]')) {
       emptyState.hidden = false;
       return;
     }
@@ -64,8 +149,40 @@ async function loadPosts() {
     posts.forEach(post => feed.appendChild(renderPost(post)));
   } catch {
     loading.hidden = true;
-    errorState.hidden = false;
+    // Only show error state if we have nothing else to display
+    if (!feed.children.length) {
+      errorState.hidden = false;
+    }
   }
 }
 
-loadPosts();
+// ─── IndexedDB helpers (page context) ────────────────────────────────────────
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('SlingsArrows', 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('pending-posts')) {
+        db.createObjectStore('pending-posts', { keyPath: 'id' });
+      }
+    };
+  });
+}
+
+function getAllPending(db) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(['pending-posts'], 'readonly');
+    const req = tx.objectStore('pending-posts').getAll();
+    req.onerror  = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result || []);
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async () => {
+  listenForSWMessages();
+  await showPendingPosts(); // show offline queue before network posts load
+  await loadPosts();
+})();
