@@ -5,7 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#000000">
   <title>Slings & Arrows | Post Composer</title>
+
+  <!-- PWA manifest & installability -->
   <link rel="manifest" href="./manifest.json">
+
+  <!-- iOS / Safari PWA meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="S&amp;A">
+  <link rel="apple-touch-icon" href="./images/icon-192.png">
+
+  <!-- MS Tile (Edge / Windows) -->
+  <meta name="msapplication-TileImage" content="./images/icon-192.png">
+  <meta name="msapplication-TileColor" content="#000000">
+
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <link rel="preconnect" href="https://use.typekit.net">
   <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
@@ -166,6 +179,42 @@
       font-size: 0.9em;
     }
     [hidden] { display: none !important; }
+    #install-help {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 1em 1.25em;
+      border-radius: 4px;
+      margin-block-end: 1.5em;
+      font-size: 0.9em;
+    }
+    #install-help h4 {
+      font-size: 0.95em;
+      margin-block-end: 0.75em;
+      opacity: 0.85;
+    }
+    #install-help details {
+      margin-block-end: 0.5em;
+    }
+    #install-help summary {
+      cursor: pointer;
+      opacity: 0.75;
+      padding: 0.2em 0;
+      list-style: none;
+    }
+    #install-help summary::-webkit-details-marker { display: none; }
+    #install-help summary::before {
+      content: '▸ ';
+      font-size: 0.8em;
+    }
+    #install-help details[open] summary::before {
+      content: '▾ ';
+    }
+    #install-help details p {
+      margin-block-start: 0.4em;
+      margin-inline-start: 1.25em;
+      opacity: 0.65;
+      line-height: 1.55;
+    }
   </style>
 </head>
 <body>
@@ -188,6 +237,27 @@
             <button class="btn btn-sm" id="install-btn">Install</button>
             <button class="btn btn-sm" id="install-dismiss" aria-label="Dismiss">✕</button>
           </div>
+        </div>
+
+        <!-- Install instructions — revealed by JS on non-Chrome platforms -->
+        <div id="install-help" hidden>
+          <h4>How to Install</h4>
+          <details>
+            <summary>Chrome / Edge (Android &amp; Desktop)</summary>
+            <p>Tap the install banner above, or open the browser menu (⋮) and choose "Install app".</p>
+          </details>
+          <details>
+            <summary>Safari (iOS / iPadOS)</summary>
+            <p>Tap the Share button (↗), then tap <strong>"Add to Home Screen"</strong>, then tap Add.</p>
+          </details>
+          <details>
+            <summary>Firefox</summary>
+            <p>Open the browser menu (⋯) and tap <strong>"Install"</strong> or <strong>"Add to Home Screen"</strong>.</p>
+          </details>
+          <details>
+            <summary>Safari (macOS)</summary>
+            <p>In the menu bar choose <strong>File → Add to Dock</strong> (macOS Sonoma+).</p>
+          </details>
         </div>
 
         <div id="auth-gate">
