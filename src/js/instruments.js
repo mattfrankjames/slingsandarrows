@@ -8,6 +8,23 @@
  *  - Web MIDI API input (auto-connects all available inputs)
  *  - Octave shifting (↑/↓ arrows or on-screen buttons)
  *  - Live ADSR / waveform / volume controls
+ *
+ * Safari compatibility notes
+ * ──────────────────────────
+ *  1. Web MIDI API is not supported in Safari. The MIDI section degrades
+ *     gracefully: the status banner shows a friendly "not supported" message
+ *     and the rest of the synth works normally.
+ *  2. Safari's AudioContext implementation has several quirks:
+ *       a. `linearRampToValueAtTime` misbehaves if there is no prior
+ *          automation event at exactly `currentTime`. We always call
+ *          `setValueAtTime(currentValue, now)` immediately before any ramp.
+ *       b. `cancelScheduledValues` must be followed by a `setValueAtTime`
+ *          at the same timestamp or Safari may ignore the cancel.
+ *       c. `OscillatorNode.stop(t)` throws if t is in the past. We guard
+ *          with `Math.max(t, audioCtx.currentTime + 0.001)`.
+ *       d. `webkitAudioContext` is used as a fallback for older Safari.
+ *  3. Pointer events on iOS Safari can miss `pointerup`/`pointerleave` for
+ *     touch inputs. We attach `touchend`/`touchcancel` listeners as well.
  */
 
 // ─── Note table ───────────────────────────────────────────────────────────────
@@ -17,18 +34,18 @@
  * getFrequency() scales these to any octave.
  */
 const NOTE_FREQ_OCT4 = {
-  C:  261.63,
+  C:    261.63,
   'C#': 277.18,
-  D:  293.66,
+  D:    293.66,
   'D#': 311.13,
-  E:  329.63,
-  F:  349.23,
+  E:    329.63,
+  F:    349.23,
   'F#': 369.99,
-  G:  391.99,
+  G:    391.99,
   'G#': 415.30,
-  A:  440.00,
+  A:    440.00,
   'A#': 466.16,
-  B:  493.88,
+  B:    493.88,
 };
 
 /** Chromatic scale order used for rendering the keyboard. */
@@ -98,12 +115,16 @@ const params = {
 
 function ensureAudioContext() {
   if (audioCtx) {
-    // Resume if suspended (autoplay policy)
+    // Resume if suspended (autoplay policy — common on mobile Safari)
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return;
   }
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // `webkitAudioContext` fallback covers older Safari (pre-14.1)
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return; // should never happen in a modern browser
+
+  audioCtx = new AudioContextClass();
 
   masterGain = audioCtx.createGain();
   masterGain.gain.value = params.volume;
@@ -122,12 +143,19 @@ function getFrequency(noteName, octave) {
 
 /**
  * Start a note (note-on).
+ *
+ * Safari fix (2a): We always anchor the gain timeline with
+ * `setValueAtTime(0, now)` before the first `linearRampToValueAtTime`.
+ * Without this anchor, Safari's scheduler can produce a click or skip
+ * the ramp entirely.
+ *
  * @param {string} noteName  e.g. "C#"
  * @param {number} octave
  * @param {number} velocity  0–1 (MIDI velocity mapped to 0–1)
  */
 function noteOn(noteName, octave, velocity = 1.0) {
   ensureAudioContext();
+  if (!audioCtx) return;
 
   const key = `${noteName}-${octave}`;
   if (activeNotes.has(key)) return; // already playing
@@ -142,15 +170,19 @@ function noteOn(noteName, octave, velocity = 1.0) {
 
   // Per-note gain (envelope)
   const envGain = audioCtx.createGain();
+
+  // Safari fix (2a): anchor at 0 before ramping up
   envGain.gain.setValueAtTime(0, now);
 
-  // Attack
-  envGain.gain.linearRampToValueAtTime(velocity, now + params.attack);
+  // Attack — ramp from 0 to velocity over attack time
+  // Use a small epsilon so the ramp has a non-zero duration, which
+  // avoids a Safari edge case where a zero-duration ramp is ignored.
+  const attackEnd = now + Math.max(params.attack, 0.001);
+  envGain.gain.linearRampToValueAtTime(velocity, attackEnd);
+
   // Decay → Sustain
-  envGain.gain.linearRampToValueAtTime(
-    params.sustain * velocity,
-    now + params.attack + params.decay
-  );
+  const decayEnd = attackEnd + Math.max(params.decay, 0.001);
+  envGain.gain.linearRampToValueAtTime(params.sustain * velocity, decayEnd);
 
   osc.connect(envGain);
   envGain.connect(masterGain);
@@ -164,24 +196,40 @@ function noteOn(noteName, octave, velocity = 1.0) {
 
 /**
  * Release a note (note-off).
+ *
+ * Safari fix (2b): After `cancelScheduledValues` we immediately call
+ * `setValueAtTime` at the same timestamp so Safari's scheduler has a
+ * concrete starting point for the release ramp.
+ *
+ * Safari fix (2c): Guard `osc.stop()` so it never receives a time in
+ * the past, which throws a DOMException in Safari.
+ *
  * @param {string} noteName
  * @param {number} octave
  */
 function noteOff(noteName, octave) {
-  const key = `${noteName}-${octave}`;
+  const key  = `${noteName}-${octave}`;
   const node = activeNotes.get(key);
   if (!node) return;
 
   const { osc, gain: envGain } = node;
   const now = audioCtx.currentTime;
 
-  // Release ramp
+  // Safari fix (2b): cancel then immediately re-anchor the current value
   envGain.gain.cancelScheduledValues(now);
   envGain.gain.setValueAtTime(envGain.gain.value, now);
-  envGain.gain.linearRampToValueAtTime(0, now + params.release);
 
-  // Stop oscillator after release
-  osc.stop(now + params.release + 0.01);
+  const releaseEnd = now + Math.max(params.release, 0.001);
+  envGain.gain.linearRampToValueAtTime(0, releaseEnd);
+
+  // Safari fix (2c): never pass a stop time that is already in the past
+  const stopTime = Math.max(releaseEnd + 0.01, audioCtx.currentTime + 0.001);
+  try {
+    osc.stop(stopTime);
+  } catch {
+    // Fallback: stop immediately if the scheduled time is invalid
+    try { osc.stop(); } catch { /* already stopped */ }
+  }
 
   activeNotes.delete(key);
 
@@ -192,11 +240,12 @@ function noteOff(noteName, octave) {
 
 /** Release all currently-sounding notes immediately (e.g. on blur). */
 function allNotesOff() {
-  for (const [key, { osc, gain: envGain }] of activeNotes) {
-    const now = audioCtx ? audioCtx.currentTime : 0;
+  for (const [, { osc, gain: envGain }] of activeNotes) {
+    if (!audioCtx) break;
+    const now = audioCtx.currentTime;
     envGain.gain.cancelScheduledValues(now);
     envGain.gain.setValueAtTime(0, now);
-    osc.stop(now + 0.01);
+    try { osc.stop(Math.max(now + 0.01, audioCtx.currentTime + 0.001)); } catch { /* ok */ }
   }
   activeNotes.clear();
   heldKeys.clear();
@@ -221,14 +270,48 @@ function buildKeyboard() {
     btn.setAttribute('aria-label', `Play ${note}`);
     btn.setAttribute('type', 'button');
 
-    // Mouse / touch events
+    // Track whether this button's current press was initiated via a pointer
+    // event so that the touch fallback doesn't double-trigger on browsers
+    // that fire both (e.g. Chrome on Android, some iPad browsers).
+    let pressedViaPointer = false;
+
+    // ── Pointer events (mouse + stylus + modern touch) ────────────────────
     btn.addEventListener('pointerdown', e => {
       e.preventDefault(); // prevent focus stealing / scroll
+      pressedViaPointer = true;
       noteOn(note, currentOctave, 0.8);
     });
+    btn.addEventListener('pointerup', () => {
+      pressedViaPointer = false;
+      noteOff(note, currentOctave);
+    });
+    btn.addEventListener('pointerleave', () => {
+      pressedViaPointer = false;
+      noteOff(note, currentOctave);
+    });
 
-    btn.addEventListener('pointerup',    () => noteOff(note, currentOctave));
-    btn.addEventListener('pointerleave', () => noteOff(note, currentOctave));
+    // ── Touch events — Safari iOS fallback ────────────────────────────────
+    // iOS Safari fires pointer events but can miss pointerup/pointerleave
+    // when a touch ends outside the element. touchend / touchcancel are
+    // always reliable on Safari. We skip these if pointerdown already fired
+    // to avoid double-triggering on browsers that support both event models.
+    btn.addEventListener('touchstart', e => {
+      if (pressedViaPointer) return; // already handled by pointerdown
+      e.preventDefault();
+      noteOn(note, currentOctave, 0.8);
+    }, { passive: false });
+
+    btn.addEventListener('touchend', e => {
+      if (pressedViaPointer) return;
+      e.preventDefault();
+      noteOff(note, currentOctave);
+    }, { passive: false });
+
+    btn.addEventListener('touchcancel', e => {
+      if (pressedViaPointer) return;
+      e.preventDefault();
+      noteOff(note, currentOctave);
+    }, { passive: false });
 
     container.appendChild(btn);
   });
@@ -322,7 +405,7 @@ function flashMidiIndicator() {
   const indicator = document.getElementById('midi-indicator');
   if (!indicator) return;
   indicator.classList.remove('active');
-  // Force reflow so the animation restarts
+  // Force reflow so the animation restarts cleanly
   void indicator.offsetWidth;
   indicator.classList.add('active');
 }
@@ -332,13 +415,16 @@ function setMidiStatus(text, state = '') {
   const label  = document.getElementById('midi-text');
   if (!banner || !label) return;
 
-  banner.className = `midi-status${state ? ` ${state}` : ''}`;
+  banner.className  = `midi-status${state ? ` ${state}` : ''}`;
   label.textContent = text;
 }
 
 async function initMidi() {
+  // Web MIDI is not supported in Safari (as of 2025). Show a friendly
+  // informational message rather than an alarming "error" state so that
+  // Safari users understand the rest of the synth still works.
   if (!navigator.requestMIDIAccess) {
-    setMidiStatus('Web MIDI not supported in this browser', 'error');
+    setMidiStatus('MIDI not supported in this browser — keyboard & mouse still work', 'unsupported');
     return;
   }
 
@@ -391,36 +477,11 @@ function initControls() {
 
   // ADSR + Volume sliders
   const sliders = [
-    {
-      id: 'attack',
-      valueId: 'attack-value',
-      param: 'attack',
-      format: v => formatTime(v),
-    },
-    {
-      id: 'decay',
-      valueId: 'decay-value',
-      param: 'decay',
-      format: v => formatTime(v),
-    },
-    {
-      id: 'sustain',
-      valueId: 'sustain-value',
-      param: 'sustain',
-      format: v => `${Math.round(v * 100)}%`,
-    },
-    {
-      id: 'release',
-      valueId: 'release-value',
-      param: 'release',
-      format: v => formatTime(v),
-    },
-    {
-      id: 'volume',
-      valueId: 'volume-value',
-      param: 'volume',
-      format: v => `${Math.round(v * 100)}%`,
-    },
+    { id: 'attack',  valueId: 'attack-value',  param: 'attack',  format: v => formatTime(v) },
+    { id: 'decay',   valueId: 'decay-value',   param: 'decay',   format: v => formatTime(v) },
+    { id: 'sustain', valueId: 'sustain-value', param: 'sustain', format: v => `${Math.round(v * 100)}%` },
+    { id: 'release', valueId: 'release-value', param: 'release', format: v => formatTime(v) },
+    { id: 'volume',  valueId: 'volume-value',  param: 'volume',  format: v => `${Math.round(v * 100)}%` },
   ];
 
   sliders.forEach(({ id, valueId, param, format }) => {
@@ -436,7 +497,7 @@ function initControls() {
       if (display) display.textContent = format(v);
 
       // Apply volume change immediately to master gain
-      if (param === 'volume' && masterGain) {
+      if (param === 'volume' && masterGain && audioCtx) {
         masterGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.01);
       }
     });

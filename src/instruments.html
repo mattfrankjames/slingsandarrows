@@ -207,6 +207,13 @@
       background: rgba(245, 168, 168, 0.08);
     }
 
+    /* Neutral state for browsers that don't support Web MIDI (e.g. Safari) */
+    .midi-status.unsupported {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.04);
+      opacity: 0.75;
+    }
+
     .midi-indicator {
       display: inline-block;
       width: 8px;
