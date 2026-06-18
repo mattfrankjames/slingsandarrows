@@ -13,3 +13,14 @@
   from = "/app"
   to = "/app.html"
   status = 200
+
+[[redirects]]
+  from = "/offline"
+  to = "/offline.html"
+  status = 200
+
+# PWA share_target handler — redirect to the composer
+[[redirects]]
+  from = "/share"
+  to = "/app.html"
+  status = 200

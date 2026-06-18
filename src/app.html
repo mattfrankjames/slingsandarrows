@@ -6,6 +6,11 @@
   <meta name="theme-color" content="#000000">
   <title>Slings & Arrows | Post Composer</title>
   <link rel="manifest" href="./manifest.json">
+  <!-- Apple PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="S&A Composer">
+  <link rel="apple-touch-icon" href="./images/icon-192.png">
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <link rel="preconnect" href="https://use.typekit.net">
   <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
@@ -225,5 +230,6 @@
     </footer>
   </div>
   <script type="module" src="./js/app.js"></script>
+  <script src="./js/pwa-install.js" defer></script>
 </body>
 </html>

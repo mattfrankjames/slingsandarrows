@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Offline | Slings & Arrows</title>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <style>
+    .offline-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100svh;
+      background:
+        linear-gradient(rgba(0, 0, 0, .6) 0%, rgba(0, 0, 0, .6) 100%),
+        url(https://res.cloudinary.com/mjtestrun/image/upload/v1738006890/hero_paeruh.webp);
+      background-size: cover;
+      background-position: center;
+    }
+    .offline-container {
+      text-align: center;
+      padding: 2em;
+      max-width: 520px;
+    }
+    .offline-icon {
+      font-size: 4rem;
+      line-height: 1;
+      margin-block-end: 0.5em;
+    }
+    h1 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
+      margin-block-end: 0.4em;
+    }
+    p {
+      font-size: 1.05em;
+      opacity: 0.8;
+      line-height: 1.6;
+      margin-block-end: 1em;
+    }
+    .btn-group {
+      display: flex;
+      gap: 0.75em;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-block-start: 1.5em;
+    }
+    .btn {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      padding: 0.6em 1.5em;
+      border-radius: 4px;
+      text-decoration: none;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-wrapper">
+    <div class="offline-container">
+      <div class="offline-icon">📡</div>
+      <h1>You're Offline</h1>
+      <p>No connection right now. Check your network and try again.</p>
+      <p>Pages you've already visited may still be available from cache.</p>
+      <div class="btn-group">
+        <a href="/" class="btn">← Back Home</a>
+        <button class="btn" onclick="window.location.reload()">Try Again</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

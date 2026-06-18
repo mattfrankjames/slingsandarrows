@@ -3,15 +3,16 @@
 	"version": "1.0.0",
 	"description": "A basic website project styled with Tailwind CSS and includes an RSS feed.",
 	"scripts": {
-		"build": "parcel build src/*.html --dist-dir dist",
-		"start": "parcel src/*.html",
+		"build": "parcel build src/*.html src/sw.js --dist-dir dist",
+		"start": "parcel src/*.html src/sw.js",
 		"build:css": "postcss src/styles/tailwind.css -o styles/tailwind.css",
-		"watch:css": "postcss src/styles/tailwind.css -o styles/tailwind.css --watch"
+		"watch:css": "postcss src/styles/tailwind.css -o styles/tailwind.css --watch",
+		"generate:icons": "node generate-icons.mjs"
 	},
 	"dependencies": {
 		"@netlify/blobs": "^8.1.0",
 		"autoprefixer": "^10.4.20",
-"postcss-cli": "^11.0.0",
+		"postcss-cli": "^11.0.0",
 		"tailwindcss": "^2.2.19"
 	},
 	"keywords": [],
@@ -22,6 +23,7 @@
 		"@parcel/transformer-webmanifest": "^2.13.3",
 		"parcel": "^2.13.3",
 		"process": "^0.11.10",
+		"sharp": "^0.35.1",
 		"svgo": "^3.3.2"
 	}
 }

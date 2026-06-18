@@ -10,9 +10,6 @@ const logoutBtn       = document.getElementById('logout-btn');
 const postForm        = document.getElementById('post-form');
 const submitBtn       = document.getElementById('submit-btn');
 const statusMsg       = document.getElementById('status-msg');
-const installBanner   = document.getElementById('install-banner');
-const installBtn      = document.getElementById('install-btn');
-const installDismiss  = document.getElementById('install-dismiss');
 const imageInput      = document.getElementById('post-image');
 const imagePreviewWrap = document.getElementById('image-preview-wrap');
 const previewImg      = document.getElementById('preview-img');
@@ -21,6 +18,8 @@ const uploadStatus    = document.getElementById('upload-status');
 
 // Tracks the Cloudinary URL from a successful upload
 let pendingImageUrl = null;
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
 
 function setAuthUI(user) {
   if (user) {
@@ -46,9 +45,10 @@ netlifyIdentity.on('logout', () => setAuthUI(null));
 loginBtn.addEventListener('click', () => netlifyIdentity.open('login'));
 logoutBtn.addEventListener('click', () => netlifyIdentity.logout());
 
-// Image upload
+// ── Image upload ──────────────────────────────────────────────────────────────
+
 async function uploadToCloudinary(file) {
-  const cloudName   = process.env.CLOUDINARY_CLOUD_NAME;
+  const cloudName    = process.env.CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
 
   const formData = new FormData();
@@ -97,7 +97,8 @@ imageInput.addEventListener('change', async e => {
 
 removeImageBtn.addEventListener('click', clearImageState);
 
-// Form submit
+// ── Form submit ───────────────────────────────────────────────────────────────
+
 postForm.addEventListener('submit', async e => {
   e.preventDefault();
 
@@ -138,28 +139,16 @@ postForm.addEventListener('submit', async e => {
   }
 });
 
-// PWA install prompt
-let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBanner.hidden = false;
-});
-
-installBtn.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') installBanner.hidden = true;
-  deferredPrompt = null;
-});
-
-installDismiss.addEventListener('click', () => {
-  installBanner.hidden = true;
-});
+// ── Service Worker registration ───────────────────────────────────────────────
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { scope: '/' })
-    .catch(err => console.warn('SW registration failed:', err));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+      .then(reg => {
+        // Check for SW updates every minute while the composer is open
+        setInterval(() => reg.update(), 60 * 1000);
+      })
+      .catch(err => console.warn('SW registration failed:', err));
+  });
 }
