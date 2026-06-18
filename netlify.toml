@@ -13,3 +13,8 @@
   from = "/app"
   to = "/app.html"
   status = 200
+
+[[redirects]]
+  from = "/instruments"
+  to = "/instruments.html"
+  status = 200

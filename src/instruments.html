@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Instruments</title>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="preconnect" href="https://res.cloudinary.com">
+  <link rel="preload" href="https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif"
+    as="image">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <meta name="description" content="Interactive Web MIDI instruments — Slings & Arrows">
+  <style>
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    main {
+      backdrop-filter: blur(50px);
+    }
+
+    .instruments-container {
+      width: 95%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .instrument-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2em;
+      margin-block-end: 2em;
+    }
+
+    /* ── Instrument panel ────────────────────────────────────────────────── */
+    .instrument-panel {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 1.5em;
+      border-radius: 8px;
+    }
+
+    .instrument-panel h3 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      margin-block-end: 1em;
+      font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
+    }
+
+    /* ── On-screen keyboard ──────────────────────────────────────────────── */
+    .keyboard {
+      display: flex;
+      gap: 0.25em;
+      margin-block-end: 1.5em;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .key {
+      width: 2.5em;
+      height: 4em;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-block-end: 0.25em;
+      font-size: 0.75em;
+      transition: background 0.1s, transform 0.05s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .key:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .key.active {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .key.black-key {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+      height: 3em;
+    }
+
+    .key.black-key.active {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ── Controls ────────────────────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+    }
+
+    .control-group label {
+      font-size: 0.9em;
+      opacity: 0.7;
+      min-width: 80px;
+    }
+
+    .control-group select {
+      flex: 1;
+      padding: 0.5em;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 4px;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .control-group select:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .control-group select option {
+      background: #111;
+      color: white;
+    }
+
+    .control-group input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .control-group input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb:hover,
+    .control-group input[type="range"]:focus::-webkit-slider-thumb {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .control-group input[type="range"]::-moz-range-thumb:hover {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .control-value {
+      font-size: 0.85em;
+      opacity: 0.6;
+      min-width: 44px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── MIDI status banner ──────────────────────────────────────────────── */
+    .midi-status {
+      font-size: 0.85em;
+      padding: 0.75em;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      margin-block-end: 1em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .midi-status.connected {
+      border-color: #a8f5a8;
+      background: rgba(168, 245, 168, 0.08);
+    }
+
+    .midi-status.error {
+      border-color: #f5a8a8;
+      background: rgba(245, 168, 168, 0.08);
+    }
+
+    .midi-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .midi-indicator.active {
+      background: #a8f5a8;
+      animation: midi-pulse 0.4s ease-out;
+    }
+
+    @keyframes midi-pulse {
+      0%   { opacity: 1; transform: scale(1.4); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Octave display ──────────────────────────────────────────────────── */
+    .octave-display {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      margin-block-end: 1em;
+      font-size: 0.9em;
+    }
+
+    .octave-display span {
+      opacity: 0.7;
+    }
+
+    .octave-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      width: 2em;
+      height: 2em;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .octave-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .octave-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    #octave-value {
+      min-width: 2em;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    /* ── Info / help text ────────────────────────────────────────────────── */
+    .info-text {
+      font-size: 0.82em;
+      opacity: 0.55;
+      margin-block-start: 1.25em;
+      line-height: 1.6;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+      padding-block-start: 1em;
+    }
+
+    .info-text strong {
+      opacity: 0.9;
+    }
+
+    /* ── Intro paragraph ─────────────────────────────────────────────────── */
+    .intro-text {
+      opacity: 0.7;
+      margin-block-end: 1.5em;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    /* ── Hidden utility ──────────────────────────────────────────────────── */
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+    </header>
+
+    <main class="p-4" id="main-content">
+      <div class="instruments-container">
+        <h2>Web MIDI Instruments</h2>
+        <p class="intro-text">
+          Click the keys to play, or connect a MIDI controller. You can also use your
+          computer keyboard — <kbd>Z</kbd>–<kbd>M</kbd> for the white keys and
+          <kbd>S D</kbd> / <kbd>G H J</kbd> for the black keys.
+          Use <kbd>↑</kbd> / <kbd>↓</kbd> to shift octaves.
+        </p>
+
+        <div class="instrument-grid">
+          <!-- ── Synth Panel ─────────────────────────────────────────────── -->
+          <div class="instrument-panel">
+            <h3>Synth</h3>
+
+            <!-- MIDI status -->
+            <div class="midi-status" id="midi-status" role="status" aria-live="polite">
+              <span class="midi-indicator" id="midi-indicator" aria-hidden="true"></span>
+              <span id="midi-text">No MIDI device connected</span>
+            </div>
+
+            <!-- Octave selector -->
+            <div class="octave-display">
+              <span>Octave</span>
+              <button class="octave-btn" id="octave-down" aria-label="Octave down">−</button>
+              <span id="octave-value">4</span>
+              <button class="octave-btn" id="octave-up" aria-label="Octave up">+</button>
+            </div>
+
+            <!-- On-screen keyboard -->
+            <div class="keyboard" id="keyboard" role="group" aria-label="Synthesizer keyboard"></div>
+
+            <!-- Synth controls -->
+            <div class="controls">
+              <div class="control-group">
+                <label for="waveform">Wave</label>
+                <select id="waveform" aria-label="Oscillator waveform">
+                  <option value="sine">Sine</option>
+                  <option value="square">Square</option>
+                  <option value="sawtooth">Sawtooth</option>
+                  <option value="triangle">Triangle</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="attack">Attack</label>
+                <input type="range" id="attack" min="0.001" max="2" step="0.001" value="0.01"
+                  aria-label="Attack time">
+                <span class="control-value" id="attack-value">10ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="decay">Decay</label>
+                <input type="range" id="decay" min="0.001" max="2" step="0.001" value="0.1"
+                  aria-label="Decay time">
+                <span class="control-value" id="decay-value">100ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="sustain">Sustain</label>
+                <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7"
+                  aria-label="Sustain level">
+                <span class="control-value" id="sustain-value">70%</span>
+              </div>
+
+              <div class="control-group">
+                <label for="release">Release</label>
+                <input type="range" id="release" min="0.001" max="4" step="0.001" value="0.5"
+                  aria-label="Release time">
+                <span class="control-value" id="release-value">500ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="volume">Volume</label>
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.3"
+                  aria-label="Master volume">
+                <span class="control-value" id="volume-value">30%</span>
+              </div>
+            </div>
+
+            <div class="info-text" aria-label="Keyboard shortcuts">
+              <strong>White keys:</strong> Z X C V B N M<br>
+              <strong>Black keys:</strong> S D &nbsp; G H J<br>
+              <strong>Octave:</strong> ↑ / ↓ arrow keys<br>
+              <strong>MIDI:</strong> Connect a device to play automatically
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="p-4 text-white text-center">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./js/instruments.js"></script>
+</body>
+</html>
