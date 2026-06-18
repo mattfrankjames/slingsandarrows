@@ -11,7 +11,7 @@
 	"dependencies": {
 		"@netlify/blobs": "^8.1.0",
 		"autoprefixer": "^10.4.20",
-"postcss-cli": "^11.0.0",
+		"postcss-cli": "^11.0.0",
 		"tailwindcss": "^2.2.19"
 	},
 	"keywords": [],
@@ -20,7 +20,7 @@
 	"devDependencies": {
 		"@parcel/packager-raw-url": "^2.13.3",
 		"@parcel/transformer-webmanifest": "^2.13.3",
-		"parcel": "^2.13.3",
+		"parcel": "^2.16.4",
 		"process": "^0.11.10",
 		"svgo": "^3.3.2"
 	}
