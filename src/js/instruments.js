@@ -9,12 +9,18 @@
  *  - Octave shifting (↑/↓ arrows or on-screen buttons)
  *  - Live ADSR / waveform / volume controls
  *
- * Safari compatibility notes
- * ──────────────────────────
+ * Safari / iOS compatibility notes
+ * ──────────────────────────────────
  *  1. Web MIDI API is not supported in Safari. The MIDI section degrades
  *     gracefully: the status banner shows a friendly "not supported" message
  *     and the rest of the synth works normally.
- *  2. Safari's AudioContext implementation has several quirks:
+ *  2. iOS Safari requires the AudioContext to be both *created* and *resumed*
+ *     synchronously inside a trusted user-gesture handler (tap / click).
+ *     `initAudioContext()` is registered on the first `click` and `touchstart`
+ *     events so the context is ready before any note fires.  `ensureAudioContext`
+ *     is kept as a secondary safety net for code paths that call `noteOn`
+ *     directly (e.g. MIDI messages after the context already exists).
+ *  3. Safari's AudioContext implementation has several quirks:
  *       a. `linearRampToValueAtTime` misbehaves if there is no prior
  *          automation event at exactly `currentTime`. We always call
  *          `setValueAtTime(currentValue, now)` immediately before any ramp.
@@ -23,7 +29,7 @@
  *       c. `OscillatorNode.stop(t)` throws if t is in the past. We guard
  *          with `Math.max(t, audioCtx.currentTime + 0.001)`.
  *       d. `webkitAudioContext` is used as a fallback for older Safari.
- *  3. Pointer events on iOS Safari can miss `pointerup`/`pointerleave` for
+ *  4. Pointer events on iOS Safari can miss `pointerup`/`pointerleave` for
  *     touch inputs. We attach `touchend`/`touchcancel` listeners as well.
  */
 
@@ -113,22 +119,99 @@ const params = {
 
 // ─── Audio context ────────────────────────────────────────────────────────────
 
-function ensureAudioContext() {
-  if (audioCtx) {
-    // Resume if suspended (autoplay policy — common on mobile Safari)
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    return;
-  }
-
+/**
+ * Create (if needed) and resume the AudioContext.
+ *
+ * iOS Safari rule: the AudioContext must be *created* **and** *resumed* inside
+ * a synchronous trusted user-gesture handler (tap / click).  Calling resume()
+ * from a promise callback or a setTimeout is not sufficient.
+ *
+ * This function is therefore registered directly on `click` and `touchstart`
+ * at the document level so it fires as early as possible — before any note
+ * logic runs.  The `{ once: true }` flag is intentionally NOT used here;
+ * instead we guard with an `if (audioCtx.state === 'running') return` check so
+ * that the listener is removed as soon as the context is confirmed running,
+ * while still re-attempting on subsequent taps if the first gesture somehow
+ * left the context suspended (e.g. background tab on iOS).
+ */
+function initAudioContext() {
   // `webkitAudioContext` fallback covers older Safari (pre-14.1)
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return; // should never happen in a modern browser
+  if (!AudioContextClass) return;
 
-  audioCtx = new AudioContextClass();
+  // Create the context on the very first gesture
+  if (!audioCtx) {
+    audioCtx = new AudioContextClass();
 
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = params.volume;
-  masterGain.connect(audioCtx.destination);
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = params.volume;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  // Resume if suspended — must happen synchronously inside the gesture handler
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      console.log('[instruments] AudioContext resumed, state:', audioCtx.state);
+      // Refresh the MIDI banner now that audio is confirmed running
+      // (the banner may have shown "no MIDI device" before audio was ready)
+      refreshMidiStatus();
+    }).catch(err => {
+      console.warn('[instruments] AudioContext resume failed:', err);
+    });
+  }
+
+  // Once the context is running we no longer need to intercept every gesture
+  if (audioCtx.state === 'running') {
+    document.removeEventListener('click',      initAudioContext);
+    document.removeEventListener('touchstart', initAudioContext);
+  }
+}
+
+// Register on both event types so the context is unlocked by any first
+// interaction — whether the user taps a key, clicks a control, or just
+// taps anywhere on the page.
+document.addEventListener('click',      initAudioContext, { passive: true });
+document.addEventListener('touchstart', initAudioContext, { passive: true });
+
+/**
+ * Secondary safety net called from `noteOn` and other audio-triggering paths.
+ * By the time a note fires the context should already be running (unlocked by
+ * `initAudioContext` above), but we defend against edge cases such as:
+ *  - MIDI note arriving before any touch (unlikely but possible on desktop)
+ *  - Context suspended again after a background/foreground cycle
+ */
+function ensureAudioContext() {
+  if (!audioCtx) {
+    // Context hasn't been created yet — create it now (desktop / non-iOS path)
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    audioCtx = new AudioContextClass();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = params.volume;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  // Resume if suspended (autoplay policy — common on mobile Safari)
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(err => {
+      console.warn('[instruments] ensureAudioContext resume failed:', err);
+    });
+  }
+}
+
+/**
+ * Re-evaluate and update the MIDI status banner.
+ * Called after the AudioContext is confirmed running so the UI reflects
+ * the current MIDI connection state without an extra user action.
+ */
+function refreshMidiStatus() {
+  if (!navigator.requestMIDIAccess) {
+    setMidiStatus('MIDI not supported in this browser — keyboard & mouse still work', 'unsupported');
+  }
+  // If MIDI was already initialised (midiAccess stored) the onstatechange
+  // handler will keep the banner current; nothing extra needed here.
 }
 
 // ─── Synth engine ─────────────────────────────────────────────────────────────
