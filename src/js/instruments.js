@@ -9,46 +9,69 @@
  *  - Octave shifting (up/down arrows or on-screen buttons)
  *  - Live ADSR / waveform / volume controls
  *
- * Safari / iOS compatibility notes
- * ──────────────────────────────────
- *  1. Web MIDI API is not supported in Safari. The MIDI section degrades
- *     gracefully: the status banner shows a friendly "not supported" message
- *     and the rest of the synth works normally.
+ * ─── iOS Safari AudioContext — the definitive explanation ────────────────────
  *
- *  2. iOS Safari requires the AudioContext to be created and resumed inside
- *     a trusted user-gesture handler (tap / click), but resume() is
- *     asynchronous. The previous approach registered a document-level
- *     touchstart listener that called resume() fire-and-forget, then called
- *     noteOn() from pointerdown. By the time noteOn() ran, resume() had not
- *     yet resolved — the context was still 'suspended' — so all oscillators
- *     were started on a suspended context and produced no sound.
+ * iOS Safari enforces a strict rule: AudioContext.resume() MUST be called
+ * synchronously and directly within a trusted user-gesture handler (touchstart,
+ * pointerdown, click). "Synchronously" means on the same call-stack frame as
+ * the event — the moment you `await` anything before calling resume(), you have
+ * yielded execution, left the trusted-gesture context, and iOS will silently
+ * refuse to un-suspend the audio hardware. The Promise returned by resume()
+ * will resolve (no error is thrown), but the context state stays 'suspended'.
  *
- *     Fix: noteOn() is now async and awaits getRunningAudioContext(), which
- *     calls resume() and waits for the context to reach 'running' before
- *     returning. Audio nodes are never created or started on a suspended
- *     context.
+ * All previous fix attempts broke this rule:
  *
- *  3. Safari's AudioContext implementation has several quirks:
- *       a. linearRampToValueAtTime misbehaves if there is no prior automation
- *          event at exactly currentTime. We always call setValueAtTime(0, now)
- *          immediately before any ramp.
- *       b. cancelScheduledValues must be followed by a setValueAtTime at the
- *          same timestamp or Safari may ignore the cancel.
- *       c. OscillatorNode.stop(t) throws if t is in the past. We guard with
- *          Math.max(t, audioCtx.currentTime + 0.001).
- *       d. webkitAudioContext is used as a fallback for older Safari.
+ *   Attempt 1 — document-level touchstart → resume() fire-and-forget, then
+ *     noteOn() from pointerdown: two separate event handlers, resume() and
+ *     noteOn() ran in different call stacks.
  *
- *  4. iOS Safari pointer/touch event reliability:
- *       pointerup and pointerleave are unreliable on iOS Safari when a touch
- *       ends outside the element or is interrupted. The previous code used a
- *       pressedViaPointer flag to avoid double-triggering, but if pointerup
- *       was missed the flag stayed true permanently, silently blocking all
- *       subsequent touchend note-offs on that key.
+ *   Attempt 2 — noteOn() made async, awaits getRunningAudioContext() which
+ *     awaits resume(): the `await noteOn(...)` in the touchstart handler
+ *     yields the call stack before resume() is even called. By the time
+ *     resume() runs the trusted-gesture context is gone.
  *
- *       Fix: event handling is split by isTouchDevice. Touch devices use
- *       touchstart/touchend/touchcancel exclusively (always reliable on iOS).
- *       Pointer devices use pointerdown/pointerup/pointerleave. No shared
- *       state flag is needed.
+ * The correct fix has two parts:
+ *
+ *   A. Call AudioContext constructor AND resume() SYNCHRONOUSLY in the same
+ *      touchstart handler that will later call noteOn(). No awaits before
+ *      either of these calls.
+ *
+ *   B. Schedule the actual audio-node work (noteOn) to run AFTER resume()
+ *      resolves by chaining .then() on the resume() Promise. This keeps
+ *      audio-node creation off the suspended context while still being
+ *      triggered by the same gesture.
+ *
+ * The pattern used in buildKeyboard() for touch devices is therefore:
+ *
+ *   touchstart handler (synchronous, trusted-gesture context):
+ *     1. ensureAudioContextSync()  ← creates ctx + calls resume() synchronously
+ *     2. audioCtx.resume().then(() => noteOn(...))  ← schedules note after resume
+ *
+ * This satisfies iOS's requirement (resume called synchronously in gesture)
+ * while also guaranteeing audio nodes are only created on a running context.
+ *
+ * For pointer/mouse events (desktop) the async/await approach works fine
+ * because desktop browsers do not have the same synchronous-gesture restriction.
+ *
+ * ─── Other Safari quirks addressed ──────────────────────────────────────────
+ *
+ *  1. webkitAudioContext fallback for Safari < 14.1
+ *
+ *  2. linearRampToValueAtTime misbehaves without a prior anchor event.
+ *     We always call setValueAtTime(0, now) before any ramp.
+ *
+ *  3. cancelScheduledValues must be followed immediately by setValueAtTime
+ *     at the same timestamp or Safari may ignore the cancel.
+ *
+ *  4. OscillatorNode.stop(t) throws if t is in the past. Guarded with
+ *     Math.max(t, audioCtx.currentTime + 0.001).
+ *
+ *  5. Web MIDI is not supported in Safari. Degrades gracefully with a
+ *     neutral (non-error) status banner.
+ *
+ *  6. pointerup / pointerleave are unreliable on iOS when a touch ends
+ *     outside the element. Touch devices use touchstart/touchend/touchcancel
+ *     exclusively. Desktop uses pointer events.
  */
 
 // ─── Note table ───────────────────────────────────────────────────────────────
@@ -101,32 +124,53 @@ const params = {
   volume:   0.30,
 };
 
-// True when the device has touch capability — determines which event path
-// is used on the on-screen keyboard keys.
+// True when the device has touch capability.
 const isTouchDevice = navigator.maxTouchPoints > 0 || ('ontouchstart' in window);
 
 // ─── Audio context ────────────────────────────────────────────────────────────
 
 /**
- * Get (or create) the AudioContext and ensure it is in the 'running' state.
- * Returns a Promise that resolves to the running AudioContext, or null if
- * the Web Audio API is unavailable or resume() fails.
+ * Create the AudioContext and call resume() SYNCHRONOUSLY.
  *
- * WHY ASYNC:
- * iOS Safari requires AudioContext.resume() to be called inside a trusted
- * user-gesture handler (touchstart, pointerdown, click), and resume() is
- * asynchronous — it resolves only after the system has actually un-suspended
- * the audio hardware. Any oscillators or gain nodes created or started before
- * that Promise resolves will be scheduled on a suspended context and will
- * produce no sound on iOS Safari.
+ * This MUST be called directly (no await before it) inside a trusted
+ * user-gesture handler on iOS Safari. The resume() call itself is what
+ * iOS checks — it must happen on the same synchronous call-stack frame
+ * as the gesture event. We do not await the returned Promise here; callers
+ * that need to schedule audio work after resume resolves should chain
+ * .then() on audioCtx.resume() themselves.
  *
- * noteOn() awaits this function before creating any audio nodes, guaranteeing
- * the context is truly running before any audio work is scheduled.
- * touchstart and pointerdown are both trusted gesture handlers, so calling
- * resume() from within them is valid.
+ * Returns true if the context exists and resume() was called, false if
+ * the Web Audio API is unavailable.
+ */
+function ensureAudioContextSync() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return false;
+
+  if (!audioCtx) {
+    audioCtx = new AudioContextClass();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = params.volume;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  // Call resume() synchronously — iOS Safari checks that this happens
+  // within the trusted-gesture call stack. We intentionally do NOT await
+  // the returned Promise here; see the module-level comment for why.
+  if (audioCtx.state !== 'running') {
+    audioCtx.resume().catch(err => {
+      console.warn('[instruments] AudioContext resume failed:', err);
+    });
+  }
+
+  return true;
+}
+
+/**
+ * Async version for non-touch paths (desktop pointer/keyboard events).
+ * Desktop browsers do not require the synchronous-gesture restriction so
+ * we can safely await resume() here.
  */
 async function getRunningAudioContext() {
-  // webkitAudioContext fallback covers older Safari (pre-14.1)
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
 
@@ -156,40 +200,30 @@ function getFrequency(noteName, octave) {
 }
 
 /**
- * Start a note (note-on).
+ * Start a note. Requires audioCtx to already be running (or at least
+ * have had resume() called synchronously before this runs).
  *
- * Async so it can await getRunningAudioContext() — the core fix for iOS
- * Safari silence. Audio nodes must not be created or started until the
- * AudioContext is confirmed running (resume() has resolved).
- *
- * Safari fix (3a): We always anchor the gain timeline with
- * setValueAtTime(0, now) before the first linearRampToValueAtTime.
- * Without this anchor Safari's scheduler can produce a click or skip
- * the ramp entirely.
- *
- * @param {string} noteName  e.g. "C#"
- * @param {number} octave
- * @param {number} velocity  0-1 (MIDI velocity mapped to 0-1)
+ * For touch devices this is called inside the .then() of audioCtx.resume()
+ * so the context is guaranteed to be running by the time audio nodes are
+ * created. For desktop it is called after awaiting getRunningAudioContext().
  */
-async function noteOn(noteName, octave, velocity = 1.0) {
-  // Wait until the AudioContext is genuinely running before touching any
-  // audio nodes. This is the core fix for iOS Safari silence.
-  const ctx = await getRunningAudioContext();
-  if (!ctx) return;
+function noteOnSync(noteName, octave, velocity = 1.0) {
+  if (!audioCtx || audioCtx.state !== 'running') return;
 
   const key = `${noteName}-${octave}`;
-  if (activeNotes.has(key)) return; // already playing
+  if (activeNotes.has(key)) return;
 
   const freq = getFrequency(noteName, octave);
-  const now  = ctx.currentTime;
+  const now  = audioCtx.currentTime;
 
-  const osc = ctx.createOscillator();
+  const osc = audioCtx.createOscillator();
   osc.type            = params.waveform;
   osc.frequency.value = freq;
 
-  const envGain = ctx.createGain();
+  const envGain = audioCtx.createGain();
 
-  // Safari fix (3a): anchor at 0 before ramping up
+  // Safari fix: anchor at 0 before ramping — without this Safari can
+  // skip the attack ramp or produce a click.
   envGain.gain.setValueAtTime(0, now);
 
   const attackEnd = now + Math.max(params.attack, 0.001);
@@ -207,14 +241,20 @@ async function noteOn(noteName, octave, velocity = 1.0) {
 }
 
 /**
+ * Async wrapper used by the desktop/keyboard path.
+ */
+async function noteOn(noteName, octave, velocity = 1.0) {
+  const ctx = await getRunningAudioContext();
+  if (!ctx) return;
+  noteOnSync(noteName, octave, velocity);
+}
+
+/**
  * Release a note (note-off).
  *
- * Safari fix (3b): After cancelScheduledValues we immediately call
- * setValueAtTime at the same timestamp so Safari's scheduler has a
- * concrete starting point for the release ramp.
- *
- * Safari fix (3c): Guard osc.stop() so it never receives a time in
- * the past, which throws a DOMException in Safari.
+ * Safari fixes:
+ *  - cancelScheduledValues + immediate setValueAtTime re-anchor
+ *  - guard osc.stop() against past timestamps
  */
 function noteOff(noteName, octave) {
   const key  = `${noteName}-${octave}`;
@@ -224,14 +264,12 @@ function noteOff(noteName, octave) {
   const { osc, gain: envGain } = node;
   const now = audioCtx.currentTime;
 
-  // Safari fix (3b): cancel then immediately re-anchor the current value
   envGain.gain.cancelScheduledValues(now);
   envGain.gain.setValueAtTime(envGain.gain.value, now);
 
   const releaseEnd = now + Math.max(params.release, 0.001);
   envGain.gain.linearRampToValueAtTime(0, releaseEnd);
 
-  // Safari fix (3c): never pass a stop time that is already in the past
   const stopTime = Math.max(releaseEnd + 0.01, audioCtx.currentTime + 0.001);
   try {
     osc.stop(stopTime);
@@ -274,18 +312,41 @@ function buildKeyboard() {
     btn.setAttribute('type', 'button');
 
     if (isTouchDevice) {
-      // ── Touch-device path (iOS Safari, Android) ───────────────────────
-      // Use touchstart/touchend/touchcancel as the sole event path.
+      // ── Touch path (iOS Safari, Android) ─────────────────────────────
       //
-      // We do NOT use pointerdown/pointerup here because on iOS Safari
-      // pointerup can silently fail to fire when a touch ends (e.g. when
-      // the finger slides off the element or the touch is interrupted).
-      // If pointerup is missed the note hangs forever with no way to
-      // release it. touchend and touchcancel are always reliably fired
-      // on iOS Safari regardless of where the touch ends.
+      // THE KEY PATTERN for iOS Safari:
+      //
+      //   touchstart (synchronous, trusted-gesture context):
+      //     step 1 — ensureAudioContextSync()
+      //              Creates the AudioContext if needed and calls resume()
+      //              SYNCHRONOUSLY on the same call-stack frame as the
+      //              touchstart event. iOS Safari checks for this.
+      //     step 2 — audioCtx.resume().then(() => noteOnSync(...))
+      //              Chains noteOnSync onto the resume Promise so audio
+      //              nodes are only created once the context is running.
+      //              If the context was already running, .then() fires
+      //              on the next microtask — still fast enough for audio.
+      //
+      // We do NOT use pointerdown/pointerup on iOS because pointerup can
+      // silently fail to fire, leaving notes stuck on indefinitely.
+      //
       btn.addEventListener('touchstart', e => {
-        e.preventDefault(); // prevent scroll and the 300 ms click delay
-        noteOn(note, currentOctave, 0.8);
+        e.preventDefault(); // prevent scroll and the 300 ms synthesized click
+
+        // Step 1: create ctx and call resume() synchronously in this
+        // trusted-gesture handler. This is the call iOS Safari checks.
+        if (!ensureAudioContextSync()) return;
+
+        // Step 2: schedule noteOnSync to run after resume() resolves.
+        // audioCtx is guaranteed to exist here (ensureAudioContextSync
+        // just created/confirmed it). We chain onto the live resume()
+        // Promise so noteOnSync only runs on a running context.
+        audioCtx.resume().then(() => {
+          noteOnSync(note, currentOctave, 0.8);
+        }).catch(err => {
+          console.warn('[instruments] resume failed on touchstart:', err);
+        });
+
       }, { passive: false });
 
       btn.addEventListener('touchend', e => {
@@ -299,10 +360,10 @@ function buildKeyboard() {
       }, { passive: false });
 
     } else {
-      // ── Pointer-device path (mouse, stylus, desktop) ──────────────────
+      // ── Pointer path (mouse, stylus, desktop) ─────────────────────────
       btn.addEventListener('pointerdown', e => {
         e.preventDefault();
-        noteOn(note, currentOctave, 0.8);
+        noteOn(note, currentOctave, 0.8); // async — safe on desktop
       });
       btn.addEventListener('pointerup', () => {
         noteOff(note, currentOctave);
@@ -343,7 +404,7 @@ function handleKeyDown(e) {
   if (!note || heldKeys.has(e.key.toLowerCase())) return;
 
   heldKeys.add(e.key.toLowerCase());
-  noteOn(note, currentOctave, 0.8);
+  noteOn(note, currentOctave, 0.8); // async — keyboard events are trusted gestures on desktop
 }
 
 function handleKeyUp(e) {
