@@ -1,24 +1,29 @@
 /**
  * instruments.js - Web Audio + Web MIDI synthesizer
  *
- * iOS Safari AudioContext - the real fix
+ * iOS Safari AudioContext — the real fix
  * --------------------------------------
- * iOS Safari requires AudioContext.resume() to be called synchronously
- * inside a trusted user-gesture handler. But even then, the context only
- * becomes 'running' asynchronously - the Promise resolves on the next
- * microtask. Any audio nodes created in a .then() callback are outside
- * the trusted gesture window and are silently dropped by iOS.
+ * iOS Safari requires AudioContext() + resume() to be called synchronously
+ * inside a trusted user-gesture handler.  Any context created outside that
+ * frame starts 'suspended' and can never be resumed.
  *
  * The ONLY reliable pattern (used by Tone.js, Howler.js, etc.) is:
  *
- *   1. Show a full-screen 'Tap to enable audio' overlay on page load.
- *   2. On its touchstart/click, call new AudioContext() + resume()
- *      synchronously - iOS grants the hardware unlock here.
- *   3. Wait for resume() to resolve - context is now 'running'.
- *   4. Set audioReady = true and hide the overlay.
+ *   1. Show a full-screen "Tap to enable audio" overlay on page load.
+ *   2. On its click/touchstart, call new AudioContext() + resume()
+ *      synchronously — iOS grants the hardware unlock here.
+ *   3. Await resume() — context is now 'running'.
+ *   4. Set audioReady = true, hide the overlay.
  *   5. All subsequent noteOn() calls work freely because the context
- *      is already running - no gesture token needed for osc.start().
+ *      is already running; no gesture token is needed for osc.start().
+ *
+ * There is exactly ONE new AudioContext() call in this file — inside
+ * initAudioContext(), which is only ever invoked from the overlay button
+ * handler.  ensureAudioContext() only *resumes* an existing context and
+ * returns false immediately if the overlay hasn't been tapped yet.
  */
+
+// ─── Note / keyboard tables ───────────────────────────────────────────────────
 
 const NOTE_FREQ_OCT4 = {
   C:    261.63,
@@ -43,9 +48,11 @@ const KB_MAP = {
   s: 'C#', d: 'D#', g: 'F#', h: 'G#', j: 'A#',
 };
 
-let audioCtx   = null;
+// ─── Audio state ──────────────────────────────────────────────────────────────
+
+let audioCtx   = null;   // created once, inside the overlay gesture handler
 let masterGain = null;
-let audioReady = false;
+let audioReady = false;  // true only after context reaches 'running'
 
 const activeNotes = new Map();
 const heldKeys    = new Set();
@@ -60,46 +67,81 @@ const params = {
   volume:   0.30,
 };
 
-// Called synchronously inside the unlock button handler.
-// iOS Safari checks that AudioContext() + resume() happen on the same
-// call-stack frame as the trusted gesture event.
-function createAndResumeContext() {
+// ─── AudioContext bootstrap ───────────────────────────────────────────────────
+
+/**
+ * initAudioContext()
+ *
+ * Must be called synchronously from within a trusted user-gesture handler
+ * (the overlay unlock button).  Creates the AudioContext and calls resume()
+ * in the same call-stack frame so iOS Safari grants the hardware unlock.
+ *
+ * Returns a Promise that resolves to the AudioContext once it is 'running'.
+ */
+async function initAudioContext() {
+  if (audioCtx) return audioCtx;
+
   const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return Promise.reject(new Error('Web Audio not supported'));
-  if (!audioCtx) {
-    audioCtx   = new Ctx();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = params.volume;
-    masterGain.connect(audioCtx.destination);
+  if (!Ctx) throw new Error('Web Audio API not supported in this browser');
+
+  // Create synchronously — iOS checks this happens inside the gesture frame
+  audioCtx   = new Ctx();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = params.volume;
+  masterGain.connect(audioCtx.destination);
+
+  // iOS requires an explicit resume() even when created inside a gesture
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
   }
-  return audioCtx.resume();
+
+  console.log('[instruments] AudioContext state after unlock:', audioCtx.state);
+  return audioCtx;
 }
 
+/**
+ * ensureAudioContext()
+ *
+ * Called from keyboard/pointer handlers AFTER the overlay has been dismissed.
+ * Only resumes an already-created context (e.g. if it was auto-suspended after
+ * a period of inactivity).  Returns false if the context doesn't exist yet
+ * (overlay not tapped) so callers can bail out gracefully.
+ */
+async function ensureAudioContext() {
+  if (!audioCtx) return false;   // overlay not tapped yet — do nothing
+
+  if (audioCtx.state === 'suspended') {
+    try { await audioCtx.resume(); } catch { /* ignore */ }
+  }
+
+  audioReady = audioCtx.state === 'running';
+  return audioReady;
+}
+
+// ─── Overlay unlock prompt ────────────────────────────────────────────────────
+
 function showUnlockPrompt() {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     const overlay = document.getElementById('audio-unlock-overlay');
     const btn     = document.getElementById('audio-unlock-btn');
     if (!overlay || !btn) { resolve(); return; }
 
     overlay.hidden = false;
 
-    function onUnlock(e) {
+    async function onUnlock(e) {
       e.preventDefault();
-      createAndResumeContext()
-        .then(function() {
-          audioReady = true;
-          overlay.hidden = true;
-          btn.removeEventListener('touchstart', onUnlock);
-          btn.removeEventListener('click',      onUnlock);
-          resolve();
-        })
-        .catch(function(err) {
-          console.warn('[instruments] unlock failed:', err);
-          overlay.hidden = true;
-          btn.removeEventListener('touchstart', onUnlock);
-          btn.removeEventListener('click',      onUnlock);
-          resolve();
-        });
+      btn.removeEventListener('touchstart', onUnlock);
+      btn.removeEventListener('click',      onUnlock);
+
+      try {
+        await initAudioContext();           // creates + resumes synchronously
+        audioReady = audioCtx.state === 'running';
+      } catch (err) {
+        console.warn('[instruments] AudioContext init failed:', err);
+      }
+
+      overlay.hidden = true;
+      resolve();
     }
 
     btn.addEventListener('touchstart', onUnlock, { passive: false });
@@ -107,21 +149,7 @@ function showUnlockPrompt() {
   });
 }
 
-async function ensureAudioContext() {
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return false;
-  if (!audioCtx) {
-    audioCtx   = new Ctx();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = params.volume;
-    masterGain.connect(audioCtx.destination);
-  }
-  if (audioCtx.state === 'suspended') {
-    try { await audioCtx.resume(); } catch { /* ignore */ }
-  }
-  audioReady = audioCtx.state === 'running';
-  return audioReady;
-}
+// ─── Synth engine ─────────────────────────────────────────────────────────────
 
 function getFrequency(noteName, octave) {
   return NOTE_FREQ_OCT4[noteName] * Math.pow(2, octave - 4);
@@ -154,7 +182,7 @@ function noteOn(noteName, octave, velocity) {
   envGain.connect(masterGain);
   osc.start(now);
 
-  activeNotes.set(key, { osc: osc, gain: envGain });
+  activeNotes.set(key, { osc, gain: envGain });
   setKeyActive(noteName, true);
 }
 
@@ -171,33 +199,35 @@ function noteOff(noteName, octave) {
   node.gain.linearRampToValueAtTime(0, releaseEnd);
 
   const stopTime = Math.max(releaseEnd + 0.01, audioCtx.currentTime + 0.001);
-  try { node.osc.stop(stopTime); } catch(e) { try { node.osc.stop(); } catch(e2) {} }
+  try { node.osc.stop(stopTime); } catch (e) { try { node.osc.stop(); } catch (e2) { /* ignore */ } }
 
   activeNotes.delete(key);
   let stillActive = false;
-  activeNotes.forEach(function(v, k) { if (k.startsWith(noteName + '-')) stillActive = true; });
+  activeNotes.forEach(function (v, k) { if (k.startsWith(noteName + '-')) stillActive = true; });
   if (!stillActive) setKeyActive(noteName, false);
 }
 
 function allNotesOff() {
-  activeNotes.forEach(function(node) {
+  activeNotes.forEach(function (node) {
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
     node.gain.cancelScheduledValues(now);
     node.gain.setValueAtTime(0, now);
-    try { node.osc.stop(Math.max(now + 0.01, audioCtx.currentTime + 0.001)); } catch(e) {}
+    try { node.osc.stop(Math.max(now + 0.01, audioCtx.currentTime + 0.001)); } catch (e) { /* ignore */ }
   });
   activeNotes.clear();
   heldKeys.clear();
-  document.querySelectorAll('.key.active').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.key.active').forEach(function (el) { el.classList.remove('active'); });
 }
+
+// ─── On-screen keyboard ───────────────────────────────────────────────────────
 
 function buildKeyboard() {
   const container = document.getElementById('keyboard');
   if (!container) return;
   container.innerHTML = '';
 
-  CHROMATIC.forEach(function(note) {
+  CHROMATIC.forEach(function (note) {
     const btn = document.createElement('button');
     btn.className    = 'key' + (BLACK_KEYS.has(note) ? ' black-key' : '');
     btn.dataset.note = note;
@@ -205,31 +235,33 @@ function buildKeyboard() {
     btn.setAttribute('aria-label', 'Play ' + note);
     btn.setAttribute('type', 'button');
 
-    btn.addEventListener('touchstart', function(e) {
+    // Touch — context is already running after the overlay tap
+    btn.addEventListener('touchstart', function (e) {
       e.preventDefault();
       noteOn(note, currentOctave, 0.8);
     }, { passive: false });
 
-    btn.addEventListener('touchend', function(e) {
+    btn.addEventListener('touchend', function (e) {
       e.preventDefault();
       noteOff(note, currentOctave);
     }, { passive: false });
 
-    btn.addEventListener('touchcancel', function(e) {
+    btn.addEventListener('touchcancel', function (e) {
       e.preventDefault();
       noteOff(note, currentOctave);
     }, { passive: false });
 
-    btn.addEventListener('pointerdown', function(e) {
+    // Pointer (mouse / pen) — ensureAudioContext handles auto-suspend recovery
+    btn.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'touch') return;
       e.preventDefault();
-      ensureAudioContext().then(function() { noteOn(note, currentOctave, 0.8); });
+      ensureAudioContext().then(function () { noteOn(note, currentOctave, 0.8); });
     });
-    btn.addEventListener('pointerup', function(e) {
+    btn.addEventListener('pointerup', function (e) {
       if (e.pointerType === 'touch') return;
       noteOff(note, currentOctave);
     });
-    btn.addEventListener('pointerleave', function(e) {
+    btn.addEventListener('pointerleave', function (e) {
       if (e.pointerType === 'touch') return;
       noteOff(note, currentOctave);
     });
@@ -238,11 +270,18 @@ function buildKeyboard() {
   });
 }
 
+/**
+ * setKeyActive — toggle the .active class on an on-screen key button.
+ * Fixed: was using a broken string concatenation instead of a template literal,
+ * so the querySelector always returned null and keys never lit up.
+ */
 function setKeyActive(noteName, active) {
-  const btn = document.querySelector('.key[data-note= + noteName + ]');
+  const btn = document.querySelector(`.key[data-note="${noteName}"]`);
   if (!btn) return;
   btn.classList.toggle('active', active);
 }
+
+// ─── Computer keyboard input ──────────────────────────────────────────────────
 
 function handleKeyDown(e) {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
@@ -252,7 +291,7 @@ function handleKeyDown(e) {
   const note = KB_MAP[e.key.toLowerCase()];
   if (!note || heldKeys.has(e.key.toLowerCase())) return;
   heldKeys.add(e.key.toLowerCase());
-  ensureAudioContext().then(function() { noteOn(note, currentOctave, 0.8); });
+  ensureAudioContext().then(function () { noteOn(note, currentOctave, 0.8); });
 }
 
 function handleKeyUp(e) {
@@ -271,6 +310,8 @@ function changeOctave(delta) {
   const display = document.getElementById('octave-value');
   if (display) display.textContent = currentOctave;
 }
+
+// ─── Web MIDI ─────────────────────────────────────────────────────────────────
 
 function midiNoteToNameOctave(midiNote) {
   return { noteName: CHROMATIC[midiNote % 12], octave: Math.floor(midiNote / 12) - 1 };
@@ -307,17 +348,17 @@ function setMidiStatus(text, state) {
 
 async function initMidi() {
   if (!navigator.requestMIDIAccess) {
-    setMidiStatus('MIDI not supported in this browser - keyboard & touch still work', 'unsupported');
+    setMidiStatus('MIDI not supported in this browser — keyboard & touch still work', 'unsupported');
     return;
   }
   try {
     const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
     function connectInputs() {
       let count = 0;
-      midiAccess.inputs.forEach(function(input) { input.onmidimessage = onMidiMessage; count++; });
+      midiAccess.inputs.forEach(function (input) { input.onmidimessage = onMidiMessage; count++; });
       if (count > 0) {
         const names = [];
-        midiAccess.inputs.forEach(function(i) { names.push(i.name); });
+        midiAccess.inputs.forEach(function (i) { names.push(i.name); });
         setMidiStatus('Connected: ' + names.join(', '), 'connected');
       } else {
         setMidiStatus('No MIDI device connected');
@@ -330,28 +371,30 @@ async function initMidi() {
   }
 }
 
+// ─── Synth controls (ADSR sliders, waveform, volume) ─────────────────────────
+
 function formatTime(s) { return s < 1 ? Math.round(s * 1000) + 'ms' : s.toFixed(2) + 's'; }
 
 function initControls() {
   const waveformEl = document.getElementById('waveform');
   if (waveformEl) {
-    waveformEl.addEventListener('change', function() {
+    waveformEl.addEventListener('change', function () {
       params.waveform = waveformEl.value;
-      activeNotes.forEach(function(n) { n.osc.type = params.waveform; });
+      activeNotes.forEach(function (n) { n.osc.type = params.waveform; });
     });
   }
 
   [
     { id: 'attack',  vid: 'attack-value',  p: 'attack',  fmt: formatTime },
     { id: 'decay',   vid: 'decay-value',   p: 'decay',   fmt: formatTime },
-    { id: 'sustain', vid: 'sustain-value', p: 'sustain', fmt: function(v) { return Math.round(v*100)+'%'; } },
+    { id: 'sustain', vid: 'sustain-value', p: 'sustain', fmt: function (v) { return Math.round(v * 100) + '%'; } },
     { id: 'release', vid: 'release-value', p: 'release', fmt: formatTime },
-    { id: 'volume',  vid: 'volume-value',  p: 'volume',  fmt: function(v) { return Math.round(v*100)+'%'; } },
-  ].forEach(function(s) {
+    { id: 'volume',  vid: 'volume-value',  p: 'volume',  fmt: function (v) { return Math.round(v * 100) + '%'; } },
+  ].forEach(function (s) {
     const input   = document.getElementById(s.id);
     const display = document.getElementById(s.vid);
     if (!input) return;
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function () {
       const v = parseFloat(input.value);
       params[s.p] = v;
       if (display) display.textContent = s.fmt(v);
@@ -364,15 +407,19 @@ function initControls() {
 
   const od = document.getElementById('octave-down');
   const ou = document.getElementById('octave-up');
-  if (od) od.addEventListener('click', function() { changeOctave(-1); });
-  if (ou) ou.addEventListener('click', function() { changeOctave(1); });
+  if (od) od.addEventListener('click', function () { changeOctave(-1); });
+  if (ou) ou.addEventListener('click', function () { changeOctave(1); });
 }
 
-window.addEventListener('blur', function() { if (activeNotes.size > 0) allNotesOff(); });
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+
+window.addEventListener('blur', function () { if (activeNotes.size > 0) allNotesOff(); });
 
 buildKeyboard();
 initControls();
 initMidi();
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup',   handleKeyUp);
+
+// Show the unlock overlay last — nothing plays until the user taps it.
 showUnlockPrompt();
