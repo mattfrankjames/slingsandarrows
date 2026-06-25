@@ -302,50 +302,6 @@
 
     /* ── Hidden utility ──────────────────────────────────────────────────── */
     [hidden] { display: none !important; }
-
-    /* -- Audio unlock overlay ------------------------------------------------ */
-    #audio-unlock-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.88);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      gap: 1.25em;
-      padding: 2em;
-      text-align: center;
-    }
-    #audio-unlock-overlay p {
-      opacity: 0.65;
-      font-size: 0.9em;
-      max-width: 28ch;
-      line-height: 1.5;
-      margin: 0;
-    }
-    #audio-unlock-btn {
-      font-family: 'fatfrank', sans-serif;
-      font-size: 1.4rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      color: white;
-      padding: 0.75em 2em;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-      min-width: 220px;
-      min-height: 60px;
-      touch-action: manipulation;
-    }
-    #audio-unlock-btn:hover,
-    #audio-unlock-btn:active {
-      background: rgba(255, 255, 255, 0.25);
-    }
   </style>
 </head>
 <body>
@@ -456,16 +412,6 @@
     </footer>
   </div>
 
-  <!-- Audio unlock overlay: required for iOS Safari.
-       iOS will not start an AudioContext without a direct user tap.
-       The overlay tap calls AudioContext() + resume() synchronously
-       (the gesture iOS checks), then waits for resolve before hiding.
-       After that, key taps play sound on an already-running context. -->
-  <div id=audio-unlock-overlay hidden>
-    <button id=audio-unlock-btn type=button>&#9654; Start Synth</button>
-    <p>Tap to enable audio</p>
-  </div>
-
-    <script type="module" src="./js/instruments.js"></script>
+  <script type="module" src="./js/instruments.js"></script>
 </body>
 </html>
