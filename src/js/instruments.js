@@ -601,11 +601,73 @@ window.addEventListener('blur', () => {
   if (activeNotes.size > 0) allNotesOff();
 });
 
+// ─── Tab navigation ───────────────────────────────────────────────────────────
+
+/**
+ * Simple accessible tab switcher.
+ *
+ * - Tabs use role="tab" / aria-selected / aria-controls.
+ * - Panels use role="tabpanel" / aria-labelledby.
+ * - Arrow-key navigation between tabs (ARIA authoring practice).
+ * - When the "Bass Sequencer" tab is clicked we navigate to /bass-sequencer
+ *   rather than showing an in-page panel.
+ */
+function initTabs() {
+  const tabList  = document.querySelector('[role="tablist"]');
+  if (!tabList) return;
+
+  const tabs   = [...tabList.querySelectorAll('[role="tab"]')];
+  const panels = tabs.map(t => document.getElementById(t.getAttribute('aria-controls')));
+
+  function activateTab(tab) {
+    tabs.forEach((t, i) => {
+      const isSelected = t === tab;
+      t.setAttribute('aria-selected', String(isSelected));
+      if (panels[i]) {
+        panels[i].classList.toggle('tab-panel--active', isSelected);
+      }
+    });
+
+    // Lazily initialise the bass sequencer the first time its tab is shown
+    if (tab.id === 'tab-bass') {
+      initBassSequencer();
+    }
+  }
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => activateTab(tab));
+
+    // Arrow-key navigation
+    tab.addEventListener('keydown', e => {
+      let next = null;
+      if (e.key === 'ArrowRight') {
+        next = tabs[(i + 1) % tabs.length];
+      } else if (e.key === 'ArrowLeft') {
+        next = tabs[(i - 1 + tabs.length) % tabs.length];
+      } else if (e.key === 'Home') {
+        next = tabs[0];
+      } else if (e.key === 'End') {
+        next = tabs[tabs.length - 1];
+      }
+      if (next) {
+        e.preventDefault();
+        next.focus();
+        activateTab(next);
+      }
+    });
+  });
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
+
+import { initDrumMachine } from './drum-machine.js';
+import { initBassSequencer } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
 initMidi();
+initTabs();
+initDrumMachine();
 
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup',   handleKeyUp);

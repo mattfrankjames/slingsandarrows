@@ -518,5 +518,16 @@ function initControls() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-buildGrid();
-initControls();
+/**
+ * initBassSequencer — called by instruments.js when the Bass Sequencer tab
+ * panel is first activated (or on page load).  Safe to call multiple times;
+ * subsequent calls are no-ops because the grid is only built once.
+ */
+let _initialized = false;
+
+export function initBassSequencer() {
+  if (_initialized) return;
+  _initialized = true;
+  buildGrid();
+  initControls();
+}
