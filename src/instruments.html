@@ -23,18 +23,53 @@
 
     .instruments-container {
       width: 95%;
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
-    .instrument-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2em;
-      margin-block-end: 2em;
+    /* ── Tab Navigation ──────────────────────────────────────────────────── */
+    .instrument-tabs {
+      display: flex;
+      gap: 0.5em;
+      margin-block-end: 1.5em;
+      border-block-end: 1px solid rgba(255, 255, 255, 0.15);
+      padding-block-end: 0;
+      flex-wrap: wrap;
     }
 
-    /* ── Instrument panel ────────────────────────────────────────────────── */
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-block-end: 2px solid transparent;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.95rem;
+      padding: 0.5em 1em;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      margin-block-end: -1px;
+      letter-spacing: -0.03ch;
+    }
+
+    .tab-btn:hover {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .tab-btn[aria-selected="true"] {
+      color: white;
+      border-block-end-color: white;
+    }
+
+    /* ── Tab panels ──────────────────────────────────────────────────────── */
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.tab-panel--active {
+      display: block;
+    }
+
+    /* ── Shared panel card ───────────────────────────────────────────────── */
     .instrument-panel {
       background: rgba(0, 0, 0, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -49,52 +84,7 @@
       font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
     }
 
-    /* ── On-screen keyboard ──────────────────────────────────────────────── */
-    .keyboard {
-      display: flex;
-      gap: 0.25em;
-      margin-block-end: 1.5em;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .key {
-      width: 2.5em;
-      height: 4em;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding-block-end: 0.25em;
-      font-size: 0.75em;
-      transition: background 0.1s, transform 0.05s;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    .key:hover {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    .key.active {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
-    }
-
-    .key.black-key {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.15);
-      height: 3em;
-    }
-
-    .key.black-key.active {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    /* ── Controls ────────────────────────────────────────────────────────── */
+    /* ── Shared control styles ───────────────────────────────────────────── */
     .controls {
       display: flex;
       flex-direction: column;
@@ -184,6 +174,73 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* ── Intro paragraph ─────────────────────────────────────────────────── */
+    .intro-text {
+      opacity: 0.7;
+      margin-block-end: 1.5em;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    /* ── Info / help text ────────────────────────────────────────────────── */
+    .info-text {
+      font-size: 0.82em;
+      opacity: 0.55;
+      margin-block-start: 1.25em;
+      line-height: 1.6;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+      padding-block-start: 1em;
+    }
+
+    .info-text strong {
+      opacity: 0.9;
+    }
+
+    /* ── On-screen keyboard (Synth) ──────────────────────────────────────── */
+    .keyboard {
+      display: flex;
+      gap: 0.25em;
+      margin-block-end: 1.5em;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .key {
+      width: 2.5em;
+      height: 4em;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-block-end: 0.25em;
+      font-size: 0.75em;
+      transition: background 0.1s, transform 0.05s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .key:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .key.active {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .key.black-key {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+      height: 3em;
+    }
+
+    .key.black-key.active {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
     /* ── MIDI status banner ──────────────────────────────────────────────── */
     .midi-status {
       font-size: 0.85em;
@@ -207,7 +264,6 @@
       background: rgba(245, 168, 168, 0.08);
     }
 
-    /* Neutral state for browsers that don't support Web MIDI (e.g. Safari) */
     .midi-status.unsupported {
       border-color: rgba(255, 255, 255, 0.3);
       background: rgba(255, 255, 255, 0.04);
@@ -278,26 +334,157 @@
       font-weight: bold;
     }
 
-    /* ── Info / help text ────────────────────────────────────────────────── */
-    .info-text {
-      font-size: 0.82em;
-      opacity: 0.55;
-      margin-block-start: 1.25em;
-      line-height: 1.6;
-      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
-      padding-block-start: 1em;
+    /* ── Drum Machine ────────────────────────────────────────────────────── */
+    .drum-transport {
+      display: flex;
+      align-items: center;
+      gap: 1em;
+      flex-wrap: wrap;
+      margin-block-end: 1.25em;
     }
 
-    .info-text strong {
-      opacity: 0.9;
+    .drum-play-btn {
+      background: rgba(168, 245, 168, 0.12);
+      border: 1px solid rgba(168, 245, 168, 0.45);
+      color: #a8f5a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.55em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+      min-width: 110px;
+      flex-shrink: 0;
     }
 
-    /* ── Intro paragraph ─────────────────────────────────────────────────── */
-    .intro-text {
-      opacity: 0.7;
-      margin-block-end: 1.5em;
-      line-height: 1.6;
-      font-size: 0.95em;
+    .drum-play-btn:hover {
+      background: rgba(168, 245, 168, 0.22);
+    }
+
+    .drum-play-btn[aria-pressed="true"] {
+      background: rgba(168, 245, 168, 0.2);
+      border-color: #a8f5a8;
+    }
+
+    .drum-transport .control-group {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .drum-preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-block-end: 1.25em;
+    }
+
+    .preset-btn,
+    .drum-clear-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s;
+      letter-spacing: -0.05ch;
+    }
+
+    .preset-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .drum-clear-btn {
+      border-color: rgba(245, 168, 168, 0.35);
+      color: #f5a8a8;
+    }
+
+    .drum-clear-btn:hover {
+      background: rgba(245, 168, 168, 0.12);
+    }
+
+    /* ── Drum grid ───────────────────────────────────────────────────────── */
+    #drum-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      margin-block-end: 1.25em;
+      overflow-x: auto;
+      padding-block-end: 0.25em;
+    }
+
+    .drum-row {
+      display: grid;
+      grid-template-columns: 60px repeat(16, 1fr);
+      gap: 0.3em;
+      align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .drum-row {
+        grid-template-columns: 48px repeat(16, 1fr);
+      }
+    }
+
+    .drum-label {
+      font-size: 0.78em;
+      opacity: 0.65;
+      text-align: right;
+      padding-inline-end: 0.5em;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .drum-step {
+      aspect-ratio: 1;
+      min-width: 1.6em;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, border-color 0.1s;
+      padding: 0;
+      position: relative;
+    }
+
+    .drum-step:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .drum-step--active {
+      background: rgba(168, 245, 168, 0.22);
+      border-color: rgba(168, 245, 168, 0.55);
+    }
+
+    .drum-step--active:hover {
+      background: rgba(168, 245, 168, 0.32);
+    }
+
+    .drum-step--playing {
+      background: rgba(168, 245, 168, 0.55) !important;
+      border-color: #a8f5a8 !important;
+    }
+
+    /* Beat number inside first step of each beat group */
+    .drum-beat-mark {
+      font-size: 0.6em;
+      opacity: 0.4;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Subtle divider every 4 steps */
+    .drum-step:nth-child(5n+2),
+    .drum-step:nth-child(5n+6),
+    .drum-step:nth-child(5n+10),
+    .drum-step:nth-child(5n+14) {
+      margin-inline-start: 0.2em;
     }
 
     /* ── Hidden utility ──────────────────────────────────────────────────── */
@@ -318,17 +505,38 @@
 
     <main class="p-4" id="main-content">
       <div class="instruments-container">
-        <h2>Web MIDI Instruments</h2>
-        <p class="intro-text">
-          Click the keys to play, or connect a MIDI controller. You can also use your
-          computer keyboard — <kbd>Z</kbd>–<kbd>M</kbd> for the white keys and
-          <kbd>S D</kbd> / <kbd>G H J</kbd> for the black keys.
-          Use <kbd>↑</kbd> / <kbd>↓</kbd> to shift octaves.
-          Also try the <a href="/bass-sequencer" style="text-decoration:underline;opacity:0.8;">Bass Sequencer →</a>
-        </p>
 
-        <div class="instrument-grid">
-          <!-- ── Synth Panel ─────────────────────────────────────────────── -->
+        <h2>Instruments</h2>
+
+        <!-- ── Tab navigation ────────────────────────────────────────────── -->
+        <div class="instrument-tabs" role="tablist" aria-label="Instrument selection">
+          <button class="tab-btn" id="tab-synth"
+            role="tab" aria-selected="true" aria-controls="panel-synth">
+            Synth
+          </button>
+          <button class="tab-btn" id="tab-drums"
+            role="tab" aria-selected="false" aria-controls="panel-drums">
+            Drum Machine
+          </button>
+          <button class="tab-btn" id="tab-bass"
+            role="tab" aria-selected="false" aria-controls="panel-bass">
+            Bass Sequencer ↗
+          </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             SYNTH PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel tab-panel--active" id="panel-synth"
+          role="tabpanel" aria-labelledby="tab-synth">
+
+          <p class="intro-text">
+            Click the keys to play, or connect a MIDI controller. You can also use your
+            computer keyboard — <kbd>Z</kbd>–<kbd>M</kbd> for the white keys and
+            <kbd>S D</kbd> / <kbd>G H J</kbd> for the black keys.
+            Use <kbd>↑</kbd> / <kbd>↓</kbd> to shift octaves.
+          </p>
+
           <div class="instrument-panel">
             <h3>Synth</h3>
 
@@ -404,8 +612,86 @@
               <strong>MIDI:</strong> Connect a device to play automatically
             </div>
           </div>
-        </div>
-      </div>
+        </div><!-- /panel-synth -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             DRUM MACHINE PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-drums"
+          role="tabpanel" aria-labelledby="tab-drums">
+
+          <p class="intro-text">
+            Toggle steps on/off for each drum voice. Hit Play to start the loop.
+            Try a preset to get going fast, or build your own pattern from scratch.
+          </p>
+
+          <div class="instrument-panel">
+            <h3>Drum Machine</h3>
+
+            <!-- Transport + BPM + Volume -->
+            <div class="drum-transport">
+              <button class="drum-play-btn" id="drum-play-btn"
+                aria-pressed="false" aria-label="Play or stop the drum machine">
+                ▶ Play
+              </button>
+
+              <div class="control-group">
+                <label for="drum-bpm">BPM</label>
+                <input type="range" id="drum-bpm" min="40" max="240" step="1" value="120"
+                  aria-label="Tempo in beats per minute">
+                <span class="control-value" id="drum-bpm-value">120</span>
+              </div>
+
+              <div class="control-group">
+                <label for="drum-volume">Volume</label>
+                <input type="range" id="drum-volume" min="0" max="1" step="0.01" value="0.6"
+                  aria-label="Master volume">
+                <span class="control-value" id="drum-volume-value">60%</span>
+              </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="drum-preset-row" role="group" aria-label="Pattern presets">
+              <button class="preset-btn" data-drum-preset="basic" type="button">Basic</button>
+              <button class="preset-btn" data-drum-preset="funk"  type="button">Funk</button>
+              <button class="drum-clear-btn" id="drum-clear-btn"  type="button">Clear</button>
+            </div>
+
+            <!-- Step grid (populated by JS) -->
+            <div id="drum-grid" role="group" aria-label="16-step drum grid"></div>
+
+            <p style="font-size:0.82em; opacity:0.5; line-height:1.6; margin-block-start:0.75em;">
+              Each column is one 16th note. Steps are grouped into 4 beats.
+              Beat numbers appear inside the first step of each group.
+            </p>
+          </div>
+        </div><!-- /panel-drums -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             BASS SEQUENCER PANEL (link-out)
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-bass"
+          role="tabpanel" aria-labelledby="tab-bass">
+
+          <div class="instrument-panel" style="text-align:center; padding: 3em 1.5em;">
+            <h3>Bass Sequencer</h3>
+            <p style="opacity:0.7; margin-block-end:1.5em; line-height:1.6;">
+              A 16-step bass line sequencer with note selection per step,
+              ADSR envelope, BPM control, and built-in presets.
+            </p>
+            <a href="/bass-sequencer"
+              style="display:inline-block; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.35);
+                     color:white; font-family:'ballinger-mono',sans-serif; font-size:1rem;
+                     padding:0.6em 1.75em; border-radius:4px; text-decoration:none;
+                     transition:background 0.2s;"
+              onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+              onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+              Open Bass Sequencer →
+            </a>
+          </div>
+        </div><!-- /panel-bass -->
+
+      </div><!-- /.instruments-container -->
     </main>
 
     <footer class="p-4 text-white text-center">
