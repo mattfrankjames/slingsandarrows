@@ -620,12 +620,6 @@ function initTabs() {
   const panels = tabs.map(t => document.getElementById(t.getAttribute('aria-controls')));
 
   function activateTab(tab) {
-    // "Bass Sequencer" tab is a navigation link — handle separately
-    if (tab.id === 'tab-bass') {
-      window.location.href = '/bass-sequencer';
-      return;
-    }
-
     tabs.forEach((t, i) => {
       const isSelected = t === tab;
       t.setAttribute('aria-selected', String(isSelected));
@@ -633,6 +627,11 @@ function initTabs() {
         panels[i].classList.toggle('tab-panel--active', isSelected);
       }
     });
+
+    // Lazily initialise the bass sequencer the first time its tab is shown
+    if (tab.id === 'tab-bass') {
+      initBassSequencer();
+    }
   }
 
   tabs.forEach((tab, i) => {
@@ -662,6 +661,7 @@ function initTabs() {
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 import { initDrumMachine } from './drum-machine.js';
+import { initBassSequencer } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
