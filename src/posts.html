@@ -15,6 +15,10 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
   <meta name="description" content="Updates from Slings & Arrows">
+<<<<<<< HEAD
+=======
+  <!-- Netlify Identity — needed so posts.js can read currentUser() for the delete button -->
+>>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <style>
     main {
@@ -104,6 +108,36 @@
       cursor: not-allowed;
     }
     [hidden] { display: none !important; }
+    .post-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-block-start: 0.75em;
+      padding-block-start: 0.75em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .post-footer .post-meta {
+      margin: 0;
+    }
+    .post-delete-btn {
+      background: rgba(245, 168, 168, 0.1);
+      border: 1px solid rgba(245, 168, 168, 0.3);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85em;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .post-delete-btn:hover {
+      background: rgba(245, 168, 168, 0.2);
+      border-color: rgba(245, 168, 168, 0.6);
+    }
+    .post-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>

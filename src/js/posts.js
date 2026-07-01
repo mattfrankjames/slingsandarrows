@@ -10,7 +10,6 @@ function isCloudinaryUrl(url) {
 
 function isCloudinaryVideo(url) {
   if (!isCloudinaryUrl(url)) return false;
-  // Cloudinary video URLs contain /video/upload/ in the path
   return url.includes('/video/upload/');
 }
 
@@ -20,6 +19,22 @@ function formatDate(iso) {
     month: 'long',
     day:   'numeric',
   });
+}
+
+// ─── Get a JWT from Netlify Identity if available ─────────────────────────────
+// netlify-identity-widget is only loaded on app.html; on posts.html we access
+// the global if it happens to be present (e.g. user opened both pages), but we
+// never require it — the delete button is simply hidden when no session exists.
+async function getToken() {
+  try {
+    const identity = window.netlifyIdentity;
+    if (!identity) return null;
+    const user = identity.currentUser();
+    if (!user) return null;
+    return await user.jwt();
+  } catch {
+    return null;
+  }
 }
 
 // ─── Render a single post card ────────────────────────────────────────────────
@@ -49,7 +64,6 @@ function renderPost(post, { pending = false } = {}) {
 
       const source = document.createElement('source');
       source.src  = post.imageUrl;
-      // Let the browser figure out the MIME type from the URL extension
       video.appendChild(source);
       article.appendChild(video);
     } else {
@@ -67,7 +81,11 @@ function renderPost(post, { pending = false } = {}) {
   p.textContent = post.body;
   article.appendChild(p);
 
+<<<<<<< HEAD
   // Footer: metadata + optional delete button
+=======
+  // Footer: meta + optional delete button
+>>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
   const footer = document.createElement('div');
   footer.className = 'post-footer';
 
@@ -81,6 +99,7 @@ function renderPost(post, { pending = false } = {}) {
   }
   footer.appendChild(meta);
 
+<<<<<<< HEAD
   // Delete button — only for published (non-pending) posts
   if (!pending) {
     const deleteBtn = document.createElement('button');
@@ -122,6 +141,57 @@ function renderPost(post, { pending = false } = {}) {
     });
 
     footer.appendChild(deleteBtn);
+=======
+  // Delete button — only for published posts when a session is active
+  if (!pending) {
+    const identity = window.netlifyIdentity;
+    const isLoggedIn = identity && identity.currentUser();
+
+    if (isLoggedIn) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className   = 'post-delete-btn';
+      deleteBtn.textContent = '✕ Delete';
+      deleteBtn.setAttribute('aria-label', 'Delete post');
+
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete this post?')) return;
+
+        deleteBtn.disabled    = true;
+        deleteBtn.textContent = 'Deleting…';
+
+        try {
+          const token = await getToken();
+
+          if (!token) {
+            throw new Error('Not signed in — please sign in on the App page first.');
+          }
+
+          const res = await fetch('/api/delete-post', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id: post.id }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || `Server error (${res.status})`);
+          }
+
+          article.remove();
+        } catch (err) {
+          console.error('[posts] Delete error:', err);
+          deleteBtn.disabled    = false;
+          deleteBtn.textContent = '✕ Delete';
+          alert(`Failed to delete post: ${err.message}`);
+        }
+      });
+
+      footer.appendChild(deleteBtn);
+    }
+>>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
   }
 
   article.appendChild(footer);
@@ -134,20 +204,18 @@ async function showPendingPosts() {
   try {
     db = await openDB();
   } catch {
-    return; // IndexedDB unavailable — skip silently
+    return;
   }
 
   const pending = await getAllPending(db);
   if (!pending.length) return;
 
-  // Insert a notice at the top of the feed
   const notice = document.createElement('p');
   notice.id        = 'pending-notice';
   notice.className = 'pending-notice';
   notice.textContent = `${pending.length} post${pending.length > 1 ? 's' : ''} queued — will publish when back online.`;
   feed.before(notice);
 
-  // Render each queued post as a greyed-out optimistic card
   for (const record of pending) {
     feed.insertBefore(
       renderPost({ ...record.data, id: record.id, createdAt: record.createdAt }, { pending: true }),
@@ -164,7 +232,6 @@ function listenForSWMessages() {
     const { type, postId, post } = e.data || {};
 
     if (type === 'POST_SYNCED') {
-      // Replace the pending card with the real published post
       const pendingCard = feed.querySelector(`[data-pending-id="${postId}"]`);
       if (pendingCard && post) {
         pendingCard.replaceWith(renderPost(post));
@@ -172,7 +239,6 @@ function listenForSWMessages() {
         pendingCard.remove();
       }
 
-      // Remove notice if no more pending cards
       if (!feed.querySelector('[data-pending-id]')) {
         document.getElementById('pending-notice')?.remove();
       }
@@ -197,7 +263,6 @@ async function loadPosts() {
     posts.forEach(post => feed.appendChild(renderPost(post)));
   } catch {
     loading.hidden = true;
-    // Only show error state if we have nothing else to display
     if (!feed.children.length) {
       errorState.hidden = false;
     }
@@ -269,6 +334,6 @@ function getIdentityToken() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (async () => {
   listenForSWMessages();
-  await showPendingPosts(); // show offline queue before network posts load
+  await showPendingPosts();
   await loadPosts();
 })();
