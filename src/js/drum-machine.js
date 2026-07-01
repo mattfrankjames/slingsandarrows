@@ -522,26 +522,7 @@ export function stopDrumMachine() {
   if (isPlaying) stopSequencer();
 }
 
-/**
- * Return the master gain node (and lazily ensure the AudioContext exists).
- * instruments.js calls this when starting a recording so it can connect
- * this module's output to the shared MediaStreamDestination.
- *
- * Returns null if the Web Audio API is unavailable.
- */
-export function getDrumAudioOutput() {
-  ensureAudioContext();
-  return drumGain ?? null;
-}
 
-/**
- * Return the AudioContext used by this module, or null if not yet created.
- * instruments.js needs this to create a MediaStreamDestination on the same
- * context — Web Audio nodes cannot be shared across different contexts.
- */
-export function getDrumAudioContext() {
-  return audioCtx ?? null;
-}
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 

@@ -115,11 +115,17 @@ const PRESETS = {
 // ─── State ────────────────────────────────────────────────────────────────────
 
 /**
- * Web Audio context — either injected by instruments.js via setAudioContext()
- * (so all instruments share one context) or created lazily on first play.
+ * Web Audio context — injected by instruments.js via setSharedAudioContext()
+ * so all instruments share one context and can be recorded together.
+ * Falls back to a locally-created context if called standalone.
  */
 let audioCtx   = null;
-let masterGain = null;
+
+/**
+ * Per-module gain node that sits between bass oscillators and the shared masterGain.
+ * Bass voices → bassGain → sharedMasterGain → destination (+ recordingDest)
+ */
+let bassGain = null;
 
 /**
  * Optional extra destination node provided by instruments.js for recording.
@@ -172,20 +178,35 @@ const steps = Array.from({ length: STEPS }, () => ({
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
-function ensureAudioContext() {
-  if (audioCtx) return;
+/**
+ * Called by instruments.js at boot time to inject the shared AudioContext
+ * and the shared masterGain node. All bass voices connect into bassGain,
+ * which connects into sharedMasterGain — so bass audio flows through the
+ * same graph as the synth and drums, and is captured by the single recording
+ * destination that instruments.js attaches to sharedMasterGain.
+ *
+ * @param {AudioContext} ctx
+ * @param {GainNode} sharedMasterGain
+ */
+export function setSharedAudioContext(ctx, sharedMasterGain) {
+  audioCtx = ctx;
+  bassGain = ctx.createGain();
+  bassGain.gain.value = params.volume;
+  bassGain.connect(sharedMasterGain);
+}
 
+function ensureAudioContext() {
+  // If the shared context was injected, we're already good
+  if (audioCtx && bassGain) return;
+
+  // Fallback: create a standalone context (e.g. if used without instruments.js)
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
 
-  audioCtx   = new AC();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = params.volume;
-  masterGain.connect(audioCtx.destination);
-  // Re-wire to recording destination if one was registered before the context existed
-  if (recordingDestination) {
-    masterGain.connect(recordingDestination);
-  }
+  audioCtx  = new AC();
+  bassGain  = audioCtx.createGain();
+  bassGain.gain.value = params.volume;
+  bassGain.connect(audioCtx.destination);
 }
 
 /**
@@ -195,10 +216,10 @@ function ensureAudioContext() {
  */
 export function connectBassToRecordingDestination(dest) {
   recordingDestination = dest;
-  if (masterGain) {
-    masterGain.connect(dest);
+  if (bassGain) {
+    bassGain.connect(dest);
   }
-  // If masterGain doesn't exist yet, ensureAudioContext() will connect it
+  // If bassGain doesn't exist yet, ensureAudioContext() will connect it
   // when the context is first created.
 }
 
