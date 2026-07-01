@@ -46,11 +46,21 @@
 
     /* ── Transport bar ───────────────────────────────────────────────────── */
     .seq-transport {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: auto 1fr 1fr 1fr;
       align-items: center;
-      gap: 1em 1.5em;
+      gap: 0.75em 1.5em;
       margin-block-end: 1.25em;
+    }
+
+    @media (max-width: 700px) {
+      .seq-transport {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .seq-play-btn {
+        grid-column: 1 / -1;
+      }
     }
 
     .seq-play-btn {
@@ -78,22 +88,22 @@
 
     /* ── BPM / controls ──────────────────────────────────────────────────── */
     .control-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 60px 1fr 44px;
       align-items: center;
       gap: 0.75em;
-      flex: 1;
-      min-width: 180px;
+      min-width: 0;
     }
 
     .control-row label {
       font-size: 0.85em;
       opacity: 0.7;
       white-space: nowrap;
-      min-width: 60px;
     }
 
     .control-row input[type="range"] {
-      flex: 1;
+      width: 100%;
+      min-width: 0;
       height: 6px;
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.1);
@@ -129,13 +139,13 @@
     .control-value {
       font-size: 0.85em;
       opacity: 0.6;
-      min-width: 44px;
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
 
+    /* Select spans both the range and value columns */
     .control-row select {
-      flex: 1;
+      grid-column: 2 / -1;
       padding: 0.4em 0.6em;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -144,6 +154,7 @@
       font-family: "ballinger-mono", sans-serif;
       font-size: 0.9rem;
       cursor: pointer;
+      min-width: 0;
     }
 
     .control-row select option {
