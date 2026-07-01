@@ -18,3 +18,8 @@
   from = "/instruments"
   to = "/instruments.html"
   status = 200
+
+[[redirects]]
+  from = "/bass-sequencer"
+  to = "/bass-sequencer.html"
+  status = 200
