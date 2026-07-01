@@ -114,9 +114,18 @@ const PRESETS = {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-/** Web Audio context — created lazily on first play. */
+/**
+ * Web Audio context — injected by instruments.js via setSharedAudioContext()
+ * so all instruments share one context and can be recorded together.
+ * Falls back to a locally-created context if called standalone.
+ */
 let audioCtx   = null;
-let masterGain = null;
+
+/**
+ * Per-module gain node that sits between bass oscillators and the shared masterGain.
+ * Bass voices → bassGain → sharedMasterGain → destination (+ recordingDest)
+ */
+let bassGain = null;
 
 /** Whether the sequencer is currently running. */
 let isPlaying = false;
@@ -163,21 +172,40 @@ const steps = Array.from({ length: STEPS }, () => ({
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
-function ensureAudioContext() {
-  if (audioCtx) return;
+/**
+ * Called by instruments.js at boot time to inject the shared AudioContext
+ * and the shared masterGain node. All bass voices connect into bassGain,
+ * which connects into sharedMasterGain — so bass audio flows through the
+ * same graph as the synth and drums, and is captured by the single recording
+ * destination that instruments.js attaches to sharedMasterGain.
+ *
+ * @param {AudioContext} ctx
+ * @param {GainNode} sharedMasterGain
+ */
+export function setSharedAudioContext(ctx, sharedMasterGain) {
+  audioCtx = ctx;
+  bassGain = ctx.createGain();
+  bassGain.gain.value = params.volume;
+  bassGain.connect(sharedMasterGain);
+}
 
+function ensureAudioContext() {
+  // If the shared context was injected, we're already good
+  if (audioCtx && bassGain) return;
+
+  // Fallback: create a standalone context (e.g. if used without instruments.js)
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
 
-  audioCtx   = new AC();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = params.volume;
-  masterGain.connect(audioCtx.destination);
+  audioCtx  = new AC();
+  bassGain  = audioCtx.createGain();
+  bassGain.gain.value = params.volume;
+  bassGain.connect(audioCtx.destination);
 }
 
 /** Schedule a single bass note at a precise AudioContext time. */
 function scheduleNote(freq, startTime, stepDur) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !bassGain) return;
 
   const noteDuration = stepDur * params.noteLen;
 
@@ -203,7 +231,7 @@ function scheduleNote(freq, startTime, stepDur) {
   envGain.gain.linearRampToValueAtTime(0, releaseEnd);
 
   osc.connect(envGain);
-  envGain.connect(masterGain);
+  envGain.connect(bassGain);
   osc.start(startTime);
   osc.stop(releaseEnd + 0.01);
 }
@@ -476,8 +504,8 @@ function initControls() {
   volInput?.addEventListener('input', () => {
     params.volume = parseFloat(volInput.value);
     if (volValue) volValue.textContent = `${Math.round(params.volume * 100)}%`;
-    if (masterGain && audioCtx) {
-      masterGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
+    if (bassGain && audioCtx) {
+      bassGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
     }
   });
   if (volValue && volInput) {

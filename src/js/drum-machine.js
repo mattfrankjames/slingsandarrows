@@ -38,9 +38,18 @@ const SCHEDULE_INTERVAL_MS = 50.0;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-/** Web Audio context — created lazily on first play. */
+/**
+ * Web Audio context — injected by instruments.js via setSharedAudioContext()
+ * so all instruments share one context and can be recorded together.
+ * Falls back to a locally-created context if called standalone.
+ */
 let audioCtx   = null;
-let masterGain = null;
+
+/**
+ * Per-module gain node that sits between drum voices and the shared drumGain.
+ * Drum voices → drumGain → sharedMasterGain → destination (+ recordingDest)
+ */
+let drumGain = null;
 
 /** Whether the sequencer is currently running. */
 let isPlaying = false;
@@ -123,19 +132,38 @@ const PRESETS = {
 
 // ─── Audio context ────────────────────────────────────────────────────────────
 
+/**
+ * Called by instruments.js at boot time to inject the shared AudioContext
+ * and the shared drumGain node. All drum voices connect into drumGain,
+ * which connects into sharedMasterGain — so drum audio flows through the
+ * same graph as the synth and bass, and is captured by the single recording
+ * destination that instruments.js attaches to sharedMasterGain.
+ *
+ * @param {AudioContext} ctx
+ * @param {GainNode} sharedMasterGain
+ */
+export function setSharedAudioContext(ctx, sharedMasterGain) {
+  audioCtx = ctx;
+  drumGain = ctx.createGain();
+  drumGain.gain.value = params.volume;
+  drumGain.connect(sharedMasterGain);
+}
+
 function ensureAudioContext() {
-  if (audioCtx) {
+  // If the shared context was injected, we're already good
+  if (audioCtx && drumGain) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return;
   }
 
+  // Fallback: create a standalone context (e.g. if used without instruments.js)
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
 
-  audioCtx   = new AC();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = params.volume;
-  masterGain.connect(audioCtx.destination);
+  audioCtx  = new AC();
+  drumGain  = audioCtx.createGain();
+  drumGain.gain.value = params.volume;
+  drumGain.connect(audioCtx.destination);
 }
 
 // ─── Drum synthesis ───────────────────────────────────────────────────────────
@@ -145,13 +173,13 @@ function ensureAudioContext() {
  * from kickPitch down to near-silence, shaped by an exponential gain envelope.
  */
 function playKick(time) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !drumGain) return;
 
   const osc  = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
 
   osc.connect(gain);
-  gain.connect(masterGain);
+  gain.connect(drumGain);
 
   osc.type = 'sine';
   osc.frequency.setValueAtTime(params.kickPitch, time);
@@ -169,7 +197,7 @@ function playKick(time) {
  * High-pass filter at 3 kHz gives the crisp "snap" of a snare.
  */
 function playSnare(time) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !drumGain) return;
 
   const bufferLen  = Math.ceil(audioCtx.sampleRate * params.snareDecay);
   const noiseBuffer = audioCtx.createBuffer(1, bufferLen, audioCtx.sampleRate);
@@ -192,7 +220,7 @@ function playSnare(time) {
 
   noise.connect(filter);
   filter.connect(gain);
-  gain.connect(masterGain);
+  gain.connect(drumGain);
 
   noise.start(time);
   noise.stop(time + params.snareDecay + 0.01);
@@ -202,7 +230,7 @@ function playSnare(time) {
  * Synthesise a closed hi-hat: short burst of very high-pass filtered noise.
  */
 function playHihat(time) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !drumGain) return;
 
   const bufferLen   = Math.ceil(audioCtx.sampleRate * params.hihatDecay);
   const noiseBuffer = audioCtx.createBuffer(1, bufferLen, audioCtx.sampleRate);
@@ -225,7 +253,7 @@ function playHihat(time) {
 
   noise.connect(filter);
   filter.connect(gain);
-  gain.connect(masterGain);
+  gain.connect(drumGain);
 
   noise.start(time);
   noise.stop(time + params.hihatDecay + 0.01);
@@ -236,13 +264,13 @@ function playHihat(time) {
  * lower in pitch and longer in decay than the kick.
  */
 function playTom(time) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !drumGain) return;
 
   const osc  = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
 
   osc.connect(gain);
-  gain.connect(masterGain);
+  gain.connect(drumGain);
 
   osc.type = 'sine';
   osc.frequency.setValueAtTime(220, time);
@@ -473,8 +501,8 @@ function initControls() {
   volInput?.addEventListener('input', () => {
     params.volume = parseFloat(volInput.value);
     if (volValue) volValue.textContent = `${Math.round(params.volume * 100)}%`;
-    if (masterGain && audioCtx) {
-      masterGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
+    if (drumGain && audioCtx) {
+      drumGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
     }
   });
   if (volValue && volInput) {
@@ -493,6 +521,8 @@ export function setDrumBpm(bpm) {
 export function stopDrumMachine() {
   if (isPlaying) stopSequencer();
 }
+
+
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 

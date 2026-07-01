@@ -855,6 +855,136 @@
 
     /* ── Hidden utility ──────────────────────────────────────────────────── */
     [hidden] { display: none !important; }
+
+    /* ── Recording controls ──────────────────────────────────────────────────── */
+    .record-btn {
+      background: rgba(245, 168, 168, 0.12);
+      border: 1px solid rgba(245, 168, 168, 0.45);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.9rem;
+      padding: 0.5em 1.25em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s, border-color 0.2s;
+      letter-spacing: -0.03ch;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 110px;
+    }
+
+    .record-btn:hover {
+      background: rgba(245, 168, 168, 0.2);
+      border-color: rgba(245, 168, 168, 0.7);
+    }
+
+    .record-btn[aria-pressed="true"] {
+      background: rgba(245, 168, 168, 0.25);
+      border-color: #f5a8a8;
+      animation: record-pulse 1s infinite;
+    }
+
+    @keyframes record-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .record-time {
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85em;
+      opacity: 0.7;
+      min-width: 2.5em;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Recordings section ──────────────────────────────────────────────────── */
+    .recordings-section {
+      margin-block-start: 3em;
+      padding-block-start: 2em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .recordings-container {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .recordings-container h3 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
+      margin-block-end: 1em;
+    }
+
+    .recording-card {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 1em 1.25em;
+      margin-block-end: 1em;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1em;
+      flex-wrap: wrap;
+    }
+
+    .recording-info {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .recording-name {
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.95em;
+      margin-block-end: 0.3em;
+      word-break: break-word;
+    }
+
+    .recording-meta {
+      font-size: 0.8em;
+      opacity: 0.6;
+    }
+
+    .recording-controls {
+      display: flex;
+      gap: 0.5em;
+      flex-wrap: wrap;
+    }
+
+    .recording-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s;
+      letter-spacing: -0.05ch;
+    }
+
+    .recording-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .recording-btn--delete {
+      border-color: rgba(245, 168, 168, 0.35);
+      color: #f5a8a8;
+    }
+
+    .recording-btn--delete:hover {
+      background: rgba(245, 168, 168, 0.12);
+    }
+
+    audio {
+      width: 100%;
+      max-width: 300px;
+      height: 32px;
+    }
   </style>
 </head>
 <body>
@@ -886,6 +1016,16 @@
             aria-label="Stop all sequencers">
             ■ Stop All
           </button>
+          <div style="display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap;">
+            <button class="record-btn" id="record-btn" type="button"
+              aria-pressed="false" aria-label="Start recording (R)">
+              ● Record
+            </button>
+            <span class="record-time" id="record-time" hidden>0:00</span>
+            <span style="font-size:0.78em; opacity:0.5; font-family:'ballinger-mono',sans-serif;">
+              Start sequencers first to include them
+            </span>
+          </div>
         </div>
 
         <!-- ── Tab navigation ────────────────────────────────────────────── -->
@@ -989,6 +1129,7 @@
               <strong>White keys:</strong> Z X C V B N M<br>
               <strong>Black keys:</strong> S D &nbsp; G H J<br>
               <strong>Octave:</strong> ↑ / ↓ arrow keys<br>
+              <strong>Record:</strong> R (toggle start/stop)<br>
               <strong>MIDI:</strong> Connect a device to play automatically
             </div>
           </div>
@@ -1138,6 +1279,15 @@
         </div><!-- /panel-bass -->
 
       </div><!-- /.instruments-container -->
+
+      <!-- Recordings list (appears when recordings exist) -->
+      <div class="recordings-section" id="recordings-section" hidden>
+        <div class="recordings-container">
+          <h3>Recordings</h3>
+          <div id="recordings-list"></div>
+        </div>
+      </div>
+
     </main>
 
     <footer class="p-4 text-white text-center">
