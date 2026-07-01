@@ -203,20 +203,6 @@ function ensureAudioContext() {
   bassGain.connect(audioCtx.destination);
 }
 
-/**
- * Connect masterGain to an additional destination node (e.g. a
- * MediaStreamDestination) so this module's audio is captured for recording.
- * Safe to call before or after the AudioContext is created.
- */
-export function connectBassToRecordingDestination(dest) {
-  recordingDestination = dest;
-  if (bassGain) {
-    bassGain.connect(dest);
-  }
-  // If bassGain doesn't exist yet, ensureAudioContext() will connect it
-  // when the context is first created.
-}
-
 /** Schedule a single bass note at a precise AudioContext time. */
 function scheduleNote(freq, startTime, stepDur) {
   if (!audioCtx || !bassGain) return;
