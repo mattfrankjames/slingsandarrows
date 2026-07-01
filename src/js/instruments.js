@@ -695,11 +695,31 @@ function initUniversalTransport() {
 }
 
 // ─── Recording System ─────────────────────────────────────────────────────────
+//
+// All three instruments (synth, drum machine, bass sequencer) share the single
+// AudioContext owned by instruments.js. The drum and bass modules receive this
+// context via setSharedAudioContext() at boot time, so every node in every
+// module belongs to the same context graph.
+//
+// This means we only need ONE MediaStreamDestination — we connect the shared
+// masterGain (which already receives all instrument output through the mixer
+// gain nodes exported by each module) to that destination and record it.
+//
+// Architecture:
+//   synthEnvGain  ──┐
+//   drumMasterGain──┤──► sharedMasterGain ──► audioCtx.destination
+//   bassMasterGain──┘         │
+//                             └──► recordingDest (when recording)
+//
+// ─────────────────────────────────────────────────────────────────────────────
 
 let mediaRecorder = null;
 let recordingChunks = [];
 let recordingStartTime = 0;
 let recordingTimerInterval = null;
+
+/** Persistent MediaStreamDestination — created once and kept alive. */
+let recordingDest = null;
 
 /**
  * In-memory list of completed recordings.
@@ -726,90 +746,51 @@ function getSupportedMimeType() {
 }
 
 /**
- * Wire up the MediaStreamDestination the first time recording starts.
- * We defer this until the AudioContext is confirmed running so we don't
- * accidentally create a context before a user gesture on iOS.
+ * Ensure the shared AudioContext exists, then wire all instrument gain nodes
+ * through a single MediaStreamDestination. Safe to call multiple times —
+ * subsequent calls are no-ops once recordingDest is created.
  *
- * All three instruments (synth, drum machine, bass sequencer) each have their
- * own AudioContext and masterGain. To capture them all in one recording we
- * create a MediaStreamDestination on the synth's context and then connect
- * each module's masterGain to that same destination node.
- *
- * The drum machine and bass sequencer use their own AudioContexts, which means
- * we cannot share a single MediaStreamDestination across them directly —
- * Web Audio nodes cannot be shared across different contexts. Instead we ask
- * each module to create its own MediaStreamDestination and merge the resulting
- * tracks into one MediaStream that MediaRecorder can consume.
+ * Returns true if everything is ready, false if the AudioContext isn't up yet.
  */
-function initRecording() {
+function ensureRecordingDest() {
+  // AudioContext must exist before we can create any nodes
+  ensureAudioContext();
   if (!audioCtx || !masterGain) return false;
 
-  // ── Synth stream ─────────────────────────────────────────────────────────
-  const synthDest = audioCtx.createMediaStreamDestination();
-  masterGain.connect(synthDest);
+  if (recordingDest) return true; // already set up
 
-  // ── Drum stream ──────────────────────────────────────────────────────────
-  // If the drum machine has already been started (its AudioContext exists),
-  // create a destination on that context and connect it now. If it hasn't
-  // started yet, we still register the destination callback — when the drum
-  // machine first plays and creates its own AudioContext, ensureAudioContext()
-  // will wire masterGain → the destination at that point. We create the
-  // destination on the drum context so the node belongs to the right context.
-  //
-  // If the drum module hasn't started yet we skip adding its track to the
-  // merged stream (it has no audio to record yet anyway). Once it starts and
-  // the destination is connected, the MediaRecorder is already running and
-  // will automatically pick up the new track because MediaStream is live.
-  let drumTracks = [];
-  const drumCtx = getDrumAudioContext();
-  if (drumCtx) {
-    const drumDest = drumCtx.createMediaStreamDestination();
-    connectDrumToRecordingDestination(drumDest);
-    drumTracks = drumDest.stream.getAudioTracks();
-  } else {
-    // Register a placeholder so that when the drum module first creates its
-    // AudioContext it will call connectDrumToRecordingDestination on its own
-    // context. We pass null here; the module will create the destination itself
-    // when ensureAudioContext runs. Actually — we need to set the destination
-    // before the context exists. The cleanest solution: store a factory
-    // function in the module. But since we can't do that without a bigger
-    // refactor, we simply defer: if the user starts drums after hitting Record,
-    // those drums won't be in the current recording session. The UI note below
-    // documents this limitation.
-    console.info('[recording] Drum machine not yet started — drums will not be in this recording unless started before pressing Record.');
+  // Create the destination on the shared context
+  recordingDest = audioCtx.createMediaStreamDestination();
+
+  // Connect the shared master gain → recording destination.
+  // Because drum and bass modules write into this same masterGain (they call
+  // setSharedAudioContext which gives them the same audioCtx and they connect
+  // their own gain nodes into this masterGain), all audio flows through here.
+  masterGain.connect(recordingDest);
+
+  return true;
+}
+
+function startRecording() {
+  // Make sure the AudioContext and recording destination are ready
+  if (!ensureRecordingDest()) {
+    console.warn('[recording] AudioContext not ready — click anywhere on the page first to unlock audio, then try again.');
+    return;
   }
 
-  // ── Bass stream ──────────────────────────────────────────────────────────
-  let bassTracks = [];
-  const bassCtx = getBassAudioContext();
-  if (bassCtx) {
-    const bassDest = bassCtx.createMediaStreamDestination();
-    connectBassToRecordingDestination(bassDest);
-    bassTracks = bassDest.stream.getAudioTracks();
-  } else {
-    console.info('[recording] Bass sequencer not yet started — bass will not be in this recording unless started before pressing Record.');
-  }
-
-  // ── Merge all tracks into one MediaStream ────────────────────────────────
-  // MediaRecorder accepts a MediaStream; we collect all audio tracks from
-  // each per-instrument stream and combine them into one stream object.
-  const allTracks = [
-    ...synthDest.stream.getAudioTracks(),
-    ...drumTracks,
-    ...bassTracks,
-  ];
-  const mergedStream = new MediaStream(allTracks);
-
+  // Create a fresh MediaRecorder each time so we get a clean recording
   const mimeType = getSupportedMimeType();
   try {
     mediaRecorder = new MediaRecorder(
-      mergedStream,
+      recordingDest.stream,
       mimeType ? { mimeType } : {}
     );
   } catch (err) {
     console.warn('[recording] MediaRecorder init failed:', err);
-    return false;
+    return;
   }
+
+  recordingChunks = [];
 
   mediaRecorder.ondataavailable = e => {
     if (e.data && e.data.size > 0) recordingChunks.push(e.data);
@@ -825,25 +806,6 @@ function initRecording() {
     renderRecordings();
   };
 
-  return true;
-}
-
-function startRecording() {
-  // Ensure audio context is running first
-  ensureAudioContext();
-
-  // Always re-initialise the MediaRecorder so we capture whichever instruments
-  // are currently running. This means the drum machine / bass sequencer must
-  // be started *before* pressing Record for their audio to be included.
-  mediaRecorder = null;
-  if (!initRecording()) {
-    console.warn('[recording] Could not initialise MediaRecorder');
-    return;
-  }
-
-  if (mediaRecorder.state === 'recording') return;
-
-  recordingChunks = [];
   recordingStartTime = Date.now();
   mediaRecorder.start();
 
@@ -992,8 +954,8 @@ function attachRecordButton() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-import { initDrumMachine, setDrumBpm, stopDrumMachine, connectDrumToRecordingDestination, getDrumAudioContext } from './drum-machine.js';
-import { initBassSequencer, setBassBpm, stopBassSequencer, connectBassToRecordingDestination, getBassAudioContext } from './bass-sequencer.js';
+import { initDrumMachine, setDrumBpm, stopDrumMachine } from './drum-machine.js';
+import { initBassSequencer, setBassBpm, stopBassSequencer } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
