@@ -976,7 +976,6 @@ if (audioCtx && masterGain) {
 }
 
 // Also inject after the first user gesture resolves the AudioContext on iOS
-const _origInitAudioContext = initAudioContext;
 document.addEventListener('click', () => {
   if (audioCtx && masterGain) {
     setDrumContext(audioCtx, masterGain);

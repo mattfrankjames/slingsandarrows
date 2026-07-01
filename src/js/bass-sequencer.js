@@ -127,12 +127,6 @@ let audioCtx   = null;
  */
 let bassGain = null;
 
-/**
- * Optional extra destination node provided by instruments.js for recording.
- * When set, masterGain is also connected here so the bass output is captured.
- */
-let recordingDestination = null;
-
 /** Whether the sequencer is currently running. */
 let isPlaying = false;
 
