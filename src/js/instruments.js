@@ -425,6 +425,17 @@ function handleKeyDown(e) {
     return;
   }
 
+  // R — toggle recording
+  if (e.key.toLowerCase() === 'r') {
+    e.preventDefault();
+    if (mediaRecorder?.state === 'recording') {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+    return;
+  }
+
   const note = KB_MAP[e.key.toLowerCase()];
   if (!note || heldKeys.has(e.key.toLowerCase())) return;
 
@@ -683,10 +694,306 @@ function initUniversalTransport() {
   }
 }
 
+// ─── Recording System ─────────────────────────────────────────────────────────
+
+let mediaRecorder = null;
+let recordingChunks = [];
+let recordingStartTime = 0;
+let recordingTimerInterval = null;
+
+/**
+ * In-memory list of completed recordings.
+ * Each entry: { blob: Blob, name: string, duration: number }
+ */
+const recordings = [];
+
+/**
+ * Pick the best supported MIME type for MediaRecorder.
+ * Safari 14.1+ supports audio/mp4; Chrome/Firefox prefer audio/webm;codecs=opus.
+ * Falls back to the empty string (browser default) if neither is supported.
+ */
+function getSupportedMimeType() {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return ''; // let the browser decide
+}
+
+/**
+ * Wire up the MediaStreamDestination the first time recording starts.
+ * We defer this until the AudioContext is confirmed running so we don't
+ * accidentally create a context before a user gesture on iOS.
+ *
+ * All three instruments (synth, drum machine, bass sequencer) each have their
+ * own AudioContext and masterGain. To capture them all in one recording we
+ * create a MediaStreamDestination on the synth's context and then connect
+ * each module's masterGain to that same destination node.
+ *
+ * The drum machine and bass sequencer use their own AudioContexts, which means
+ * we cannot share a single MediaStreamDestination across them directly —
+ * Web Audio nodes cannot be shared across different contexts. Instead we ask
+ * each module to create its own MediaStreamDestination and merge the resulting
+ * tracks into one MediaStream that MediaRecorder can consume.
+ */
+function initRecording() {
+  if (!audioCtx || !masterGain) return false;
+
+  // ── Synth stream ─────────────────────────────────────────────────────────
+  const synthDest = audioCtx.createMediaStreamDestination();
+  masterGain.connect(synthDest);
+
+  // ── Drum stream ──────────────────────────────────────────────────────────
+  // If the drum machine has already been started (its AudioContext exists),
+  // create a destination on that context and connect it now. If it hasn't
+  // started yet, we still register the destination callback — when the drum
+  // machine first plays and creates its own AudioContext, ensureAudioContext()
+  // will wire masterGain → the destination at that point. We create the
+  // destination on the drum context so the node belongs to the right context.
+  //
+  // If the drum module hasn't started yet we skip adding its track to the
+  // merged stream (it has no audio to record yet anyway). Once it starts and
+  // the destination is connected, the MediaRecorder is already running and
+  // will automatically pick up the new track because MediaStream is live.
+  let drumTracks = [];
+  const drumCtx = getDrumAudioContext();
+  if (drumCtx) {
+    const drumDest = drumCtx.createMediaStreamDestination();
+    connectDrumToRecordingDestination(drumDest);
+    drumTracks = drumDest.stream.getAudioTracks();
+  } else {
+    // Register a placeholder so that when the drum module first creates its
+    // AudioContext it will call connectDrumToRecordingDestination on its own
+    // context. We pass null here; the module will create the destination itself
+    // when ensureAudioContext runs. Actually — we need to set the destination
+    // before the context exists. The cleanest solution: store a factory
+    // function in the module. But since we can't do that without a bigger
+    // refactor, we simply defer: if the user starts drums after hitting Record,
+    // those drums won't be in the current recording session. The UI note below
+    // documents this limitation.
+    console.info('[recording] Drum machine not yet started — drums will not be in this recording unless started before pressing Record.');
+  }
+
+  // ── Bass stream ──────────────────────────────────────────────────────────
+  let bassTracks = [];
+  const bassCtx = getBassAudioContext();
+  if (bassCtx) {
+    const bassDest = bassCtx.createMediaStreamDestination();
+    connectBassToRecordingDestination(bassDest);
+    bassTracks = bassDest.stream.getAudioTracks();
+  } else {
+    console.info('[recording] Bass sequencer not yet started — bass will not be in this recording unless started before pressing Record.');
+  }
+
+  // ── Merge all tracks into one MediaStream ────────────────────────────────
+  // MediaRecorder accepts a MediaStream; we collect all audio tracks from
+  // each per-instrument stream and combine them into one stream object.
+  const allTracks = [
+    ...synthDest.stream.getAudioTracks(),
+    ...drumTracks,
+    ...bassTracks,
+  ];
+  const mergedStream = new MediaStream(allTracks);
+
+  const mimeType = getSupportedMimeType();
+  try {
+    mediaRecorder = new MediaRecorder(
+      mergedStream,
+      mimeType ? { mimeType } : {}
+    );
+  } catch (err) {
+    console.warn('[recording] MediaRecorder init failed:', err);
+    return false;
+  }
+
+  mediaRecorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) recordingChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    const blobType = mediaRecorder.mimeType || 'audio/webm';
+    const blob = new Blob(recordingChunks, { type: blobType });
+    const duration = (Date.now() - recordingStartTime) / 1000;
+    const name = `Recording ${new Date().toLocaleTimeString()}`;
+    recordings.push({ blob, name, duration });
+    recordingChunks = [];
+    renderRecordings();
+  };
+
+  return true;
+}
+
+function startRecording() {
+  // Ensure audio context is running first
+  ensureAudioContext();
+
+  // Always re-initialise the MediaRecorder so we capture whichever instruments
+  // are currently running. This means the drum machine / bass sequencer must
+  // be started *before* pressing Record for their audio to be included.
+  mediaRecorder = null;
+  if (!initRecording()) {
+    console.warn('[recording] Could not initialise MediaRecorder');
+    return;
+  }
+
+  if (mediaRecorder.state === 'recording') return;
+
+  recordingChunks = [];
+  recordingStartTime = Date.now();
+  mediaRecorder.start();
+
+  // Update button UI
+  const recordBtn = document.getElementById('record-btn');
+  if (recordBtn) {
+    recordBtn.setAttribute('aria-pressed', 'true');
+    recordBtn.textContent = '⏹ Stop';
+  }
+
+  // Show and start the elapsed-time counter
+  const recordTime = document.getElementById('record-time');
+  if (recordTime) {
+    recordTime.hidden = false;
+    recordTime.textContent = '0:00';
+  }
+
+  recordingTimerInterval = setInterval(() => {
+    const elapsed = (Date.now() - recordingStartTime) / 1000;
+    const mins = Math.floor(elapsed / 60);
+    const secs = Math.floor(elapsed % 60);
+    if (recordTime) {
+      recordTime.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+  }, 250);
+}
+
+function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+
+  mediaRecorder.stop();
+  clearInterval(recordingTimerInterval);
+  recordingTimerInterval = null;
+
+  // Reset button UI
+  const recordBtn = document.getElementById('record-btn');
+  if (recordBtn) {
+    recordBtn.setAttribute('aria-pressed', 'false');
+    recordBtn.textContent = '● Record';
+  }
+
+  const recordTime = document.getElementById('record-time');
+  if (recordTime) {
+    recordTime.hidden = true;
+    recordTime.textContent = '0:00';
+  }
+}
+
+/**
+ * Re-render the recordings list section.
+ * Called after every add or delete.
+ */
+function renderRecordings() {
+  const section = document.getElementById('recordings-section');
+  const list    = document.getElementById('recordings-list');
+  if (!section || !list) return;
+
+  if (recordings.length === 0) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  list.innerHTML = '';
+
+  recordings.forEach((recording, index) => {
+    const card = document.createElement('div');
+    card.className = 'recording-card';
+
+    const mins = Math.floor(recording.duration / 60);
+    const secs = Math.floor(recording.duration % 60);
+    const durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+    // Create a fresh object URL for each render pass
+    const url    = URL.createObjectURL(recording.blob);
+    const sizeKB = (recording.blob.size / 1024).toFixed(1);
+
+    card.innerHTML = `
+      <div class="recording-info">
+        <div class="recording-name">${recording.name}</div>
+        <div class="recording-meta">${durationStr} • ${sizeKB} KB</div>
+      </div>
+      <audio controls src="${url}" preload="metadata"></audio>
+      <div class="recording-controls">
+        <button class="recording-btn" data-index="${index}" data-action="download"
+          aria-label="Download ${recording.name}">
+          ↓ Download
+        </button>
+        <button class="recording-btn recording-btn--delete" data-index="${index}" data-action="delete"
+          aria-label="Delete ${recording.name}">
+          ✕ Delete
+        </button>
+      </div>
+    `;
+
+    list.appendChild(card);
+  });
+
+  // Attach event listeners after innerHTML is set
+  list.querySelectorAll('[data-action="download"]').forEach(btn => {
+    btn.addEventListener('click', () => downloadRecording(parseInt(btn.dataset.index, 10)));
+  });
+
+  list.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.addEventListener('click', () => deleteRecording(parseInt(btn.dataset.index, 10)));
+  });
+}
+
+function downloadRecording(index) {
+  const recording = recordings[index];
+  if (!recording) return;
+
+  const url  = URL.createObjectURL(recording.blob);
+  const ext  = recording.blob.type.includes('mp4') ? 'mp4' : 'webm';
+  const filename = `${recording.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+
+  const a = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Revoke after a short delay to allow the download to start
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function deleteRecording(index) {
+  recordings.splice(index, 1);
+  renderRecordings();
+}
+
+/** Wire up the record button toggle. */
+function attachRecordButton() {
+  const recordBtn = document.getElementById('record-btn');
+  if (!recordBtn) return;
+
+  recordBtn.addEventListener('click', () => {
+    if (mediaRecorder?.state === 'recording') {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  });
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-import { initDrumMachine, setDrumBpm, stopDrumMachine } from './drum-machine.js';
-import { initBassSequencer, setBassBpm, stopBassSequencer } from './bass-sequencer.js';
+import { initDrumMachine, setDrumBpm, stopDrumMachine, connectDrumToRecordingDestination, getDrumAudioContext } from './drum-machine.js';
+import { initBassSequencer, setBassBpm, stopBassSequencer, connectBassToRecordingDestination, getBassAudioContext } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
@@ -694,6 +1001,7 @@ initMidi();
 initTabs();
 initUniversalTransport();
 initDrumMachine();
+attachRecordButton();
 
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup',   handleKeyUp);

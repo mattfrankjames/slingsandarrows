@@ -114,9 +114,18 @@ const PRESETS = {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-/** Web Audio context — created lazily on first play. */
+/**
+ * Web Audio context — either injected by instruments.js via setAudioContext()
+ * (so all instruments share one context) or created lazily on first play.
+ */
 let audioCtx   = null;
 let masterGain = null;
+
+/**
+ * Optional extra destination node provided by instruments.js for recording.
+ * When set, masterGain is also connected here so the bass output is captured.
+ */
+let recordingDestination = null;
 
 /** Whether the sequencer is currently running. */
 let isPlaying = false;
@@ -173,6 +182,24 @@ function ensureAudioContext() {
   masterGain = audioCtx.createGain();
   masterGain.gain.value = params.volume;
   masterGain.connect(audioCtx.destination);
+  // Re-wire to recording destination if one was registered before the context existed
+  if (recordingDestination) {
+    masterGain.connect(recordingDestination);
+  }
+}
+
+/**
+ * Connect masterGain to an additional destination node (e.g. a
+ * MediaStreamDestination) so this module's audio is captured for recording.
+ * Safe to call before or after the AudioContext is created.
+ */
+export function connectBassToRecordingDestination(dest) {
+  recordingDestination = dest;
+  if (masterGain) {
+    masterGain.connect(dest);
+  }
+  // If masterGain doesn't exist yet, ensureAudioContext() will connect it
+  // when the context is first created.
 }
 
 /** Schedule a single bass note at a precise AudioContext time. */
@@ -517,6 +544,27 @@ export function setBassBpm(bpm) {
 /** Allow instruments.js to stop this sequencer externally. */
 export function stopBassSequencer() {
   if (isPlaying) stopSequencer();
+}
+
+/**
+ * Return the master gain node (and lazily ensure the AudioContext exists).
+ * instruments.js calls this when starting a recording so it can connect
+ * this module's output to the shared MediaStreamDestination.
+ *
+ * Returns null if the Web Audio API is unavailable.
+ */
+export function getBassAudioOutput() {
+  ensureAudioContext();
+  return masterGain ?? null;
+}
+
+/**
+ * Return the AudioContext used by this module, or null if not yet created.
+ * instruments.js needs this to create a MediaStreamDestination on the same
+ * context — Web Audio nodes cannot be shared across different contexts.
+ */
+export function getBassAudioContext() {
+  return audioCtx ?? null;
 }
 
 /**
