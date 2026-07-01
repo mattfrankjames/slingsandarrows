@@ -617,10 +617,6 @@ function initTabs() {
 
   const tabs   = [...tabList.querySelectorAll('[role="tab"]')];
   const panels = tabs.map(t => document.getElementById(t.getAttribute('aria-controls')));
-  const universalTransport = document.getElementById('universal-transport');
-
-  // Sequencer tabs that should show the universal transport
-  const seqTabIds = new Set(['tab-drums', 'tab-bass']);
 
   function activateTab(tab) {
     tabs.forEach((t, i) => {
@@ -630,11 +626,6 @@ function initTabs() {
         panels[i].classList.toggle('tab-panel--active', isSelected);
       }
     });
-
-    // Show/hide universal transport for sequencer tabs
-    if (universalTransport) {
-      universalTransport.hidden = !seqTabIds.has(tab.id);
-    }
 
     // Lazily initialise the bass sequencer the first time its tab is shown
     if (tab.id === 'tab-bass') {
