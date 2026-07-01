@@ -6,14 +6,10 @@ function getUserFromRequest(req, context) {
     return context.clientContext.user;
   }
 
-<<<<<<< HEAD
   // Fall back to decoding the JWT payload from the Authorization header.
   // Netlify Identity tokens are signed JWTs — we decode (not verify) to read
   // the email claim. The signature was issued by Netlify Identity so it can't
   // be trivially forged, and the email allowlist is the real guard.
-=======
-  // Fall back to decoding the JWT payload from the Authorization header
->>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
   const auth = req.headers.get('Authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   if (!token) return null;
@@ -35,10 +31,7 @@ export default async (req, context) => {
   }
 
   try {
-<<<<<<< HEAD
     // ── Authentication ────────────────────────────────────────────────────
-=======
->>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
     const user = getUserFromRequest(req, context);
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -47,10 +40,7 @@ export default async (req, context) => {
       });
     }
 
-<<<<<<< HEAD
     // ── Authorization ─────────────────────────────────────────────────────
-=======
->>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
     const allowed = (process.env.ALLOWED_AUTHORS || '')
       .split(',')
       .map(e => e.trim().toLowerCase())
@@ -63,10 +53,7 @@ export default async (req, context) => {
       });
     }
 
-<<<<<<< HEAD
     // ── Parse request body ────────────────────────────────────────────────
-=======
->>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
     let body;
     try {
       body = await req.json();
@@ -85,10 +72,7 @@ export default async (req, context) => {
       });
     }
 
-<<<<<<< HEAD
     // ── Delete from Blobs ─────────────────────────────────────────────────
-=======
->>>>>>> 7e85b5b (fix: wire up delete-post function and auth on posts page)
     const store = getStore('posts');
     await store.delete(id);
 
