@@ -102,7 +102,8 @@
     }
 
     .control-row input[type="range"] {
-      flex: 1;
+      width: 100%;
+      min-width: 0;
       height: 6px;
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.1);
@@ -138,14 +139,13 @@
     .control-value {
       font-size: 0.85em;
       opacity: 0.6;
-      min-width: 44px;
       text-align: right;
       font-variant-numeric: tabular-nums;
-      padding-block-start: 0.35em;  /* Match label alignment */
     }
 
+    /* Select spans both the range and value columns */
     .control-row select {
-      flex: 1;
+      grid-column: 2 / -1;
       padding: 0.4em 0.6em;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -154,6 +154,7 @@
       font-family: "ballinger-mono", sans-serif;
       font-size: 0.9rem;
       cursor: pointer;
+      min-width: 0;
     }
 
     .control-row select option {
