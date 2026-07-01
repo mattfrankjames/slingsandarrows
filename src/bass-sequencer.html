@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Bass Sequencer</title>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="preconnect" href="https://res.cloudinary.com">
+  <link rel="preload" href="https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif"
+    as="image">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <meta name="description" content="16-step bass line sequencer — Slings & Arrows">
+  <style>
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    main {
+      backdrop-filter: blur(50px);
+      align-items: flex-start;
+    }
+
+    .seq-container {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ── Panel ───────────────────────────────────────────────────────────── */
+    .seq-panel {
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.5em;
+      margin-block-end: 1.5em;
+    }
+
+    .seq-panel h3 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(1rem, 1vw + 0.7rem, 1.4rem);
+      margin-block-end: 1em;
+    }
+
+    /* ── Transport bar ───────────────────────────────────────────────────── */
+    .seq-transport {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1em 1.5em;
+      margin-block-end: 1.25em;
+    }
+
+    .seq-play-btn {
+      background: rgba(168, 245, 168, 0.12);
+      border: 1px solid rgba(168, 245, 168, 0.45);
+      color: #a8f5a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.55em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+      min-width: 110px;
+    }
+
+    .seq-play-btn:hover {
+      background: rgba(168, 245, 168, 0.22);
+    }
+
+    .seq-play-btn[aria-pressed="true"] {
+      background: rgba(168, 245, 168, 0.2);
+      border-color: #a8f5a8;
+    }
+
+    /* ── BPM / controls ──────────────────────────────────────────────────── */
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .control-row label {
+      font-size: 0.85em;
+      opacity: 0.7;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    .control-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .control-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.65);
+      cursor: pointer;
+    }
+
+    .control-row input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.65);
+      cursor: pointer;
+      border: none;
+    }
+
+    .control-row input[type="range"]::-webkit-slider-thumb:hover {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .control-value {
+      font-size: 0.85em;
+      opacity: 0.6;
+      min-width: 44px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .control-row select {
+      flex: 1;
+      padding: 0.4em 0.6em;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 4px;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .control-row select option {
+      background: #111;
+    }
+
+    /* ── Preset buttons ──────────────────────────────────────────────────── */
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-block-end: 1.25em;
+    }
+
+    .preset-btn, .seq-clear-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s;
+      letter-spacing: -0.05ch;
+    }
+
+    .preset-btn:hover, .seq-clear-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .seq-clear-btn {
+      border-color: rgba(245, 168, 168, 0.35);
+      color: #f5a8a8;
+    }
+
+    .seq-clear-btn:hover {
+      background: rgba(245, 168, 168, 0.12);
+    }
+
+    /* ── Step grid ───────────────────────────────────────────────────────── */
+    #seq-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 0.35em;
+      margin-block-end: 1em;
+      overflow-x: auto;
+      padding-block-end: 0.5em;
+    }
+
+    @media (max-width: 600px) {
+      #seq-grid {
+        grid-template-columns: repeat(8, 1fr);
+      }
+    }
+
+    .seq-step-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3em;
+    }
+
+    /* Beat number marker above each group of 4 */
+    .seq-beat-mark {
+      font-size: 0.7em;
+      opacity: 0.45;
+      height: 1.1em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .seq-beat-mark--spacer {
+      visibility: hidden;
+    }
+
+    /* Step toggle button */
+    .seq-step {
+      width: 100%;
+      aspect-ratio: 1;
+      min-width: 2em;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, border-color 0.1s, transform 0.05s;
+      position: relative;
+      padding: 0;
+    }
+
+    .seq-step:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .seq-step--active {
+      background: rgba(168, 245, 168, 0.22);
+      border-color: rgba(168, 245, 168, 0.6);
+    }
+
+    .seq-step--active:hover {
+      background: rgba(168, 245, 168, 0.32);
+    }
+
+    /* Currently-playing step highlight */
+    .seq-step--playing {
+      background: rgba(168, 245, 168, 0.55) !important;
+      border-color: #a8f5a8 !important;
+      transform: translateY(-2px);
+    }
+
+    .seq-step-num {
+      font-size: 0.65em;
+      opacity: 0.4;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .seq-step--active .seq-step-num {
+      opacity: 0.7;
+    }
+
+    /* Note selector below each step */
+    .seq-note-select {
+      width: 100%;
+      padding: 0.15em 0.1em;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.75);
+      border-radius: 3px;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.68rem;
+      cursor: pointer;
+      text-align: center;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .seq-note-select:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .seq-note-select option {
+      background: #111;
+      color: white;
+    }
+
+    /* ── ADSR controls (collapsible) ─────────────────────────────────────── */
+    .seq-adsr-details {
+      margin-block-start: 0.5em;
+    }
+
+    .seq-adsr-details summary {
+      cursor: pointer;
+      font-size: 0.85em;
+      opacity: 0.65;
+      padding: 0.3em 0;
+      list-style: none;
+      user-select: none;
+    }
+
+    .seq-adsr-details summary::-webkit-details-marker { display: none; }
+
+    .seq-adsr-details summary::before {
+      content: '▸ ';
+      font-size: 0.8em;
+    }
+
+    .seq-adsr-details[open] summary::before {
+      content: '▾ ';
+    }
+
+    .adsr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75em 1.5em;
+      margin-block-start: 0.75em;
+    }
+
+    /* ── Intro text ──────────────────────────────────────────────────────── */
+    .intro-text {
+      opacity: 0.7;
+      margin-block-end: 1.5em;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    /* ── Hidden utility ──────────────────────────────────────────────────── */
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+    </header>
+
+    <main class="p-4" id="main-content">
+      <div class="seq-container">
+        <h2>Bass Sequencer</h2>
+        <p class="intro-text">
+          A 16-step bass line sequencer. Toggle steps on/off, pick a note for each step,
+          set your tempo and hit play. Try a preset to get started fast.
+        </p>
+
+        <!-- ── Main sequencer panel ──────────────────────────────────────── -->
+        <div class="seq-panel">
+
+          <!-- Transport + tempo -->
+          <div class="seq-transport">
+            <button class="seq-play-btn" id="seq-play-btn"
+              aria-pressed="false" aria-label="Play or stop the sequencer">
+              ▶ Play
+            </button>
+
+            <div class="control-row">
+              <label for="seq-bpm">BPM</label>
+              <input type="range" id="seq-bpm" min="40" max="240" step="1" value="120"
+                aria-label="Tempo in beats per minute">
+              <span class="control-value" id="seq-bpm-value">120</span>
+            </div>
+
+            <div class="control-row">
+              <label for="seq-note-len">Note</label>
+              <input type="range" id="seq-note-len" min="0.05" max="1" step="0.01" value="0.5"
+                aria-label="Note length as fraction of step">
+              <span class="control-value" id="seq-note-len-value">50%</span>
+            </div>
+
+            <div class="control-row">
+              <label for="seq-waveform">Wave</label>
+              <select id="seq-waveform" aria-label="Oscillator waveform">
+                <option value="sawtooth" selected>Sawtooth</option>
+                <option value="sine">Sine</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Presets -->
+          <div class="preset-row" role="group" aria-label="Pattern presets">
+            <button class="preset-btn" data-preset="classic" type="button">Classic</button>
+            <button class="preset-btn" data-preset="walking" type="button">Walking</button>
+            <button class="preset-btn" data-preset="funk"    type="button">Funk</button>
+            <button class="seq-clear-btn" id="seq-clear-btn" type="button">Clear</button>
+          </div>
+
+          <!-- Step grid -->
+          <div id="seq-grid" role="group" aria-label="16-step sequencer grid"></div>
+
+          <!-- Volume -->
+          <div class="control-row" style="margin-block-end: 0.5em;">
+            <label for="seq-volume">Volume</label>
+            <input type="range" id="seq-volume" min="0" max="1" step="0.01" value="0.5"
+              aria-label="Master volume">
+            <span class="control-value" id="seq-volume-value">50%</span>
+          </div>
+
+          <!-- ADSR (collapsed by default to keep UI clean) -->
+          <details class="seq-adsr-details">
+            <summary>Envelope (ADSR)</summary>
+            <div class="adsr-grid">
+              <div class="control-row">
+                <label for="seq-attack">Attack</label>
+                <input type="range" id="seq-attack" min="0.001" max="0.5" step="0.001" value="0.005"
+                  aria-label="Attack time">
+                <span class="control-value" id="seq-attack-value">5ms</span>
+              </div>
+              <div class="control-row">
+                <label for="seq-decay">Decay</label>
+                <input type="range" id="seq-decay" min="0.001" max="1" step="0.001" value="0.08"
+                  aria-label="Decay time">
+                <span class="control-value" id="seq-decay-value">80ms</span>
+              </div>
+              <div class="control-row">
+                <label for="seq-sustain">Sustain</label>
+                <input type="range" id="seq-sustain" min="0" max="1" step="0.01" value="0.5"
+                  aria-label="Sustain level">
+                <span class="control-value" id="seq-sustain-value">50%</span>
+              </div>
+              <div class="control-row">
+                <label for="seq-release">Release</label>
+                <input type="range" id="seq-release" min="0.001" max="2" step="0.001" value="0.15"
+                  aria-label="Release time">
+                <span class="control-value" id="seq-release-value">150ms</span>
+              </div>
+            </div>
+          </details>
+
+        </div><!-- /.seq-panel -->
+
+        <!-- How-to hint -->
+        <p style="font-size:0.82em; opacity:0.5; line-height:1.6;">
+          <strong style="opacity:0.9;">Steps:</strong> each column is a 16th note.
+          Click a step to activate it, then choose its note from the dropdown below.
+          Steps are grouped into 4 beats (numbered 1–4 above the grid).
+        </p>
+
+      </div><!-- /.seq-container -->
+    </main>
+
+    <footer class="p-4 text-white text-center">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./js/bass-sequencer.js"></script>
+</body>
+</html>
