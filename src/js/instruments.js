@@ -954,14 +954,36 @@ function attachRecordButton() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-import { initDrumMachine, setDrumBpm, stopDrumMachine } from './drum-machine.js';
-import { initBassSequencer, setBassBpm, stopBassSequencer } from './bass-sequencer.js';
+import { initDrumMachine, setDrumBpm, stopDrumMachine, setSharedAudioContext as setDrumContext } from './drum-machine.js';
+import { initBassSequencer, setBassBpm, stopBassSequencer, setSharedAudioContext as setBassContext } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
 initMidi();
 initTabs();
 initUniversalTransport();
+
+// Ensure the synth AudioContext is created before injecting it into the
+// sub-modules so all instruments share one context and one masterGain.
+// initAudioContext() is registered on click/touchstart, so we call
+// ensureAudioContext() here to create the context on desktop (no gesture
+// needed) and then inject it. On iOS the context is created on first gesture
+// via initAudioContext; we inject it at that point via the existing listeners.
+ensureAudioContext();
+if (audioCtx && masterGain) {
+  setDrumContext(audioCtx, masterGain);
+  setBassContext(audioCtx, masterGain);
+}
+
+// Also inject after the first user gesture resolves the AudioContext on iOS
+const _origInitAudioContext = initAudioContext;
+document.addEventListener('click', () => {
+  if (audioCtx && masterGain) {
+    setDrumContext(audioCtx, masterGain);
+    setBassContext(audioCtx, masterGain);
+  }
+}, { once: true, passive: true });
+
 initDrumMachine();
 attachRecordButton();
 

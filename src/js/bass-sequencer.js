@@ -225,7 +225,7 @@ export function connectBassToRecordingDestination(dest) {
 
 /** Schedule a single bass note at a precise AudioContext time. */
 function scheduleNote(freq, startTime, stepDur) {
-  if (!audioCtx || !masterGain) return;
+  if (!audioCtx || !bassGain) return;
 
   const noteDuration = stepDur * params.noteLen;
 
@@ -251,7 +251,7 @@ function scheduleNote(freq, startTime, stepDur) {
   envGain.gain.linearRampToValueAtTime(0, releaseEnd);
 
   osc.connect(envGain);
-  envGain.connect(masterGain);
+  envGain.connect(bassGain);
   osc.start(startTime);
   osc.stop(releaseEnd + 0.01);
 }
@@ -524,8 +524,8 @@ function initControls() {
   volInput?.addEventListener('input', () => {
     params.volume = parseFloat(volInput.value);
     if (volValue) volValue.textContent = `${Math.round(params.volume * 100)}%`;
-    if (masterGain && audioCtx) {
-      masterGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
+    if (bassGain && audioCtx) {
+      bassGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.01);
     }
   });
   if (volValue && volInput) {
@@ -565,27 +565,6 @@ export function setBassBpm(bpm) {
 /** Allow instruments.js to stop this sequencer externally. */
 export function stopBassSequencer() {
   if (isPlaying) stopSequencer();
-}
-
-/**
- * Return the master gain node (and lazily ensure the AudioContext exists).
- * instruments.js calls this when starting a recording so it can connect
- * this module's output to the shared MediaStreamDestination.
- *
- * Returns null if the Web Audio API is unavailable.
- */
-export function getBassAudioOutput() {
-  ensureAudioContext();
-  return masterGain ?? null;
-}
-
-/**
- * Return the AudioContext used by this module, or null if not yet created.
- * instruments.js needs this to create a MediaStreamDestination on the same
- * context — Web Audio nodes cannot be shared across different contexts.
- */
-export function getBassAudioContext() {
-  return audioCtx ?? null;
 }
 
 /**
