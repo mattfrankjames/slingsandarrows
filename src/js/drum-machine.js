@@ -491,6 +491,18 @@ function initControls() {
   }
 }
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/** Allow instruments.js to push a new BPM value into this module. */
+export function setDrumBpm(bpm) {
+  params.bpm = bpm;
+}
+
+/** Allow instruments.js to stop this sequencer externally. */
+export function stopDrumMachine() {
+  if (isPlaying) stopSequencer();
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 export function initDrumMachine() {

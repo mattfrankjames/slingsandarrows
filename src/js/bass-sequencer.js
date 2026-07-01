@@ -518,6 +518,16 @@ function initControls() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
+/** Allow instruments.js to push a new BPM value into this module. */
+export function setBassBpm(bpm) {
+  params.bpm = bpm;
+}
+
+/** Allow instruments.js to stop this sequencer externally. */
+export function stopBassSequencer() {
+  if (isPlaying) stopSequencer();
+}
+
 /**
  * initBassSequencer — called by instruments.js when the Bass Sequencer tab
  * panel is first activated (or on page load).  Safe to call multiple times;
