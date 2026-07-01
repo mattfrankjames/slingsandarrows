@@ -95,14 +95,7 @@ function renderPost(post, { pending = false } = {}) {
       deleteBtn.textContent = 'Deleting…';
 
       try {
-        const identity = window.netlifyIdentity;
-        const user     = identity?.currentUser();
-        let token      = '';
-        try {
-          token = user ? await user.jwt() : '';
-        } catch {
-          // Session may have expired
-        }
+        const token = await getIdentityToken();
 
         const res = await fetch('/api/delete-post', {
           method: 'DELETE',
@@ -232,6 +225,44 @@ function getAllPending(db) {
     const req = tx.objectStore('pending-posts').getAll();
     req.onerror  = () => reject(req.error);
     req.onsuccess = () => resolve(req.result || []);
+  });
+}
+
+// ─── Netlify Identity helpers ─────────────────────────────────────────────────
+
+/**
+ * Returns a valid JWT for the currently-logged-in Netlify Identity user,
+ * or an empty string if no session exists.
+ *
+ * `netlifyIdentity.currentUser()` returns null until the widget fires its
+ * 'init' event (which restores a persisted session from localStorage).  We
+ * wait for that event so that a page refresh doesn't cause a spurious 401.
+ */
+function getIdentityToken() {
+  return new Promise(resolve => {
+    const identity = window.netlifyIdentity;
+    if (!identity) { resolve(''); return; }
+
+    // If the widget has already initialised (e.g. user navigated here from
+    // another page in the same tab), currentUser() is already populated.
+    const existing = identity.currentUser();
+    if (existing) {
+      existing.jwt().then(resolve).catch(() => resolve(''));
+      return;
+    }
+
+    // Otherwise wait for the 'init' event which fires once the widget has
+    // checked localStorage / refreshed the session token.
+    identity.on('init', user => {
+      if (user) {
+        user.jwt().then(resolve).catch(() => resolve(''));
+      } else {
+        resolve('');
+      }
+    });
+
+    // Kick off initialisation (safe to call multiple times).
+    identity.init();
   });
 }
 
