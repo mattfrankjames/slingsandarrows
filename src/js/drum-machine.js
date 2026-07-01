@@ -467,15 +467,6 @@ function initControls() {
     btn.addEventListener('click', () => applyPreset(btn.dataset.drumPreset));
   });
 
-  // BPM
-  const bpmInput = document.getElementById('drum-bpm');
-  const bpmValue = document.getElementById('drum-bpm-value');
-  bpmInput?.addEventListener('input', () => {
-    params.bpm = parseInt(bpmInput.value, 10);
-    if (bpmValue) bpmValue.textContent = params.bpm;
-  });
-  if (bpmValue && bpmInput) bpmValue.textContent = bpmInput.value;
-
   // Volume
   const volInput = document.getElementById('drum-volume');
   const volValue = document.getElementById('drum-volume-value');
@@ -489,6 +480,18 @@ function initControls() {
   if (volValue && volInput) {
     volValue.textContent = `${Math.round(parseFloat(volInput.value) * 100)}%`;
   }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/** Allow instruments.js to push a new BPM value into this module. */
+export function setDrumBpm(bpm) {
+  params.bpm = bpm;
+}
+
+/** Allow instruments.js to stop this sequencer externally. */
+export function stopDrumMachine() {
+  if (isPlaying) stopSequencer();
 }
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────

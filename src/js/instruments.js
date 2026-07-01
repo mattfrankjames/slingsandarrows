@@ -609,8 +609,7 @@ window.addEventListener('blur', () => {
  * - Tabs use role="tab" / aria-selected / aria-controls.
  * - Panels use role="tabpanel" / aria-labelledby.
  * - Arrow-key navigation between tabs (ARIA authoring practice).
- * - When the "Bass Sequencer" tab is clicked we navigate to /bass-sequencer
- *   rather than showing an in-page panel.
+ * - Shows the universal transport bar when a sequencer tab is active.
  */
 function initTabs() {
   const tabList  = document.querySelector('[role="tablist"]');
@@ -658,15 +657,42 @@ function initTabs() {
   });
 }
 
+// ─── Universal transport (BPM + Stop All) ────────────────────────────────────
+
+function initUniversalTransport() {
+  const bpmInput = document.getElementById('universal-bpm');
+  const bpmValue = document.getElementById('universal-bpm-value');
+  const stopAllBtn = document.getElementById('stop-all-btn');
+
+  if (bpmInput) {
+    bpmInput.addEventListener('input', () => {
+      const bpm = parseInt(bpmInput.value, 10);
+      if (bpmValue) bpmValue.textContent = bpm;
+      // Push to both sequencers
+      setDrumBpm(bpm);
+      setBassBpm(bpm);
+    });
+    if (bpmValue) bpmValue.textContent = bpmInput.value;
+  }
+
+  if (stopAllBtn) {
+    stopAllBtn.addEventListener('click', () => {
+      stopDrumMachine();
+      stopBassSequencer();
+    });
+  }
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-import { initDrumMachine } from './drum-machine.js';
-import { initBassSequencer } from './bass-sequencer.js';
+import { initDrumMachine, setDrumBpm, stopDrumMachine } from './drum-machine.js';
+import { initBassSequencer, setBassBpm, stopBassSequencer } from './bass-sequencer.js';
 
 buildKeyboard();
 initControls();
 initMidi();
 initTabs();
+initUniversalTransport();
 initDrumMachine();
 
 document.addEventListener('keydown', handleKeyDown);
