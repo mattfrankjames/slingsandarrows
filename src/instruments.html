@@ -27,17 +27,32 @@
       margin: 0 auto;
     }
 
-    /* ── Universal transport (BPM + Stop All) ───────────────────────────── */
+    /* ── Universal transport ─────────────────────────────────────────────── */
     .universal-transport {
-      display: flex;
-      align-items: center;
-      gap: 1em;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 0.75em;
       margin-block-end: 1.25em;
-      padding: 0.85em 1.1em;
+      padding: 0.9em 1.1em;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 6px;
+    }
+
+    /* Row 1: BPM slider + Stop Sequencers button */
+    .transport-row-1 {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+    }
+
+    /* Row 2: Record button + timer */
+    .transport-row-2 {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      padding-block-start: 0.65em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .universal-bpm {
@@ -45,7 +60,7 @@
       align-items: center;
       gap: 0.75em;
       flex: 1;
-      min-width: 180px;
+      min-width: 0;
     }
 
     .universal-bpm label {
@@ -57,6 +72,7 @@
 
     .universal-bpm input[type="range"] {
       flex: 1;
+      min-width: 0;
       height: 6px;
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.1);
@@ -99,12 +115,12 @@
     }
 
     .stop-all-btn {
-      background: rgba(245, 168, 168, 0.1);
-      border: 1px solid rgba(245, 168, 168, 0.4);
-      color: #f5a8a8;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: rgba(255, 255, 255, 0.75);
       font-family: "ballinger-mono", sans-serif;
-      font-size: 0.9rem;
-      padding: 0.5em 1.25em;
+      font-size: 0.85rem;
+      padding: 0.45em 1em;
       cursor: pointer;
       border-radius: 4px;
       transition: background 0.2s, border-color 0.2s;
@@ -114,8 +130,15 @@
     }
 
     .stop-all-btn:hover {
-      background: rgba(245, 168, 168, 0.2);
-      border-color: rgba(245, 168, 168, 0.7);
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.45);
+    }
+
+    .transport-hint {
+      font-size: 0.78em;
+      opacity: 0.45;
+      font-family: "ballinger-mono", sans-serif;
+      margin-inline-start: auto;
     }
 
     /* ── Tab Navigation ──────────────────────────────────────────────────── */
@@ -1004,27 +1027,29 @@
 
         <h2>Instruments</h2>
 
-        <!-- ── Universal transport (BPM + Stop All) ─────────────────────── -->
+        <!-- ── Universal transport ───────────────────────────────────────── -->
         <div class="universal-transport" id="universal-transport">
-          <div class="universal-bpm">
-            <label for="universal-bpm">BPM</label>
-            <input type="range" id="universal-bpm" min="40" max="240" step="1" value="120"
-              aria-label="Global tempo in beats per minute">
-            <span id="universal-bpm-value">120</span>
+          <!-- Row 1: BPM + Stop Sequencers -->
+          <div class="transport-row-1">
+            <div class="universal-bpm">
+              <label for="universal-bpm">BPM</label>
+              <input type="range" id="universal-bpm" min="40" max="240" step="1" value="120"
+                aria-label="Global tempo in beats per minute">
+              <span id="universal-bpm-value">120</span>
+            </div>
+            <button class="stop-all-btn" id="stop-all-btn" type="button"
+              aria-label="Stop all sequencers">
+              ■ Stop Sequencers
+            </button>
           </div>
-          <button class="stop-all-btn" id="stop-all-btn" type="button"
-            aria-label="Stop all sequencers">
-            ■ Stop All
-          </button>
-          <div style="display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap;">
+          <!-- Row 2: Record -->
+          <div class="transport-row-2">
             <button class="record-btn" id="record-btn" type="button"
               aria-pressed="false" aria-label="Start recording (R)">
               ● Record
             </button>
             <span class="record-time" id="record-time" hidden>0:00</span>
-            <span style="font-size:0.78em; opacity:0.5; font-family:'ballinger-mono',sans-serif;">
-              Start sequencers first to include them
-            </span>
+            <span class="transport-hint">Press R to toggle · start sequencers first to include them</span>
           </div>
         </div>
 
