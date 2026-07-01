@@ -67,6 +67,10 @@ function renderPost(post, { pending = false } = {}) {
   p.textContent = post.body;
   article.appendChild(p);
 
+  // Footer: metadata + optional delete button
+  const footer = document.createElement('div');
+  footer.className = 'post-footer';
+
   const meta = document.createElement('p');
   meta.className = 'post-meta';
   if (pending) {
@@ -75,8 +79,59 @@ function renderPost(post, { pending = false } = {}) {
   } else {
     meta.textContent = formatDate(post.createdAt);
   }
-  article.appendChild(meta);
+  footer.appendChild(meta);
 
+  // Delete button — only for published (non-pending) posts
+  if (!pending) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className   = 'post-delete-btn';
+    deleteBtn.textContent = '✕ Delete';
+    deleteBtn.setAttribute('aria-label', 'Delete post');
+
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to delete this post?')) return;
+
+      deleteBtn.disabled    = true;
+      deleteBtn.textContent = 'Deleting…';
+
+      try {
+        const identity = window.netlifyIdentity;
+        const user     = identity?.currentUser();
+        let token      = '';
+        try {
+          token = user ? await user.jwt() : '';
+        } catch {
+          // Session may have expired
+        }
+
+        const res = await fetch('/api/delete-post', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ id: post.id }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(err.error || `Server error (${res.status})`);
+        }
+
+        // Remove the card from the DOM
+        article.remove();
+      } catch (err) {
+        console.error('[posts] Delete error:', err);
+        deleteBtn.disabled    = false;
+        deleteBtn.textContent = '✕ Delete';
+        alert(`Failed to delete post: ${err.message}`);
+      }
+    });
+
+    footer.appendChild(deleteBtn);
+  }
+
+  article.appendChild(footer);
   return article;
 }
 

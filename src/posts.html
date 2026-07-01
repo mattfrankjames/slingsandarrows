@@ -75,6 +75,33 @@
       border: 1px dashed rgba(255, 255, 255, 0.3);
       border-radius: 4px;
     }
+    .post-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-block-start: 0.75em;
+      padding-block-start: 0.75em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .post-delete-btn {
+      background: rgba(245, 168, 168, 0.1);
+      border: 1px solid rgba(245, 168, 168, 0.3);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.85em;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .post-delete-btn:hover {
+      background: rgba(245, 168, 168, 0.2);
+      border-color: rgba(245, 168, 168, 0.6);
+    }
+    .post-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     [hidden] { display: none !important; }
   </style>
 </head>
