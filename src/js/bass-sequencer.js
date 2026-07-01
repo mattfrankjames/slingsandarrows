@@ -453,15 +453,6 @@ function initControls() {
   document.getElementById('seq-clear-btn')
     ?.addEventListener('click', clearGrid);
 
-  // BPM
-  const bpmInput = document.getElementById('seq-bpm');
-  const bpmValue = document.getElementById('seq-bpm-value');
-  bpmInput?.addEventListener('input', () => {
-    params.bpm = parseInt(bpmInput.value, 10);
-    if (bpmValue) bpmValue.textContent = params.bpm;
-  });
-  if (bpmValue && bpmInput) bpmValue.textContent = bpmInput.value;
-
   // Note length
   const noteLenInput = document.getElementById('seq-note-len');
   const noteLenValue = document.getElementById('seq-note-len-value');

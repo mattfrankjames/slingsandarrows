@@ -467,15 +467,6 @@ function initControls() {
     btn.addEventListener('click', () => applyPreset(btn.dataset.drumPreset));
   });
 
-  // BPM
-  const bpmInput = document.getElementById('drum-bpm');
-  const bpmValue = document.getElementById('drum-bpm-value');
-  bpmInput?.addEventListener('input', () => {
-    params.bpm = parseInt(bpmInput.value, 10);
-    if (bpmValue) bpmValue.textContent = params.bpm;
-  });
-  if (bpmValue && bpmInput) bpmValue.textContent = bpmInput.value;
-
   // Volume
   const volInput = document.getElementById('drum-volume');
   const volValue = document.getElementById('drum-volume-value');
