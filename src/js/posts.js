@@ -22,6 +22,21 @@ function formatDate(iso) {
   });
 }
 
+// ─── Get a JWT from Netlify Identity if available ─────────────────────────────
+// netlify-identity-widget is loaded on posts.html so window.netlifyIdentity is
+// always present; this helper safely reads the JWT from the current session.
+async function getToken() {
+  try {
+    const identity = window.netlifyIdentity;
+    if (!identity) return null;
+    const user = identity.currentUser();
+    if (!user) return null;
+    return await user.jwt();
+  } catch {
+    return null;
+  }
+}
+
 // ─── Render a single post card ────────────────────────────────────────────────
 function renderPost(post, { pending = false } = {}) {
   const article = document.createElement('article');
@@ -67,6 +82,10 @@ function renderPost(post, { pending = false } = {}) {
   p.textContent = post.body;
   article.appendChild(p);
 
+  // Footer: meta + optional delete button
+  const footer = document.createElement('div');
+  footer.className = 'post-footer';
+
   const meta = document.createElement('p');
   meta.className = 'post-meta';
   if (pending) {
@@ -75,8 +94,60 @@ function renderPost(post, { pending = false } = {}) {
   } else {
     meta.textContent = formatDate(post.createdAt);
   }
-  article.appendChild(meta);
+  footer.appendChild(meta);
 
+  // Delete button — only for published posts when a session is active
+  if (!pending) {
+    const identity = window.netlifyIdentity;
+    const isLoggedIn = identity && identity.currentUser();
+
+    if (isLoggedIn) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className   = 'post-delete-btn';
+      deleteBtn.textContent = '✕ Delete';
+      deleteBtn.setAttribute('aria-label', 'Delete post');
+
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete this post?')) return;
+
+        deleteBtn.disabled    = true;
+        deleteBtn.textContent = 'Deleting…';
+
+        try {
+          const token = await getToken();
+
+          if (!token) {
+            throw new Error('Not signed in — please sign in on the App page first.');
+          }
+
+          const res = await fetch('/api/delete-post', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id: post.id }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || `Server error (${res.status})`);
+          }
+
+          article.remove();
+        } catch (err) {
+          console.error('[posts] Delete error:', err);
+          deleteBtn.disabled    = false;
+          deleteBtn.textContent = '✕ Delete';
+          alert(`Failed to delete post: ${err.message}`);
+        }
+      });
+
+      footer.appendChild(deleteBtn);
+    }
+  }
+
+  article.appendChild(footer);
   return article;
 }
 
