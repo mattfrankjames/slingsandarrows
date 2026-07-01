@@ -27,6 +27,97 @@
       margin: 0 auto;
     }
 
+    /* ── Universal transport (BPM + Stop All) ───────────────────────────── */
+    .universal-transport {
+      display: flex;
+      align-items: center;
+      gap: 1em;
+      flex-wrap: wrap;
+      margin-block-end: 1.25em;
+      padding: 0.85em 1.1em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+    }
+
+    .universal-bpm {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .universal-bpm label {
+      font-size: 0.9em;
+      opacity: 0.7;
+      white-space: nowrap;
+      min-width: 2.5em;
+    }
+
+    .universal-bpm input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .universal-bpm input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .universal-bpm input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      border: none;
+    }
+
+    .universal-bpm input[type="range"]::-webkit-slider-thumb:hover {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .universal-bpm span {
+      font-size: 0.9em;
+      opacity: 0.65;
+      min-width: 2.5em;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stop-all-btn {
+      background: rgba(245, 168, 168, 0.1);
+      border: 1px solid rgba(245, 168, 168, 0.4);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.9rem;
+      padding: 0.5em 1.25em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s, border-color 0.2s;
+      letter-spacing: -0.03ch;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .stop-all-btn:hover {
+      background: rgba(245, 168, 168, 0.2);
+      border-color: rgba(245, 168, 168, 0.7);
+    }
+
     /* ── Tab Navigation ──────────────────────────────────────────────────── */
     .instrument-tabs {
       display: flex;
@@ -783,6 +874,20 @@
 
         <h2>Instruments</h2>
 
+        <!-- ── Universal transport (BPM + Stop All) ─────────────────────── -->
+        <div class="universal-transport" id="universal-transport" hidden>
+          <div class="universal-bpm">
+            <label for="universal-bpm">BPM</label>
+            <input type="range" id="universal-bpm" min="40" max="240" step="1" value="120"
+              aria-label="Global tempo in beats per minute">
+            <span id="universal-bpm-value">120</span>
+          </div>
+          <button class="stop-all-btn" id="stop-all-btn" type="button"
+            aria-label="Stop all sequencers">
+            ■ Stop All
+          </button>
+        </div>
+
         <!-- ── Tab navigation ────────────────────────────────────────────── -->
         <div class="instrument-tabs" role="tablist" aria-label="Instrument selection">
           <button class="tab-btn" id="tab-synth"
@@ -903,19 +1008,12 @@
           <div class="instrument-panel">
             <h3>Drum Machine</h3>
 
-            <!-- Transport + BPM + Volume -->
+            <!-- Transport + Volume -->
             <div class="drum-transport">
               <button class="drum-play-btn" id="drum-play-btn"
                 aria-pressed="false" aria-label="Play or stop the drum machine">
                 ▶ Play
               </button>
-
-              <div class="control-group">
-                <label for="drum-bpm">BPM</label>
-                <input type="range" id="drum-bpm" min="40" max="240" step="1" value="120"
-                  aria-label="Tempo in beats per minute">
-                <span class="control-value" id="drum-bpm-value">120</span>
-              </div>
 
               <div class="control-group">
                 <label for="drum-volume">Volume</label>
@@ -962,13 +1060,6 @@
                 aria-pressed="false" aria-label="Play or stop the sequencer">
                 ▶ Play
               </button>
-
-              <div class="seq-control-row">
-                <label for="seq-bpm">BPM</label>
-                <input type="range" id="seq-bpm" min="40" max="240" step="1" value="120"
-                  aria-label="Tempo in beats per minute">
-                <span class="seq-control-value" id="seq-bpm-value">120</span>
-              </div>
 
               <div class="seq-control-row">
                 <label for="seq-note-len">Note</label>
