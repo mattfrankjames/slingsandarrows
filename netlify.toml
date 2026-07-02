@@ -28,3 +28,13 @@
   from = "/board"
   to = "/board.html"
   status = 200
+
+[[redirects]]
+  from = "/api/board/threads/delete"
+  to = "/.netlify/functions/board-delete-thread"
+  status = 200
+
+[[redirects]]
+  from = "/api/board/replies/delete"
+  to = "/.netlify/functions/board-delete-reply"
+  status = 200

@@ -279,6 +279,55 @@
       text-align: center;
     }
 
+    /* ── Delete buttons ────────────────────────────────────────────────── */
+    .thread-delete-btn {
+      background: transparent;
+      border: 1px solid rgba(245, 168, 168, 0.3);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.78rem;
+      padding: 0.3em 0.75em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .thread-delete-btn:hover {
+      background: rgba(245, 168, 168, 0.12);
+      border-color: rgba(245, 168, 168, 0.6);
+    }
+
+    .thread-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .reply-delete-btn {
+      background: transparent;
+      border: none;
+      color: rgba(245, 168, 168, 0.6);
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.75rem;
+      padding: 0.1em 0.4em;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: color 0.15s, background 0.15s;
+      margin-inline-start: auto;
+      flex-shrink: 0;
+    }
+
+    .reply-delete-btn:hover {
+      color: #f5a8a8;
+      background: rgba(245, 168, 168, 0.1);
+    }
+
+    .reply-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     /* ── Loading/empty states ──────────────────────────────────────────── */
     #loading, #empty-state, #error-state {
       text-align: center;

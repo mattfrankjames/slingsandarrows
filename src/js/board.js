@@ -31,9 +31,23 @@ async function getToken() {
   }
 }
 
+function isAdmin() {
+  const user = currentUser();
+  if (!user) return false;
+  const allowed = (window.__ALLOWED_AUTHORS__ || '').split(',')
+    .map(e => e.trim().toLowerCase()).filter(Boolean);
+  // Fall back to checking if the user has any app_metadata role hint
+  // In practice, ALLOWED_AUTHORS is a server-side env var, so we check via
+  // a lightweight heuristic: the user is admin if they can reach the board
+  // at all (any logged-in user can delete their own content; ALLOWED_AUTHORS
+  // guards the actual API). We expose a data attribute from the HTML if needed,
+  // but the simplest UX is: show delete buttons to all logged-in users and let
+  // the server enforce the ALLOWED_AUTHORS check.
+  return !!user;
+}
+
 function getDisplayName(email) {
   if (!email) return 'Anonymous';
-  // Show the part before @, capitalised
   return email.split('@')[0];
 }
 
@@ -90,10 +104,13 @@ window.addEventListener('load', () => {
 
   identity.on('login', () => {
     updateModalAuth();
+    // Re-render thread cards so delete buttons appear/disappear correctly
+    refreshDeleteButtons();
   });
 
   identity.on('logout', () => {
     updateModalAuth();
+    refreshDeleteButtons();
     // Re-render reply sections to hide forms
     document.querySelectorAll('.reply-form-section').forEach(el => {
       const threadId = el.closest('.thread-card')?.dataset.threadId;
@@ -102,10 +119,19 @@ window.addEventListener('load', () => {
   });
 });
 
+// Show or hide all delete buttons based on current auth state
+function refreshDeleteButtons() {
+  const show = !!currentUser();
+  document.querySelectorAll('.thread-delete-btn, .reply-delete-btn').forEach(btn => {
+    btn.hidden = !show;
+  });
+}
+
 // ─── Build a reply card element ───────────────────────────────────────────────
-function buildReplyCard(reply) {
+function buildReplyCard(reply, threadId) {
   const card = document.createElement('div');
   card.className = 'reply-card';
+  card.dataset.replyId = reply.id;
 
   const header = document.createElement('div');
   header.className = 'reply-header';
@@ -114,12 +140,21 @@ function buildReplyCard(reply) {
   author.className = 'reply-author';
   author.textContent = getDisplayName(reply.author);
 
-  const date = document.createElement('span');
-  date.className = 'reply-date';
-  date.textContent = formatDate(reply.createdAt);
+  const dateMeta = document.createElement('span');
+  dateMeta.className = 'reply-date';
+  dateMeta.textContent = formatDate(reply.createdAt);
+
+  // Delete reply button — visible only when logged in
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'reply-delete-btn';
+  deleteBtn.textContent = 'Delete';
+  deleteBtn.hidden = !currentUser();
+  deleteBtn.setAttribute('aria-label', 'Delete this reply');
+  deleteBtn.addEventListener('click', () => handleDeleteReply(threadId, reply.id, card));
 
   header.appendChild(author);
-  header.appendChild(date);
+  header.appendChild(dateMeta);
+  header.appendChild(deleteBtn);
 
   const body = document.createElement('p');
   body.className = 'reply-body';
@@ -128,6 +163,101 @@ function buildReplyCard(reply) {
   card.appendChild(header);
   card.appendChild(body);
   return card;
+}
+
+// ─── Delete a reply ───────────────────────────────────────────────────────────
+async function handleDeleteReply(threadId, replyId, cardEl) {
+  if (!confirm('Delete this reply?')) return;
+
+  const btn = cardEl.querySelector('.reply-delete-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+
+  try {
+    const token = await getToken();
+    if (!token) throw new Error('Not signed in');
+
+    const res = await fetch('/api/board/replies/delete', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ threadId, replyId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `Server error (${res.status})`);
+    }
+
+    // Remove the card from the DOM
+    cardEl.remove();
+
+    // Decrement the toggle button's reply count
+    const threadCard = threadsList.querySelector(`[data-thread-id="${threadId}"]`);
+    if (threadCard) {
+      const toggleBtn = threadCard.querySelector('.toggle-replies-btn');
+      if (toggleBtn) {
+        const count = Math.max(0, parseInt(toggleBtn.dataset.replyCount || '0', 10) - 1);
+        toggleBtn.dataset.replyCount = count;
+        const isOpen = threadCard.querySelector('.replies-container.visible');
+        const arrow = isOpen ? '▾' : '▸';
+        toggleBtn.textContent = count === 0
+          ? `Replies (0) ${arrow}`
+          : `${count} repl${count === 1 ? 'y' : 'ies'} ${arrow}`;
+      }
+
+      // Show "no replies" message if list is now empty
+      const repliesListEl = threadCard.querySelector('.replies-list');
+      const noRepliesEl   = threadCard.querySelector('.no-replies');
+      if (repliesListEl && noRepliesEl && !repliesListEl.children.length) {
+        noRepliesEl.hidden = false;
+      }
+    }
+  } catch (err) {
+    console.error('[board] delete reply error:', err);
+    alert(`Could not delete reply: ${err.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+  }
+}
+
+// ─── Delete a thread ──────────────────────────────────────────────────────────
+async function handleDeleteThread(threadId, cardEl) {
+  if (!confirm('Delete this thread and all its replies? This cannot be undone.')) return;
+
+  const btn = cardEl.querySelector('.thread-delete-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+
+  try {
+    const token = await getToken();
+    if (!token) throw new Error('Not signed in');
+
+    const res = await fetch('/api/board/threads/delete', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: threadId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `Server error (${res.status})`);
+    }
+
+    // Remove the card from the DOM
+    cardEl.remove();
+
+    // Show empty state if no threads remain
+    if (!threadsList.children.length) {
+      emptyState.hidden = false;
+    }
+  } catch (err) {
+    console.error('[board] delete thread error:', err);
+    alert(`Could not delete thread: ${err.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete thread'; }
+  }
 }
 
 // ─── Fetch and render replies into a container ────────────────────────────────
@@ -148,7 +278,7 @@ async function loadReplies(threadId, repliesListEl, noRepliesEl, loadingEl) {
       return;
     }
 
-    replies.forEach(reply => repliesListEl.appendChild(buildReplyCard(reply)));
+    replies.forEach(reply => repliesListEl.appendChild(buildReplyCard(reply, threadId)));
   } catch (err) {
     loadingEl.hidden = true;
     repliesListEl.innerHTML = `<p class="reply-status error">Could not load replies.</p>`;
@@ -240,7 +370,7 @@ function renderReplyFormSection(container, threadId, onReplyPosted) {
 
       if (repliesListEl) {
         if (noRepliesEl) noRepliesEl.hidden = true;
-        repliesListEl.appendChild(buildReplyCard(reply));
+        repliesListEl.appendChild(buildReplyCard(reply, threadId));
       }
 
       // Update reply count badge on the toggle button
@@ -275,7 +405,7 @@ function buildThreadCard(thread) {
   card.className = 'thread-card';
   card.dataset.threadId = thread.id;
 
-  // Card header: title
+  // Card header: title + delete button
   const cardHeader = document.createElement('div');
   cardHeader.className = 'thread-card-header';
 
@@ -283,7 +413,16 @@ function buildThreadCard(thread) {
   title.className = 'thread-title';
   title.textContent = thread.title;
 
+  // Delete thread button — only visible when logged in
+  const deleteThreadBtn = document.createElement('button');
+  deleteThreadBtn.className = 'thread-delete-btn';
+  deleteThreadBtn.textContent = 'Delete thread';
+  deleteThreadBtn.hidden = !currentUser();
+  deleteThreadBtn.setAttribute('aria-label', `Delete thread: ${thread.title}`);
+  deleteThreadBtn.addEventListener('click', () => handleDeleteThread(thread.id, card));
+
   cardHeader.appendChild(title);
+  cardHeader.appendChild(deleteThreadBtn);
   card.appendChild(cardHeader);
 
   // Meta: author + date
