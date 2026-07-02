@@ -428,7 +428,7 @@ function handleKeyDown(e) {
   // R — toggle recording
   if (e.key.toLowerCase() === 'r') {
     e.preventDefault();
-    if (mediaRecorder?.state === 'recording') {
+    if (mediaRecorder) {
       stopRecording();
     } else {
       startRecording();
@@ -713,12 +713,11 @@ function initUniversalTransport() {
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-let mediaRecorder = null;
-let recordingChunks = [];
+let mediaRecorder = null;   // used as a boolean flag: non-null = currently recording
 let recordingStartTime = 0;
 let recordingTimerInterval = null;
 
-/** Persistent MediaStreamDestination — created once and kept alive. */
+/** Sentinel set once the ScriptProcessorNode capture graph is wired up. */
 let recordingDest = null;
 
 /**
@@ -727,87 +726,155 @@ let recordingDest = null;
  */
 const recordings = [];
 
+// ─── WAV encoder ─────────────────────────────────────────────────────────────
+//
+// We capture raw PCM samples via a ScriptProcessorNode rather than using
+// MediaRecorder. This gives us a plain Float32Array of audio data that we
+// encode ourselves as a standard WAV file.
+//
+// Why WAV instead of WebM/MP4?
+//   • WebM is not supported by Apple QuickTime or iOS at all.
+//   • MP4/AAC is only produced by MediaRecorder in Safari — Chrome/Firefox
+//     produce WebM even when you ask for audio/mp4.
+//   • WAV (PCM) is universally supported: macOS, iOS, Windows, Android,
+//     every DAW, every media player — with no codec dependencies.
+//   • The files are larger (≈10 MB/min at 44.1 kHz stereo) but perfectly
+//     fine for short instrument recordings.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Pick the best supported MIME type for MediaRecorder.
- * Safari 14.1+ supports audio/mp4; Chrome/Firefox prefer audio/webm;codecs=opus.
- * Falls back to the empty string (browser default) if neither is supported.
+ * Write a standard 16-bit PCM WAV file from an array of Float32 sample buffers.
+ *
+ * @param {Float32Array[]} leftChannels   - Collected left-channel buffers
+ * @param {Float32Array[]} rightChannels  - Collected right-channel buffers (may equal left for mono)
+ * @param {number}         sampleRate
+ * @returns {Blob}  audio/wav Blob
  */
-function getSupportedMimeType() {
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/ogg;codecs=opus',
-  ];
-  for (const type of candidates) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
+function encodeWAV(leftChannels, rightChannels, sampleRate) {
+  // Flatten the per-buffer arrays into one contiguous Float32Array each
+  const totalSamples = leftChannels.reduce((n, b) => n + b.length, 0);
+  const left  = new Float32Array(totalSamples);
+  const right = new Float32Array(totalSamples);
+  let offset = 0;
+  for (let i = 0; i < leftChannels.length; i++) {
+    left.set(leftChannels[i],  offset);
+    right.set(rightChannels[i], offset);
+    offset += leftChannels[i].length;
   }
-  return ''; // let the browser decide
+
+  const numChannels  = 2;
+  const bitsPerSample = 16;
+  const byteRate     = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign   = numChannels * (bitsPerSample / 8);
+  const dataBytes    = totalSamples * numChannels * (bitsPerSample / 8);
+  const buffer       = new ArrayBuffer(44 + dataBytes);
+  const view         = new DataView(buffer);
+
+  // ── RIFF header ──
+  writeString(view, 0,  'RIFF');
+  view.setUint32(4,  36 + dataBytes, true);
+  writeString(view, 8,  'WAVE');
+
+  // ── fmt  chunk ──
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16,            true); // chunk size
+  view.setUint16(20,  1,            true); // PCM = 1
+  view.setUint16(22, numChannels,   true);
+  view.setUint32(24, sampleRate,    true);
+  view.setUint32(28, byteRate,      true);
+  view.setUint16(32, blockAlign,    true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // ── data chunk ──
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataBytes, true);
+
+  // Interleave L/R samples and clamp to int16
+  let sampleOffset = 44;
+  for (let i = 0; i < totalSamples; i++) {
+    view.setInt16(sampleOffset, clampInt16(left[i]),  true); sampleOffset += 2;
+    view.setInt16(sampleOffset, clampInt16(right[i]), true); sampleOffset += 2;
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
 }
 
+function writeString(view, offset, str) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+function clampInt16(sample) {
+  const s = Math.max(-1, Math.min(1, sample));
+  return s < 0 ? s * 0x8000 : s * 0x7FFF;
+}
+
+// ─── PCM capture via ScriptProcessorNode ─────────────────────────────────────
+//
+// ScriptProcessorNode is deprecated in favour of AudioWorklet but remains
+// universally supported (including iOS Safari) and is simpler to set up
+// without a separate worklet file. For short recordings the performance
+// impact is negligible.
+//
+// Buffer size 4096 gives ~93 ms latency at 44.1 kHz — fine for recording.
+
+/** @type {ScriptProcessorNode|null} */
+let scriptProcessor = null;
+
+/** Accumulated PCM sample buffers while recording. */
+let pcmLeft  = [];
+let pcmRight = [];
+
 /**
- * Ensure the shared AudioContext exists, then wire all instrument gain nodes
- * through a single MediaStreamDestination. Safe to call multiple times —
- * subsequent calls are no-ops once recordingDest is created.
+ * Ensure the shared AudioContext exists and the ScriptProcessorNode capture
+ * graph is wired up. Safe to call multiple times — no-op after first call.
  *
- * Returns true if everything is ready, false if the AudioContext isn't up yet.
+ * Returns true if ready, false if the AudioContext hasn't been created yet.
  */
 function ensureRecordingDest() {
-  // AudioContext must exist before we can create any nodes
   ensureAudioContext();
   if (!audioCtx || !masterGain) return false;
-
   if (recordingDest) return true; // already set up
 
-  // Create the destination on the shared context
-  recordingDest = audioCtx.createMediaStreamDestination();
+  // ScriptProcessorNode: bufferSize, inputChannels, outputChannels
+  scriptProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
 
-  // Connect the shared master gain → recording destination.
-  // Because drum and bass modules write into this same masterGain (they call
-  // setSharedAudioContext which gives them the same audioCtx and they connect
-  // their own gain nodes into this masterGain), all audio flows through here.
-  masterGain.connect(recordingDest);
+  scriptProcessor.onaudioprocess = e => {
+    if (!mediaRecorder) return; // only collect when recording flag is set
+    // Copy (don't reference) the channel data — the buffer is reused
+    pcmLeft.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    // If the source is mono, mirror left into right
+    const rightData = e.inputBuffer.numberOfChannels > 1
+      ? e.inputBuffer.getChannelData(1)
+      : e.inputBuffer.getChannelData(0);
+    pcmRight.push(new Float32Array(rightData));
+  };
+
+  // masterGain → scriptProcessor → (silent output, we only need the side-effect)
+  masterGain.connect(scriptProcessor);
+  scriptProcessor.connect(audioCtx.destination); // must connect to keep it running
+
+  // We still create a MediaStreamDestination so we have a stream object
+  // available (not strictly needed for WAV but keeps the architecture consistent)
+  recordingDest = { stream: null }; // sentinel so the guard above works
 
   return true;
 }
 
 function startRecording() {
-  // Make sure the AudioContext and recording destination are ready
   if (!ensureRecordingDest()) {
-    console.warn('[recording] AudioContext not ready — click anywhere on the page first to unlock audio, then try again.');
+    console.warn('[recording] AudioContext not ready — interact with the page first to unlock audio.');
     return;
   }
 
-  // Create a fresh MediaRecorder each time so we get a clean recording
-  const mimeType = getSupportedMimeType();
-  try {
-    mediaRecorder = new MediaRecorder(
-      recordingDest.stream,
-      mimeType ? { mimeType } : {}
-    );
-  } catch (err) {
-    console.warn('[recording] MediaRecorder init failed:', err);
-    return;
-  }
-
-  recordingChunks = [];
-
-  mediaRecorder.ondataavailable = e => {
-    if (e.data && e.data.size > 0) recordingChunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = () => {
-    const blobType = mediaRecorder.mimeType || 'audio/webm';
-    const blob = new Blob(recordingChunks, { type: blobType });
-    const duration = (Date.now() - recordingStartTime) / 1000;
-    const name = `Recording ${new Date().toLocaleTimeString()}`;
-    recordings.push({ blob, name, duration });
-    recordingChunks = [];
-    renderRecordings();
-  };
-
+  // Use mediaRecorder as a simple "is recording" flag (non-null = recording)
+  // We repurpose the variable name to avoid a larger refactor.
+  mediaRecorder = true;
+  pcmLeft  = [];
+  pcmRight = [];
   recordingStartTime = Date.now();
-  mediaRecorder.start();
 
   // Update button UI
   const recordBtn = document.getElementById('record-btn');
@@ -834,11 +901,21 @@ function startRecording() {
 }
 
 function stopRecording() {
-  if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+  if (!mediaRecorder) return; // not recording
 
-  mediaRecorder.stop();
+  // Stop collecting samples
+  mediaRecorder = null;
   clearInterval(recordingTimerInterval);
   recordingTimerInterval = null;
+
+  // Encode the collected PCM data as a WAV file
+  const blob     = encodeWAV(pcmLeft, pcmRight, audioCtx.sampleRate);
+  const duration = (Date.now() - recordingStartTime) / 1000;
+  const name     = `Recording ${new Date().toLocaleTimeString()}`;
+  recordings.push({ blob, name, duration });
+  pcmLeft  = [];
+  pcmRight = [];
+  renderRecordings();
 
   // Reset button UI
   const recordBtn = document.getElementById('record-btn');
@@ -918,9 +995,8 @@ function downloadRecording(index) {
   const recording = recordings[index];
   if (!recording) return;
 
-  const url  = URL.createObjectURL(recording.blob);
-  const ext  = recording.blob.type.includes('mp4') ? 'mp4' : 'webm';
-  const filename = `${recording.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+  const url      = URL.createObjectURL(recording.blob);
+  const filename = `${recording.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`;
 
   const a = document.createElement('a');
   a.href     = url;
@@ -944,7 +1020,7 @@ function attachRecordButton() {
   if (!recordBtn) return;
 
   recordBtn.addEventListener('click', () => {
-    if (mediaRecorder?.state === 'recording') {
+    if (mediaRecorder) {
       stopRecording();
     } else {
       startRecording();
