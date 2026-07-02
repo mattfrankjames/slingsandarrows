@@ -97,25 +97,40 @@ loginBtnBoard.addEventListener('click', () => {
   window.netlifyIdentity?.open('login');
 });
 
+// ─── Re-render all open reply form sections to reflect current auth state ─────
+function refreshReplyForms() {
+  document.querySelectorAll('.reply-form-section').forEach(el => {
+    const threadId = el.closest('.thread-card')?.dataset.threadId;
+    if (threadId) renderReplyFormSection(el, threadId);
+  });
+}
+
 // ─── Netlify Identity events ──────────────────────────────────────────────────
 window.addEventListener('load', () => {
   const identity = window.netlifyIdentity;
   if (!identity) return;
 
+  // 'init' fires on page load — user may already be signed in from a previous
+  // session.  We need to refresh reply forms once the identity state is known
+  // so that "sign in to reply" is replaced with the actual reply form.
+  identity.on('init', () => {
+    updateModalAuth();
+    refreshDeleteButtons();
+    refreshReplyForms();
+  });
+
   identity.on('login', () => {
     updateModalAuth();
-    // Re-render thread cards so delete buttons appear/disappear correctly
     refreshDeleteButtons();
+    // Replace "sign in to reply" with the actual reply form in any open threads
+    refreshReplyForms();
   });
 
   identity.on('logout', () => {
     updateModalAuth();
     refreshDeleteButtons();
-    // Re-render reply sections to hide forms
-    document.querySelectorAll('.reply-form-section').forEach(el => {
-      const threadId = el.closest('.thread-card')?.dataset.threadId;
-      if (threadId) renderReplyFormSection(el, threadId);
-    });
+    // Replace reply forms with the "sign in" prompt
+    refreshReplyForms();
   });
 });
 
