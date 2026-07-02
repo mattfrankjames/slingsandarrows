@@ -138,10 +138,11 @@ newThreadForm.addEventListener('submit', async e => {
       throw new Error(err.error || `Server error (${res.status})`);
     }
 
+    const newThread = await res.json();
     setFormStatus('✓ Thread posted!', 'success');
     setTimeout(() => {
       closeModal();
-      loadThreads();
+      prependThread(newThread);
     }, 1200);
   } catch (err) {
     console.error('[board] Post error:', err);
@@ -200,6 +201,35 @@ async function loadThreads() {
     loadingEl.hidden = true;
     errorStateEl.hidden = false;
   }
+}
+
+// ─── Prepend a single newly-created thread to the top of the list ─────────────
+function prependThread(thread) {
+  // Hide empty state if it was showing
+  emptyStateEl.hidden = true;
+
+  const card = document.createElement('div');
+  card.className = 'thread-card';
+  card.dataset.threadId = escapeHtml(thread.id);
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `View thread: ${escapeHtml(thread.title)}`);
+  card.innerHTML = `
+    <div class="thread-title">${escapeHtml(thread.title)}</div>
+    <div class="thread-preview">${escapeHtml(thread.body)}</div>
+    <div class="thread-meta">
+      <span>${escapeHtml(thread.author)} &bull; ${formatDate(thread.createdAt)}</span>
+      <span class="reply-count">0 replies</span>
+    </div>
+  `;
+
+  const navigate = () => { window.location.href = `/board/${card.dataset.threadId}`; };
+  card.addEventListener('click', navigate);
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(); }
+  });
+
+  threadsListEl.prepend(card);
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
