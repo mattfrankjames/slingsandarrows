@@ -28,3 +28,8 @@
   from = "/board"
   to = "/board.html"
   status = 200
+
+[[redirects]]
+  from = "/board/:threadId"
+  to = "/board-thread.html"
+  status = 200
