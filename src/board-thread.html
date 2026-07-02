@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Thread</title>
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="preconnect" href="https://res.cloudinary.com">
+  <link rel="preload" href="https://res.cloudinary.com/mjtestrun/image/upload/v1738007110/static-bg_aamn1d.avif"
+    as="image">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <meta name="description" content="Message board thread — Slings &amp; Arrows">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <style>
+    main {
+      backdrop-filter: blur(50px);
+      align-items: flex-start;
+    }
+
+    .thread-container {
+      width: 95%;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* ── Back link ───────────────────────────────────────────────────────── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+      font-size: 0.9em;
+      opacity: 0.65;
+      margin-block-end: 1.5em;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .back-link:hover {
+      opacity: 1;
+    }
+
+    /* ── Thread header ───────────────────────────────────────────────────── */
+    .thread-header {
+      margin-block-end: 2em;
+      padding-block-end: 1.5em;
+      border-block-end: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .thread-header h2 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(1.3rem, 2vw + 0.8rem, 2rem);
+      margin-block-end: 0.5em;
+    }
+
+    .thread-body {
+      line-height: 1.75;
+      white-space: pre-wrap;
+      margin-block-end: 0.75em;
+    }
+
+    .thread-meta {
+      font-size: 0.82em;
+      opacity: 0.5;
+    }
+
+    /* ── Replies ─────────────────────────────────────────────────────────── */
+    .replies-heading {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: 1rem;
+      opacity: 0.7;
+      margin-block-end: 1em;
+    }
+
+    .reply-card {
+      background: rgba(0, 0, 0, 0.4);
+      border-left: 2px solid rgba(255, 255, 255, 0.2);
+      padding: 0.9em 1.2em;
+      margin-block-end: 0.85em;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .reply-body {
+      line-height: 1.7;
+      white-space: pre-wrap;
+      margin-block-end: 0.5em;
+    }
+
+    .reply-meta {
+      font-size: 0.8em;
+      opacity: 0.5;
+    }
+
+    /* ── Reply form ──────────────────────────────────────────────────────── */
+    .reply-section {
+      margin-block-start: 2em;
+      padding-block-start: 1.5em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .reply-section h3 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: 1rem;
+      margin-block-end: 1em;
+      opacity: 0.85;
+    }
+
+    .form-group {
+      margin-block-end: 1em;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9em;
+      opacity: 0.7;
+      margin-block-end: 0.3em;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.75em;
+      border-radius: 4px;
+      resize: vertical;
+      min-height: 110px;
+    }
+
+    .form-group textarea::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .form-group textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.6em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: rgba(168, 245, 168, 0.12);
+      border-color: rgba(168, 245, 168, 0.45);
+      color: #a8f5a8;
+    }
+
+    .btn-primary:hover {
+      background: rgba(168, 245, 168, 0.22);
+    }
+
+    /* ── Auth gate ───────────────────────────────────────────────────────── */
+    .auth-gate {
+      padding: 1.25em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+    }
+
+    .auth-gate p {
+      margin-block-end: 0.75em;
+      opacity: 0.8;
+      font-size: 0.95em;
+    }
+
+    /* ── Status / loading ────────────────────────────────────────────────── */
+    #page-loading,
+    #page-error {
+      text-align: center;
+      padding: 3em 0;
+      opacity: 0.6;
+    }
+
+    #reply-status {
+      margin-block-start: 0.75em;
+      font-size: 0.9em;
+      min-height: 1.4em;
+    }
+
+    #no-replies {
+      font-size: 0.9em;
+      opacity: 0.55;
+      padding: 1em 0;
+    }
+
+    /* ── Hidden utility ──────────────────────────────────────────────────── */
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+      <nav class="site-nav" aria-label="Site navigation">
+        <a href="../posts.html">Posts</a>
+        <a href="../board.html" aria-current="page">Board</a>
+        <a href="../shows.html">Shows</a>
+        <a href="../instruments.html">Instruments</a>
+      </nav>
+    </header>
+
+    <main class="p-4" id="main-content">
+      <div class="thread-container">
+
+        <a href="/board" class="back-link">← Back to Board</a>
+
+        <!-- Loading / error states for the whole page -->
+        <div id="page-loading" role="status" aria-live="polite">Loading…</div>
+        <div id="page-error" hidden>Could not load thread.</div>
+
+        <!-- Thread content (populated by JS) -->
+        <div id="thread-content" hidden>
+
+          <div class="thread-header">
+            <h2 id="thread-title"></h2>
+            <p class="thread-body" id="thread-body"></p>
+            <p class="thread-meta" id="thread-meta"></p>
+          </div>
+
+          <!-- Replies list -->
+          <p class="replies-heading" id="replies-heading" hidden></p>
+          <div id="replies-list"></div>
+          <p id="no-replies" hidden>No replies yet — be the first!</p>
+
+          <!-- Reply section -->
+          <div class="reply-section">
+            <h3>Leave a Reply</h3>
+
+            <!-- Auth gate — shown when logged out -->
+            <div class="auth-gate" id="reply-auth-gate" hidden>
+              <p>Sign in to leave a reply</p>
+              <button class="btn" id="login-btn-reply"
+                style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8;">
+                Sign In / Create Account
+              </button>
+            </div>
+
+            <!-- Reply form — shown when logged in -->
+            <form id="reply-form" hidden>
+              <div class="form-group">
+                <label for="reply-body">Your reply *</label>
+                <textarea id="reply-body" name="body" required
+                  placeholder="Write your reply…"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" id="reply-submit-btn">
+                Post Reply
+              </button>
+              <p id="reply-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+
+        </div><!-- /#thread-content -->
+
+      </div>
+    </main>
+
+    <footer class="p-4 text-white text-center">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
+    </footer>
+  </div>
+
+  <script type="module" src="../js/board-thread.js"></script>
+</body>
+</html>
