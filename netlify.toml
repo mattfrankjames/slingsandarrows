@@ -15,9 +15,14 @@
   status = 200
 
 [[redirects]]
-  from = "/instruments"
-  to = "/instruments.html"
+  from = "/studio"
+  to = "/studio.html"
   status = 200
+
+[[redirects]]
+  from = "/instruments"
+  to = "/studio"
+  status = 301
 
 [[redirects]]
   from = "/bass-sequencer"
