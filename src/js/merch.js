@@ -61,12 +61,12 @@ function saveCart() {
 }
 
 // ─── Load products ────────────────────────────────────────────────────────────
-async function loadProducts() {
+// Import the JSON directly so Parcel bundles it — no runtime fetch needed.
+import merchData from '../data/merch.json';
+
+function loadProducts() {
   try {
-    const res = await fetch('./data/merch.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    products = data.products || [];
+    products = (merchData && merchData.products) ? merchData.products : [];
 
     loadingEl.hidden = true;
 
