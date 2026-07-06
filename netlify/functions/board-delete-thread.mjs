@@ -21,7 +21,7 @@ function getUserFromRequest(req, context) {
 }
 
 export default async (req, context) => {
-  if (req.method !== 'DELETE') {
+  if (req.method !== 'DELETE' && req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
@@ -101,4 +101,4 @@ export default async (req, context) => {
   }
 };
 
-export const config = { path: '/api/board/threads/delete' };
+export const config = { path: '/api/board/threads/delete', method: ['DELETE', 'POST'] };
