@@ -14,6 +14,14 @@ function isCloudinaryVideo(url) {
   return url.includes('/video/upload/');
 }
 
+// Insert Cloudinary transformation params after /upload/ without double-inserting.
+// Uses q_auto so Cloudinary picks optimal quality for each requested format.
+function cloudinaryOptimize(url, width) {
+  if (!url || !isCloudinaryUrl(url)) return url;
+  if (url.includes('/upload/f_auto')) return url; // already optimized
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
     year:  'numeric',
@@ -59,8 +67,9 @@ function renderPost(post, { pending = false } = {}) {
       const video = document.createElement('video');
       video.className = 'post-image';
       video.controls  = true;
-      video.preload   = 'metadata';
+      video.preload   = 'none'; // don't preload video data until user interacts
       video.setAttribute('playsinline', '');
+      video.setAttribute('loading', 'lazy');
 
       const source = document.createElement('source');
       source.src  = post.imageUrl;
@@ -70,9 +79,21 @@ function renderPost(post, { pending = false } = {}) {
     } else {
       const img = document.createElement('img');
       img.className = 'post-image';
-      img.src       = post.imageUrl;
       img.alt       = post.title || '';
       img.loading   = 'lazy';
+      img.decoding  = 'async';
+
+      // Responsive srcset via Cloudinary on-the-fly transforms.
+      // The feed container is capped at 700px; 1400w covers 2× retina.
+      img.srcset = [
+        `${cloudinaryOptimize(post.imageUrl, 400)} 400w`,
+        `${cloudinaryOptimize(post.imageUrl, 700)} 700w`,
+        `${cloudinaryOptimize(post.imageUrl, 1400)} 1400w`,
+      ].join(', ');
+      // Container is max 700px wide; below 736px it fills the viewport.
+      img.sizes = '(max-width: 736px) 100vw, 700px';
+      img.src   = cloudinaryOptimize(post.imageUrl, 700); // fallback
+
       article.appendChild(img);
     }
   }

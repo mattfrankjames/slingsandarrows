@@ -38,10 +38,13 @@
   <meta name="msapplication-TileImage" content="./images/icon-192.png">
   <meta name="msapplication-TileColor" content="#000000">
 
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-  <link rel="preconnect" href="https://use.typekit.net">
+  <!-- Load Netlify Identity asynchronously — initAuth() waits for the ready event -->
+  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+  <link rel="dns-prefetch" href="https://res.cloudinary.com">
   <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
-  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
   <link href="../styles/tailwind.css" rel="stylesheet">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">

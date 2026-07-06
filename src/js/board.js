@@ -112,6 +112,16 @@ function isVideoUrl(url) {
   return url.includes('/video/upload/') && !isAudioUrl(url);
 }
 
+// Insert Cloudinary transformation params after /upload/ in a URL.
+// Handles URLs that already contain a transform segment (e.g. /upload/v123456/)
+// by inserting before the version/path, not duplicating the segment.
+function cloudinaryOptimize(url, width) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  // Avoid double-inserting transforms if the URL already has them
+  if (url.includes('/upload/f_auto')) return url;
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+}
+
 function buildMediaElement(mediaUrl, className) {
   if (!mediaUrl) return null;
   const container = document.createElement('div');
@@ -128,21 +138,31 @@ function buildMediaElement(mediaUrl, className) {
     audio.appendChild(source);
     container.appendChild(audio);
   } else if (isVideoUrl(mediaUrl)) {
-    // Video — render as <video> player
+    // Video — render as <video> player; don't preload until user interacts
     const video = document.createElement('video');
     video.controls = true;
-    video.preload = 'metadata';
+    video.preload = 'none';
     video.setAttribute('playsinline', '');
+    video.setAttribute('loading', 'lazy');
     const source = document.createElement('source');
     source.src = mediaUrl;
     video.appendChild(source);
     container.appendChild(video);
   } else {
-    // Default: image
+    // Image — serve via Cloudinary with format/quality auto + responsive srcset
     const img = document.createElement('img');
-    img.src = mediaUrl;
-    img.alt = 'Attached media';
+    img.alt     = 'Attached media';
     img.loading = 'lazy';
+    img.decoding = 'async';
+
+    // Responsive srcset: 400w for mobile, 760w covers the max container width
+    img.srcset = [
+      `${cloudinaryOptimize(mediaUrl, 400)} 400w`,
+      `${cloudinaryOptimize(mediaUrl, 760)} 760w`,
+    ].join(', ');
+    // Container is capped at 760px (max-width of board-container)
+    img.sizes = '(max-width: 760px) 100vw, 760px';
+    img.src   = cloudinaryOptimize(mediaUrl, 760); // fallback
     container.appendChild(img);
   }
   return container;
