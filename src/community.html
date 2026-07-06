@@ -19,8 +19,8 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
   <meta name="description" content="Community — Slings &amp; Arrows">
-  <!-- RSS auto-discovery -->
-  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Community" href="/community.xml">
+  <!-- RSS auto-discovery (href set by script so Parcel doesn't try to bundle /community.xml) -->
+  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Community" id="rss-link">
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <style>
     main {
@@ -594,7 +594,7 @@
     <footer class="p-4 text-white text-center">
       <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
       <p style="font-size: 0.85em; margin-block-start: 0.5em;">
-        <a href="/community.xml" style="opacity: 0.7; text-decoration: none;">RSS Feed</a>
+        <a id="rss-footer-link" href="#" style="opacity: 0.7; text-decoration: none;">RSS Feed</a>
       </p>
     </footer>
   </div>
@@ -661,5 +661,10 @@
   </div>
 
   <script type="module" src="./js/board.js"></script>
+  <script>
+    // Set RSS links at runtime so Parcel doesn't try to resolve /community.xml as a local asset
+    document.getElementById('rss-link').href = '/community.xml';
+    document.getElementById('rss-footer-link').href = '/community.xml';
+  </script>
 </body>
 </html>
