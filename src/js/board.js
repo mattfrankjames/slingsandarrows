@@ -1,5 +1,135 @@
 import { authModal } from './auth-modal.js';
 
+// ─── Cloudinary upload ────────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
+
+async function uploadToCloudinary(file) {
+  if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
+    throw new Error('Cloudinary env vars not set');
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
+    { method: 'POST', body: fd }
+  );
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail?.error?.message || `Upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
+async function validateMediaFile(file) {
+  const maxSize = 50 * 1024 * 1024; // 50 MB
+
+  if (file.size > maxSize) {
+    throw new Error('File must be under 50 MB');
+  }
+
+  const allowed = ['image/', 'video/', 'audio/'];
+  if (!allowed.some(t => file.type.startsWith(t))) {
+    throw new Error('Only images, videos, and audio files are allowed');
+  }
+
+  if (file.type.startsWith('video/')) {
+    await new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      const src = URL.createObjectURL(file);
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(src);
+        if (video.duration > 300) {
+          reject(new Error('Videos must be under 5 minutes'));
+        } else {
+          resolve();
+        }
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(src);
+        reject(new Error('Could not read video metadata'));
+      };
+      video.src = src;
+    });
+  }
+}
+
+function createMediaPreviewEl(file) {
+  const wrap = document.createElement('div');
+  const objectUrl = URL.createObjectURL(file);
+
+  if (file.type.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = objectUrl;
+    img.alt = 'Media preview';
+    wrap.appendChild(img);
+  } else if (file.type.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.controls = true;
+    video.preload = 'metadata';
+    video.setAttribute('playsinline', '');
+    const source = document.createElement('source');
+    source.src = objectUrl;
+    video.appendChild(source);
+    wrap.appendChild(video);
+  } else if (file.type.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    const source = document.createElement('source');
+    source.src = objectUrl;
+    audio.appendChild(source);
+    wrap.appendChild(audio);
+  }
+  return wrap;
+}
+
+// Detect media type from a Cloudinary (or generic) URL
+function isVideoUrl(url) {
+  return url.includes('/video/upload/');
+}
+
+function isAudioUrl(url) {
+  const lower = url.toLowerCase();
+  return lower.endsWith('.m4a') || lower.endsWith('.mp3') ||
+         lower.endsWith('.wav') || lower.endsWith('.ogg') ||
+         lower.endsWith('.aac') || url.includes('/raw/upload/');
+}
+
+function buildMediaElement(mediaUrl, className) {
+  if (!mediaUrl) return null;
+  const container = document.createElement('div');
+  container.className = className;
+
+  if (isVideoUrl(mediaUrl)) {
+    const video = document.createElement('video');
+    video.controls = true;
+    video.preload = 'metadata';
+    video.setAttribute('playsinline', '');
+    const source = document.createElement('source');
+    source.src = mediaUrl;
+    video.appendChild(source);
+    container.appendChild(video);
+  } else if (isAudioUrl(mediaUrl)) {
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    const source = document.createElement('source');
+    source.src = mediaUrl;
+    audio.appendChild(source);
+    container.appendChild(audio);
+  } else {
+    const img = document.createElement('img');
+    img.src = mediaUrl;
+    img.alt = 'Attached media';
+    img.loading = 'lazy';
+    container.appendChild(img);
+  }
+  return container;
+}
+
 // ─── In-memory auth state ─────────────────────────────────────────────────────
 // We maintain our own lightweight session on top of the Netlify Identity widget
 // so that users who sign in via the custom modal are immediately recognised
@@ -110,6 +240,11 @@ function closeModal() {
   modal.classList.remove('active');
   threadForm.reset();
   formStatus.textContent = '';
+  // Reset media state
+  selectedThreadMedia = null;
+  if (mediaPreviewEl)   mediaPreviewEl.innerHTML = '';
+  if (mediaPreviewWrap) mediaPreviewWrap.hidden = true;
+  if (mediaStatusEl)    { mediaStatusEl.textContent = ''; mediaStatusEl.className = ''; }
 }
 
 newThreadBtn.addEventListener('click', openModal);
@@ -205,6 +340,13 @@ function buildReplyCard(reply, threadId) {
   body.textContent = reply.body;
 
   card.appendChild(header);
+
+  // Media attachment
+  if (reply.mediaUrl) {
+    const mediaEl = buildMediaElement(reply.mediaUrl, 'reply-media');
+    if (mediaEl) card.appendChild(mediaEl);
+  }
+
   card.appendChild(body);
   return card;
 }
@@ -366,6 +508,80 @@ function renderReplyFormSection(container, threadId) {
   textarea.placeholder = 'Write your reply…';
   textarea.required = true;
 
+  // ── Media input for replies ──────────────────────────────────────────────
+  const mediaWrap = document.createElement('div');
+  mediaWrap.className = 'reply-media-wrap';
+
+  const mediaLabel = document.createElement('label');
+  mediaLabel.textContent = 'Media (optional)';
+  mediaLabel.style.cssText = 'display:block; font-size:0.85em; opacity:0.7; margin-block-end:0.3em;';
+
+  const replyMediaInput = document.createElement('input');
+  replyMediaInput.type = 'file';
+  replyMediaInput.accept = 'image/*,video/*,audio/*';
+  replyMediaInput.setAttribute('aria-label', 'Attach photo, video, or audio to reply');
+  replyMediaInput.style.cssText =
+    'width:100%; background:transparent; border:1px dashed rgba(255,255,255,0.25); ' +
+    'color:white; font-family:"ballinger-mono",sans-serif; font-size:0.9rem; ' +
+    'padding:0.4em; border-radius:4px; cursor:pointer;';
+
+  const replyMediaPreviewWrap = document.createElement('div');
+  replyMediaPreviewWrap.hidden = true;
+  replyMediaPreviewWrap.style.marginBlockStart = '0.5em';
+
+  const replyMediaPreview = document.createElement('div');
+  replyMediaPreview.className = 'reply-media-preview';
+
+  const removeReplyMediaBtn = document.createElement('button');
+  removeReplyMediaBtn.type = 'button';
+  removeReplyMediaBtn.className = 'btn btn-sm';
+  removeReplyMediaBtn.textContent = 'Remove Media';
+  removeReplyMediaBtn.style.cssText =
+    'margin-block-start:0.4em; background:rgba(245,168,168,0.12); ' +
+    'border-color:rgba(245,168,168,0.35); color:#f5a8a8;';
+
+  replyMediaPreviewWrap.appendChild(replyMediaPreview);
+  replyMediaPreviewWrap.appendChild(removeReplyMediaBtn);
+
+  const replyMediaStatus = document.createElement('p');
+  replyMediaStatus.className = 'reply-media-status';
+
+  mediaWrap.appendChild(mediaLabel);
+  mediaWrap.appendChild(replyMediaInput);
+  mediaWrap.appendChild(replyMediaPreviewWrap);
+  mediaWrap.appendChild(replyMediaStatus);
+
+  let selectedReplyMedia = null;
+
+  replyMediaInput.addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    replyMediaStatus.textContent = '';
+    replyMediaStatus.className = 'reply-media-status';
+    selectedReplyMedia = null;
+    try {
+      await validateMediaFile(file);
+      selectedReplyMedia = file;
+      replyMediaPreview.innerHTML = '';
+      replyMediaPreview.appendChild(createMediaPreviewEl(file));
+      replyMediaPreviewWrap.hidden = false;
+    } catch (err) {
+      replyMediaStatus.textContent = `✕ ${err.message}`;
+      replyMediaStatus.className = 'reply-media-status error';
+      replyMediaInput.value = '';
+    }
+  });
+
+  removeReplyMediaBtn.addEventListener('click', () => {
+    selectedReplyMedia = null;
+    replyMediaInput.value = '';
+    replyMediaPreview.innerHTML = '';
+    replyMediaPreviewWrap.hidden = true;
+    replyMediaStatus.textContent = '';
+    replyMediaStatus.className = 'reply-media-status';
+  });
+
+  // ── Actions row ──────────────────────────────────────────────────────────
   const actions = document.createElement('div');
   actions.className = 'reply-form-actions';
 
@@ -379,6 +595,7 @@ function renderReplyFormSection(container, threadId) {
 
   actions.appendChild(submitBtn);
   form.appendChild(textarea);
+  form.appendChild(mediaWrap);
   form.appendChild(actions);
   form.appendChild(status);
   container.appendChild(form);
@@ -397,13 +614,30 @@ function renderReplyFormSection(container, threadId) {
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
 
+      let mediaUrl = '';
+
+      if (selectedReplyMedia) {
+        replyMediaStatus.textContent = 'Uploading media…';
+        replyMediaStatus.className = 'reply-media-status uploading';
+        try {
+          const result = await uploadToCloudinary(selectedReplyMedia);
+          mediaUrl = result.secure_url;
+          replyMediaStatus.textContent = '';
+          replyMediaStatus.className = 'reply-media-status';
+        } catch (err) {
+          replyMediaStatus.textContent = `✕ Media upload failed: ${err.message}`;
+          replyMediaStatus.className = 'reply-media-status error';
+          // Post without media rather than blocking
+        }
+      }
+
       const res = await fetch('/api/board/replies/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ threadId, body }),
+        body: JSON.stringify({ threadId, body, mediaUrl }),
       });
 
       if (!res.ok) {
@@ -433,7 +667,15 @@ function renderReplyFormSection(container, threadId) {
         }
       }
 
+      // Reset reply form
       textarea.value = '';
+      selectedReplyMedia = null;
+      replyMediaInput.value = '';
+      replyMediaPreview.innerHTML = '';
+      replyMediaPreviewWrap.hidden = true;
+      replyMediaStatus.textContent = '';
+      replyMediaStatus.className = 'reply-media-status';
+
       status.textContent = 'Reply posted!';
       status.className = 'reply-status success';
       setTimeout(() => { status.textContent = ''; }, 3000);
@@ -484,6 +726,12 @@ function buildThreadCard(thread) {
   meta.appendChild(authorSpan);
   meta.appendChild(dateSpan);
   card.appendChild(meta);
+
+  // Media attachment
+  if (thread.mediaUrl) {
+    const mediaEl = buildMediaElement(thread.mediaUrl, 'thread-media');
+    if (mediaEl) card.appendChild(mediaEl);
+  }
 
   const preview = document.createElement('p');
   preview.className = 'thread-preview';
@@ -556,6 +804,45 @@ function buildThreadCard(thread) {
   return card;
 }
 
+// ─── New thread form — media state & wiring ───────────────────────────────────
+let selectedThreadMedia = null;
+
+const threadMediaInput    = document.getElementById('thread-media');
+const mediaPreviewWrap    = document.getElementById('media-preview-wrap');
+const mediaPreviewEl      = document.getElementById('media-preview');
+const removeMediaBtn      = document.getElementById('remove-media-btn');
+const mediaStatusEl       = document.getElementById('media-status');
+
+threadMediaInput.addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  mediaStatusEl.textContent = '';
+  mediaStatusEl.className = '';
+  selectedThreadMedia = null;
+
+  try {
+    await validateMediaFile(file);
+    selectedThreadMedia = file;
+    mediaPreviewEl.innerHTML = '';
+    mediaPreviewEl.appendChild(createMediaPreviewEl(file));
+    mediaPreviewWrap.hidden = false;
+  } catch (err) {
+    mediaStatusEl.textContent = `✕ ${err.message}`;
+    mediaStatusEl.className = 'error';
+    threadMediaInput.value = '';
+  }
+});
+
+removeMediaBtn.addEventListener('click', () => {
+  selectedThreadMedia = null;
+  threadMediaInput.value = '';
+  mediaPreviewEl.innerHTML = '';
+  mediaPreviewWrap.hidden = true;
+  mediaStatusEl.textContent = '';
+  mediaStatusEl.className = '';
+});
+
 // ─── New thread form submission ───────────────────────────────────────────────
 threadForm.addEventListener('submit', async e => {
   e.preventDefault();
@@ -573,13 +860,30 @@ threadForm.addEventListener('submit', async e => {
     const token = await getToken();
     if (!token) throw new Error('Not signed in — please sign in first.');
 
+    let mediaUrl = '';
+
+    if (selectedThreadMedia) {
+      mediaStatusEl.textContent = 'Uploading media…';
+      mediaStatusEl.className = 'uploading';
+      try {
+        const result = await uploadToCloudinary(selectedThreadMedia);
+        mediaUrl = result.secure_url;
+        mediaStatusEl.textContent = '';
+        mediaStatusEl.className = '';
+      } catch (err) {
+        mediaStatusEl.textContent = `✕ Media upload failed: ${err.message}`;
+        mediaStatusEl.className = 'error';
+        // Continue posting without media rather than blocking
+      }
+    }
+
     const res = await fetch('/api/board/threads/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title, body }),
+      body: JSON.stringify({ title, body, mediaUrl }),
     });
 
     if (!res.ok) {

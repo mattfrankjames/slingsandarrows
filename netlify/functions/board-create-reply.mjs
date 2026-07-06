@@ -44,7 +44,7 @@ export default async (req, context) => {
       });
     }
 
-    const { threadId, body: replyBody } = body;
+    const { threadId, body: replyBody, mediaUrl } = body;
 
     if (!threadId || typeof threadId !== 'string') {
       return new Response(JSON.stringify({ error: 'threadId is required' }), {
@@ -59,6 +59,10 @@ export default async (req, context) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    // Validate mediaUrl — only allow Cloudinary URLs (or empty)
+    const rawMedia = (mediaUrl || '').trim();
+    const safeMediaUrl = rawMedia.startsWith('https://res.cloudinary.com/') ? rawMedia : '';
 
     // Verify the thread exists
     const threadStore = getStore('board-threads');
@@ -75,6 +79,7 @@ export default async (req, context) => {
       id: replyId,
       threadId,
       body: replyBody.trim(),
+      mediaUrl: safeMediaUrl,
       author: user.email,
       createdAt: new Date().toISOString(),
     };
