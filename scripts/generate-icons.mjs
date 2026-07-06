@@ -115,7 +115,7 @@ function drawAsterisk(size, bg, fg, maskable = false) {
   const cy = size / 2;
   const pad = maskable ? size * 0.15 : size * 0.08;
   const r   = size / 2 - pad;           // outer radius
-  const lineW = Math.max(2, size * 0.06); // stroke width
+  const lineW = Math.max(1, size * 0.03); // Much thinner: 3% instead of 6%
 
   const angles = [0, 30, 60, 90, 120, 150]; // degrees
 
@@ -130,23 +130,23 @@ function drawAsterisk(size, bg, fg, maskable = false) {
     pixels[i + 3] = fg[3];
   }
 
-  // Draw each arm as a thick line using perpendicular offset
+  // Draw each arm as a thin line
   for (const deg of angles) {
     const rad = (deg * Math.PI) / 180;
     const dx  = Math.cos(rad);
     const dy  = Math.sin(rad);
-    const px  = -dy; // perpendicular
+    const px  = -dy;
     const py  =  dx;
 
     const steps = Math.ceil(r * 2);
     for (let s = 0; s <= steps; s++) {
-      const t  = (s / steps) * 2 - 1; // -1 … +1
+      const t  = (s / steps) * 2 - 1;
       const bx = cx + dx * r * t;
       const by = cy + dy * r * t;
 
-      // Stroke width
+      // Thinner stroke
       const half = lineW / 2;
-      for (let w = -half; w <= half; w += 0.5) {
+      for (let w = -half; w <= half; w += 0.33) {
         setPixel(bx + px * w, by + py * w);
       }
     }
