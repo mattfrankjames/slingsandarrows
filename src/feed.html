@@ -38,6 +38,9 @@
   <link href="../styles/tailwind.css" rel="stylesheet">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <!-- RSS auto-discovery (href set by script so Parcel doesn't try to bundle /feed.xml) -->
+  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Feed" id="rss-link">
+
   <!-- Netlify Identity — needed so posts.js can read currentUser() for the delete button -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <style>
@@ -131,6 +134,37 @@
       cursor: not-allowed;
     }
     [hidden] { display: none !important; }
+    .page-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.6em;
+      margin-block-end: 1em;
+    }
+    .page-heading h2 {
+      margin: 0;
+    }
+    .rss-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 0.3em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      flex-shrink: 0;
+    }
+    .rss-btn:hover {
+      color: #f5a060;
+      border-color: rgba(245, 160, 96, 0.6);
+      background: rgba(245, 160, 96, 0.08);
+    }
+    .rss-btn svg {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -153,7 +187,20 @@
     </header>
     <main class="p-4" id="main-content">
       <div class="posts-container">
-        <h2>Posts</h2>
+        <div class="page-heading">
+          <h2>Posts</h2>
+          <a id="rss-btn" href="#" class="rss-btn"
+            aria-label="Subscribe to the Posts RSS feed"
+            title="RSS feed">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+              viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
+                C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0
+                0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1
+                9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+            </svg>
+          </a>
+        </div>
         <div id="loading" role="status" aria-live="polite">Loading…</div>
         <div id="empty-state" hidden>No posts yet.</div>
         <div id="error-state" hidden>Could not load posts.</div>
@@ -201,5 +248,10 @@
     </footer>
   </div>
   <script type="module" src="./js/posts.js"></script>
+  <script>
+    // Set RSS links at runtime so Parcel doesn't try to resolve /feed.xml as a local asset
+    document.getElementById('rss-link').href = '/feed.xml';
+    document.getElementById('rss-btn').href = '/feed.xml';
+  </script>
 </body>
 </html>
