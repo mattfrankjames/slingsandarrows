@@ -87,16 +87,29 @@ function createMediaPreviewEl(file) {
   return wrap;
 }
 
-// Detect media type from a Cloudinary (or generic) URL
-function isVideoUrl(url) {
-  return url.includes('/video/upload/');
-}
-
+// Detect media type from a Cloudinary (or generic) URL.
+// Note: Cloudinary stores audio uploaded via the `auto` resource type under
+// /video/upload/ — so we must check the file extension *before* checking the
+// path segment to avoid treating audio files as videos.
 function isAudioUrl(url) {
   const lower = url.toLowerCase();
-  return lower.endsWith('.m4a') || lower.endsWith('.mp3') ||
-         lower.endsWith('.wav') || lower.endsWith('.ogg') ||
-         lower.endsWith('.aac') || url.includes('/raw/upload/');
+  // Explicit audio extensions take priority (Cloudinary auto-upload stores
+  // audio under /video/upload/ but keeps the original extension in the URL)
+  if (
+    lower.endsWith('.m4a') || lower.endsWith('.mp3') ||
+    lower.endsWith('.wav') || lower.endsWith('.ogg') ||
+    lower.endsWith('.aac') || lower.endsWith('.flac')
+  ) return true;
+  // Cloudinary raw uploads are also audio (no extension rewriting)
+  if (url.includes('/raw/upload/')) return true;
+  // Cloudinary /video/upload/ URLs that contain an audio MIME hint
+  if (url.includes('/video/upload/') && lower.includes('audio')) return true;
+  return false;
+}
+
+function isVideoUrl(url) {
+  // Only treat as video if it's under /video/upload/ AND not an audio file
+  return url.includes('/video/upload/') && !isAudioUrl(url);
 }
 
 function buildMediaElement(mediaUrl, className) {
@@ -104,7 +117,18 @@ function buildMediaElement(mediaUrl, className) {
   const container = document.createElement('div');
   container.className = className;
 
-  if (isVideoUrl(mediaUrl)) {
+  if (isAudioUrl(mediaUrl)) {
+    // Audio — render as <audio> player
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.style.width = '100%';
+    audio.style.display = 'block';
+    const source = document.createElement('source');
+    source.src = mediaUrl;
+    audio.appendChild(source);
+    container.appendChild(audio);
+  } else if (isVideoUrl(mediaUrl)) {
+    // Video — render as <video> player
     const video = document.createElement('video');
     video.controls = true;
     video.preload = 'metadata';
@@ -113,14 +137,8 @@ function buildMediaElement(mediaUrl, className) {
     source.src = mediaUrl;
     video.appendChild(source);
     container.appendChild(video);
-  } else if (isAudioUrl(mediaUrl)) {
-    const audio = document.createElement('audio');
-    audio.controls = true;
-    const source = document.createElement('source');
-    source.src = mediaUrl;
-    audio.appendChild(source);
-    container.appendChild(audio);
   } else {
+    // Default: image
     const img = document.createElement('img');
     img.src = mediaUrl;
     img.alt = 'Attached media';
