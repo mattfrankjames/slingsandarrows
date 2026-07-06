@@ -40,6 +40,11 @@
   status = 200
 
 [[redirects]]
+  from = "/merch"
+  to = "/merch.html"
+  status = 200
+
+[[redirects]]
   from = "/board"
   to = "/community"
   status = 301
