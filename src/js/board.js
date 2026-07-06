@@ -175,6 +175,75 @@ function _initSessionFromStorage() {
 // Initialise from localStorage on module load
 _initSessionFromStorage();
 
+// ─── Auth-gate tab switching (Sign In / Request Invite) ──────────────────────
+document.querySelectorAll('.tab-link').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const tab = e.currentTarget.dataset.tab;
+
+    // Update tab button styles
+    document.querySelectorAll('.tab-link').forEach(b => {
+      const active = b.dataset.tab === tab;
+      b.style.color = active ? 'white' : 'rgba(255,255,255,0.5)';
+      b.style.borderBlockEnd = active ? '2px solid white' : '2px solid transparent';
+    });
+
+    // Show/hide tab content panels
+    const signInPanel       = document.getElementById('auth-tab-sign-in');
+    const requestInvitePanel = document.getElementById('auth-tab-request-invite');
+    if (signInPanel)        signInPanel.hidden        = tab !== 'sign-in';
+    if (requestInvitePanel) requestInvitePanel.hidden = tab !== 'request-invite';
+  });
+});
+
+// ─── Invite request form submission ──────────────────────────────────────────
+const inviteForm   = document.getElementById('invite-request-form');
+const inviteStatus = document.getElementById('invite-status');
+
+if (inviteForm && inviteStatus) {
+  inviteForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const email = document.getElementById('invite-email')?.value?.trim();
+    if (!email) return;
+
+    const submitBtn = inviteForm.querySelector('[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
+
+    inviteStatus.textContent = 'Sending request…';
+    inviteStatus.style.opacity = '0.6';
+    inviteStatus.style.color = '';
+
+    try {
+      const res = await fetch('/api/request-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Request failed');
+      }
+
+      inviteStatus.textContent = '✓ Request received! Check your email for an invite.';
+      inviteStatus.style.color = '#a8f5a8';
+      inviteStatus.style.opacity = '1';
+      inviteForm.reset();
+
+      setTimeout(() => {
+        inviteStatus.textContent = '';
+        inviteStatus.style.color = '';
+      }, 5000);
+    } catch (err) {
+      inviteStatus.textContent = `✕ ${err.message}`;
+      inviteStatus.style.color = '#f5a8a8';
+      inviteStatus.style.opacity = '1';
+    } finally {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Request Invite'; }
+    }
+  });
+}
+
 // Listen for successful logins from the custom auth modal
 window.addEventListener('auth-modal:login', e => {
   _sessionUser = { email: e.detail.email, token: e.detail.token };
