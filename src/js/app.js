@@ -110,21 +110,30 @@ function getVideoDuration(file) {
  */
 async function uploadToCloudinary(file) {
   if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
-    throw new Error('Cloudinary env vars not set');
+    console.error('Cloudinary env vars missing:', { CLOUDINARY_CLOUD, CLOUDINARY_PRESET });
+    throw new Error('Cloudinary configuration missing');
   }
+
   const fd = new FormData();
   fd.append('file', file);
   fd.append('upload_preset', CLOUDINARY_PRESET);
+
+  console.log('Uploading to Cloudinary:', { cloud: CLOUDINARY_CLOUD, preset: CLOUDINARY_PRESET });
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
     { method: 'POST', body: fd }
   );
+
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
+    console.error('Cloudinary error response:', detail);
     throw new Error(detail?.error?.message || `Cloudinary upload failed (${res.status})`);
   }
-  return res.json();
+
+  const result = await res.json();
+  console.log('Cloudinary response:', result);
+  return result;
 }
 
 // ─── Globals ──────────────────────────────────────────────────────────────────
@@ -268,6 +277,7 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
   try {
     let mediaUrl = '';
 
+    // ── Media upload ────────────────────────────────────────────────────────
     if (media) {
       let fileToUpload = media.file;
 
@@ -275,8 +285,8 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
         setUploadStatus(uploadStatus, 'Compressing image…', 'uploading');
         try {
           fileToUpload = await compressImage(media.file);
-        } catch {
-          // Compression failed — fall back to original
+        } catch (err) {
+          console.warn('Compression failed, using original:', err);
           fileToUpload = media.file;
         }
       }
@@ -285,65 +295,68 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
       try {
         const result = await uploadToCloudinary(fileToUpload);
         mediaUrl = result.secure_url;
+        console.log('Cloudinary upload successful, mediaUrl:', mediaUrl);
         clearUploadStatus(uploadStatus);
       } catch (err) {
+        console.error('Cloudinary upload failed:', err);
         setUploadStatus(uploadStatus, `Media upload failed: ${err.message}`, 'error');
-        // Allow posting without media rather than blocking entirely
+        // Continue without media rather than blocking entirely
+        mediaUrl = '';
       }
     }
 
+    // ── Prepare post data ───────────────────────────────────────────────────
     const postData = {
-      title: title.trim(),
-      body:  body.trim(),
+      title:    title.trim(),
+      body:     body.trim(),
       imageUrl: mediaUrl,
     };
 
+    console.log('Post data being sent:', postData);
+
+    // ── Get auth token ──────────────────────────────────────────────────────
     const identity = window.netlifyIdentity;
     const user     = identity.currentUser();
     let token      = '';
     try {
       token = user ? await user.jwt() : '';
-    } catch {
-      // jwt() can fail if the session expired; let the server reject it
+    } catch (err) {
+      console.warn('JWT fetch failed:', err);
     }
 
+    // ── Check connectivity ──────────────────────────────────────────────────
     if (!navigator.onLine) {
-      // Queue immediately without attempting the network call
       await queueOfflinePost(postData, token, statusMsg);
       form.reset();
       onSuccess();
       return;
     }
 
-    try {
-      const res = await fetch('/api/create-post', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(postData),
-      });
+    // ── Send to backend ─────────────────────────────────────────────────────
+    const res = await fetch('/api/create-post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(postData),
+    });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `Server error (${res.status})`);
-      }
-
-      setStatus(statusMsg, '✓ Post published!', 'success');
-      form.reset();
-      onSuccess();
-      setTimeout(() => setStatus(statusMsg, '', ''), 4000);
-    } catch (err) {
-      if (!navigator.onLine) {
-        // Went offline between the check and the fetch
-        await queueOfflinePost(postData, token, statusMsg);
-        form.reset();
-        onSuccess();
-      } else {
-        throw err;
-      }
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errData.error || `Server error (${res.status})`);
     }
+
+    // ── SUCCESS ─────────────────────────────────────────────────────────────
+    setStatus(statusMsg, '✓ Post published!', 'success');
+    form.reset();
+    onSuccess();
+
+    setTimeout(() => {
+      statusMsg.textContent = '';
+      statusMsg.className   = '';
+    }, 2500);
+
   } catch (err) {
     console.error('[app] Post error:', err);
     setStatus(statusMsg, `✕ ${err.message}`, 'error');
