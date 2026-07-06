@@ -95,6 +95,12 @@ let audioCtx = null;
 let masterGain = null;
 
 /**
+ * Dedicated gain node for the synth voices.
+ * Sits between envGain nodes and masterGain so the mixer can intercept it.
+ */
+let synthGain = null;
+
+/**
  * Map of currently-sounding notes.
  * Key: string like "C#-4" (note + octave).
  * Value: { osc: OscillatorNode, gain: GainNode }
@@ -146,6 +152,11 @@ function initAudioContext() {
     masterGain = audioCtx.createGain();
     masterGain.gain.value = params.volume;
     masterGain.connect(audioCtx.destination);
+
+    // Synth-specific gain node — intercept point for the mixer
+    synthGain = audioCtx.createGain();
+    synthGain.gain.value = 1.0;
+    synthGain.connect(masterGain);
   }
 
   // Resume if suspended — must happen synchronously inside the gesture handler
@@ -191,6 +202,11 @@ function ensureAudioContext() {
     masterGain = audioCtx.createGain();
     masterGain.gain.value = params.volume;
     masterGain.connect(audioCtx.destination);
+
+    // Synth-specific gain node — intercept point for the mixer
+    synthGain = audioCtx.createGain();
+    synthGain.gain.value = 1.0;
+    synthGain.connect(masterGain);
   }
 
   // Resume if suspended (autoplay policy — common on mobile Safari)
@@ -268,7 +284,7 @@ function noteOn(noteName, octave, velocity = 1.0) {
   envGain.gain.linearRampToValueAtTime(params.sustain * velocity, decayEnd);
 
   osc.connect(envGain);
-  envGain.connect(masterGain);
+  envGain.connect(synthGain ?? masterGain);
   osc.start(now);
 
   activeNotes.set(key, { osc, gain: envGain });
@@ -593,6 +609,8 @@ function initControls() {
       // Apply volume change immediately to master gain
       if (param === 'volume' && masterGain && audioCtx) {
         masterGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.01);
+        // Also keep synthGain in step with the volume slider
+        if (synthGain) synthGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.01);
       }
     });
 
@@ -1028,10 +1046,19 @@ function attachRecordButton() {
   });
 }
 
+/**
+ * Return the synth-level GainNode so the mixer can insert itself
+ * between the synth voices and the shared masterGain.
+ */
+export function getSynthGain() {
+  return synthGain;
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-import { initDrumMachine, setDrumBpm, stopDrumMachine, setSharedAudioContext as setDrumContext } from './drum-machine.js';
-import { initBassSequencer, setBassBpm, stopBassSequencer, setSharedAudioContext as setBassContext } from './bass-sequencer.js';
+import { initDrumMachine, setDrumBpm, stopDrumMachine, setSharedAudioContext as setDrumContext, getDrumGain } from './drum-machine.js';
+import { initBassSequencer, setBassBpm, stopBassSequencer, setSharedAudioContext as setBassContext, getBassGain } from './bass-sequencer.js';
+import { initMixer } from './mixer.js';
 
 buildKeyboard();
 initControls();
@@ -1064,3 +1091,46 @@ attachRecordButton();
 
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup',   handleKeyUp);
+
+// ─── Mixer initialisation ─────────────────────────────────────────────────────
+//
+// The mixer needs the per-module gain nodes from drum-machine and bass-sequencer.
+// Those gains are only created after setSharedAudioContext() is called, which
+// happens after the first user gesture on iOS. We initialise the mixer lazily
+// when the Mixer tab is first activated, by which point audio is guaranteed to
+// be running.
+
+let _mixerInitialized = false;
+
+function maybeInitMixer() {
+  if (_mixerInitialized) return;
+  if (!audioCtx || !masterGain) return;
+
+  const drumGainNode = getDrumGain?.();
+  const bassGainNode = getBassGain?.();
+
+  if (!drumGainNode || !bassGainNode) return;
+
+  _mixerInitialized = true;
+  initMixer(audioCtx, masterGain, {
+    synth: getSynthGain(),
+    drums: drumGainNode,
+    bass:  bassGainNode,
+  });
+}
+
+// Patch initTabs to also call maybeInitMixer when the mixer tab activates
+const _origActivateTab = (() => {
+  // Re-implement tab activation so we can hook into it without duplicating
+  // the full initTabs() logic. We add a MutationObserver on the mixer panel
+  // instead — simpler and avoids tight coupling.
+  const mixerPanel = document.getElementById('panel-mixer');
+  if (mixerPanel) {
+    const observer = new MutationObserver(() => {
+      if (mixerPanel.classList.contains('tab-panel--active')) {
+        maybeInitMixer();
+      }
+    });
+    observer.observe(mixerPanel, { attributes: true, attributeFilter: ['class'] });
+  }
+})();

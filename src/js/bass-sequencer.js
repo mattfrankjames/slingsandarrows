@@ -548,6 +548,15 @@ export function stopBassSequencer() {
 }
 
 /**
+ * Return the module-level GainNode so the mixer can insert itself
+ * between this gain and the shared masterGain.
+ * Returns null if the context hasn't been set up yet.
+ */
+export function getBassGain() {
+  return bassGain;
+}
+
+/**
  * initBassSequencer — called by instruments.js when the Bass Sequencer tab
  * panel is first activated (or on page load).  Safe to call multiple times;
  * subsequent calls are no-ops because the grid is only built once.
