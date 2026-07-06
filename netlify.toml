@@ -40,6 +40,11 @@
   status = 200
 
 [[redirects]]
+  from = "/merch"
+  to = "/merch.html"
+  status = 200
+
+[[redirects]]
   from = "/board"
   to = "/community"
   status = 301
@@ -48,6 +53,18 @@
   from = "/posts"
   to = "/feed"
   status = 301
+
+[[redirects]]
+  from = "/api/create-checkout-session"
+  to = "/.netlify/functions/create-checkout-session"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/webhook"
+  to = "/.netlify/functions/webhook"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/api/board/threads/delete"
