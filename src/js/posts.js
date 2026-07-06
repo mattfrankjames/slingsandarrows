@@ -69,6 +69,7 @@ function renderPost(post, { pending = false } = {}) {
       video.controls  = true;
       video.preload   = 'none'; // don't preload video data until user interacts
       video.setAttribute('playsinline', '');
+      video.setAttribute('loading', 'lazy');
 
       const source = document.createElement('source');
       source.src  = post.imageUrl;
@@ -80,19 +81,18 @@ function renderPost(post, { pending = false } = {}) {
       img.className = 'post-image';
       img.alt       = post.title || '';
       img.loading   = 'lazy';
+      img.decoding  = 'async';
 
-      // Build a responsive srcset using Cloudinary's on-the-fly transforms.
-      // Insert width/quality params after /upload/ in the URL.
-      const optimizedUrl = (url, w) =>
-        url.replace('/upload/', `/upload/f_auto,q_80,w_${w}/`);
-
+      // Responsive srcset via Cloudinary on-the-fly transforms.
+      // The feed container is capped at 700px; 1400w covers 2× retina.
       img.srcset = [
-        `${optimizedUrl(post.imageUrl, 400)} 400w`,
-        `${optimizedUrl(post.imageUrl, 800)} 800w`,
-        `${optimizedUrl(post.imageUrl, 1200)} 1200w`,
+        `${cloudinaryOptimize(post.imageUrl, 400)} 400w`,
+        `${cloudinaryOptimize(post.imageUrl, 700)} 700w`,
+        `${cloudinaryOptimize(post.imageUrl, 1400)} 1400w`,
       ].join(', ');
-      img.sizes = '(max-width: 600px) 100vw, (max-width: 1200px) 95vw, 700px';
-      img.src   = optimizedUrl(post.imageUrl, 800); // fallback
+      // Container is max 700px wide; below 736px it fills the viewport.
+      img.sizes = '(max-width: 736px) 100vw, 700px';
+      img.src   = cloudinaryOptimize(post.imageUrl, 700); // fallback
 
       article.appendChild(img);
     }
