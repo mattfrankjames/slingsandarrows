@@ -25,9 +25,19 @@
   status = 200
 
 [[redirects]]
-  from = "/community"
-  to = "/board.html"
+  from = "/shows"
+  to = "/shows.html"
   status = 200
+
+[[redirects]]
+  from = "/community"
+  to = "/community.html"
+  status = 200
+
+[[redirects]]
+  from = "/board"
+  to = "/community"
+  status = 301
 
 [[redirects]]
   from = "/api/board/threads/delete"
