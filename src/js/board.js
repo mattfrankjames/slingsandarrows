@@ -238,21 +238,33 @@ async function handleDeleteReply(threadId, replyId, cardEl) {
 
     const threadCard = threadsList.querySelector(`[data-thread-id="${threadId}"]`);
     if (threadCard) {
+      // Recount from the DOM so the value is always accurate
+      const replyCount = threadCard.querySelectorAll('.reply-card').length;
+
       const toggleBtn = threadCard.querySelector('.toggle-replies-btn');
       if (toggleBtn) {
-        const count = Math.max(0, parseInt(toggleBtn.dataset.replyCount || '0', 10) - 1);
-        toggleBtn.dataset.replyCount = count;
-        const isOpen = threadCard.querySelector('.replies-container.visible');
+        toggleBtn.dataset.replyCount = replyCount;
+        const isOpen = !!threadCard.querySelector('.replies-container.visible');
         const arrow = isOpen ? '▾' : '▸';
-        toggleBtn.textContent = count === 0
+        toggleBtn.textContent = replyCount === 0
           ? `Replies (0) ${arrow}`
-          : `${count} repl${count === 1 ? 'y' : 'ies'} ${arrow}`;
+          : `${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} ${arrow}`;
       }
 
+      // Show the "no replies" message when the list is now empty
       const repliesListEl = threadCard.querySelector('.replies-list');
       const noRepliesEl   = threadCard.querySelector('.no-replies');
       if (repliesListEl && noRepliesEl && !repliesListEl.children.length) {
         noRepliesEl.hidden = false;
+      }
+
+      // Collapse the replies container when there are no replies left
+      if (replyCount === 0) {
+        const repliesContainer = threadCard.querySelector('.replies-container');
+        if (repliesContainer) {
+          repliesContainer.classList.remove('visible');
+          if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+        }
       }
     }
   } catch (err) {
