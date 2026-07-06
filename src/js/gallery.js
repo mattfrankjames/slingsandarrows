@@ -112,15 +112,12 @@ function renderThumbnail(item, idx) {
   const isVideo = item.mediaType === 'video' || isCloudinaryVideo(item.mediaUrl);
 
   if (isVideo) {
-    // Use a poster frame for the thumbnail — Cloudinary generates one automatically
-    const posterUrl = item.mediaUrl
-      .replace('/video/upload/', '/video/upload/so_0/')
-      .replace(/\.[^.]+$/, '.jpg');
-
+    // Generate an optimised poster frame via Cloudinary's video transformation
     const img = document.createElement('img');
-    img.src     = posterUrl;
+    img.src     = buildVideoPoster(item.mediaUrl, 400);
     img.alt     = item.caption || 'Video thumbnail';
     img.loading = 'lazy';
+    img.decoding = 'async';
     article.appendChild(img);
 
     const badge = document.createElement('span');
@@ -128,13 +125,20 @@ function renderThumbnail(item, idx) {
     badge.textContent = '▶ video';
     article.appendChild(badge);
   } else {
-    // Cloudinary image — request a square thumbnail crop
-    const thumbUrl = buildCloudinaryThumb(item.mediaUrl, 400);
-
+    // Responsive square thumbnail — serve 1× and 2× via srcset so retina
+    // screens get a sharper image without wasting bandwidth on 1× displays.
     const img = document.createElement('img');
-    img.src     = thumbUrl;
+    img.src     = buildCloudinaryThumb(item.mediaUrl, 400);
+    img.srcset  = [
+      `${buildCloudinaryThumb(item.mediaUrl, 200)} 200w`,
+      `${buildCloudinaryThumb(item.mediaUrl, 400)} 400w`,
+      `${buildCloudinaryThumb(item.mediaUrl, 600)} 600w`,
+    ].join(', ');
+    // The grid uses auto-fill with a 200px minimum; 400px covers most cases.
+    img.sizes   = '(max-width: 480px) calc(50vw - 1em), (max-width: 768px) calc(33vw - 1em), 200px';
     img.alt     = item.caption || 'Gallery photo';
     img.loading = 'lazy';
+    img.decoding = 'async';
     article.appendChild(img);
   }
 
@@ -164,15 +168,52 @@ function renderThumbnail(item, idx) {
   return article;
 }
 
+// ─── Cloudinary URL helpers ───────────────────────────────────────────────────
+
 /**
  * Transform a Cloudinary image URL to a square thumbnail of the given size.
+ * Uses c_fill + g_auto (content-aware gravity), f_auto (WebP/AVIF), and
+ * q_auto (quality ladder) for maximum compression with no visible quality loss.
  */
 function buildCloudinaryThumb(url, size) {
-  // Insert transformation before /upload/
   return url.replace(
     '/upload/',
     `/upload/c_fill,g_auto,w_${size},h_${size},f_auto,q_auto/`
   );
+}
+
+/**
+ * Build an optimised Cloudinary image URL for display at a given max width.
+ * Preserves aspect ratio (c_limit), picks the best format (f_auto), and uses
+ * Cloudinary's quality ladder (q_auto).
+ */
+function buildCloudinaryDisplay(url, maxWidth) {
+  return url.replace(
+    '/upload/',
+    `/upload/c_limit,w_${maxWidth},f_auto,q_auto/`
+  );
+}
+
+/**
+ * Build a srcset string for a Cloudinary image at several widths.
+ * @param {string} url   - Original Cloudinary image URL
+ * @param {number[]} widths - Array of pixel widths to generate descriptors for
+ */
+function buildCloudinarySrcset(url, widths) {
+  return widths
+    .map(w => `${buildCloudinaryDisplay(url, w)} ${w}w`)
+    .join(', ');
+}
+
+/**
+ * Build an optimised video poster URL from a Cloudinary video URL.
+ * Grabs frame at offset 0, converts to JPEG with auto quality, and
+ * resizes to a reasonable thumbnail width.
+ */
+function buildVideoPoster(videoUrl, width = 400) {
+  return videoUrl
+    .replace('/video/upload/', `/video/upload/so_0,w_${width},f_auto,q_auto/`)
+    .replace(/\.[^.]+$/, '.jpg');
 }
 
 function isCloudinaryVideo(url) {
