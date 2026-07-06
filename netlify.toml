@@ -25,7 +25,7 @@
   status = 200
 
 [[redirects]]
-  from = "/board"
+  from = "/community"
   to = "/board.html"
   status = 200
 
