@@ -44,7 +44,7 @@ export default async (req, context) => {
       });
     }
 
-    const { title, body: threadBody } = body;
+    const { title, body: threadBody, mediaUrl } = body;
 
     if (!title || !title.trim()) {
       return new Response(JSON.stringify({ error: 'Title is required' }), {
@@ -60,11 +60,16 @@ export default async (req, context) => {
       });
     }
 
+    // Validate mediaUrl — only allow Cloudinary URLs (or empty)
+    const rawMedia = (mediaUrl || '').trim();
+    const safeMediaUrl = rawMedia.startsWith('https://res.cloudinary.com/') ? rawMedia : '';
+
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const thread = {
       id,
       title: title.trim(),
       body: threadBody.trim(),
+      mediaUrl: safeMediaUrl,
       author: user.email,
       replyCount: 0,
       createdAt: new Date().toISOString(),

@@ -437,6 +437,119 @@
     }
 
     [hidden] { display: none !important; }
+
+    /* ── Thread / reply media ──────────────────────────────────────────── */
+    .thread-media {
+      margin-block-start: 1em;
+      margin-block-end: 1em;
+    }
+
+    .thread-media img,
+    .thread-media video {
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .thread-media audio {
+      width: 100%;
+      display: block;
+    }
+
+    .reply-media {
+      margin-block-start: 0.75em;
+      margin-block-end: 0.75em;
+    }
+
+    .reply-media img,
+    .reply-media video {
+      max-width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .reply-media audio {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Media upload in forms ─────────────────────────────────────────── */
+    .form-group input[type="file"] {
+      background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      padding: 0.5em;
+      border-radius: 4px;
+    }
+
+    .form-group input[type="file"]::-webkit-file-upload-button {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      padding: 0.3em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-inline-end: 0.75em;
+    }
+
+    #media-preview-wrap {
+      margin-block-start: 0.75em;
+    }
+
+    #media-preview img,
+    #media-preview video {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    #media-preview audio {
+      width: 100%;
+      display: block;
+    }
+
+    #media-status {
+      font-size: 0.85em;
+      margin-block-start: 0.5em;
+      min-height: 1.2em;
+    }
+
+    #media-status.error  { color: #f5a8a8; }
+    #media-status.uploading { opacity: 0.6; }
+
+    /* Reply form media */
+    .reply-media-wrap {
+      margin-block-start: 0.5em;
+    }
+
+    .reply-media-preview img,
+    .reply-media-preview video {
+      max-width: 100%;
+      max-height: 160px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .reply-media-preview audio {
+      width: 100%;
+      display: block;
+    }
+
+    .reply-media-status {
+      font-size: 0.8em;
+      min-height: 1.1em;
+    }
+
+    .reply-media-status.error { color: #f5a8a8; }
+    .reply-media-status.uploading { opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -514,6 +627,21 @@
           <label for="thread-body">Message *</label>
           <textarea id="thread-body" name="body" required
             placeholder="Your message…"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="thread-media">Media (optional)</label>
+          <input type="file" id="thread-media" name="media"
+            accept="image/*,video/*,audio/*"
+            aria-label="Attach photo, video, or audio">
+          <div id="media-preview-wrap" hidden>
+            <div id="media-preview"></div>
+            <button type="button" id="remove-media-btn"
+              class="btn btn-sm"
+              style="margin-block-start: 0.5em; background: rgba(245, 168, 168, 0.12); border-color: rgba(245, 168, 168, 0.35); color: #f5a8a8;">
+              Remove Media
+            </button>
+          </div>
+          <p id="media-status" aria-live="polite"></p>
         </div>
         <div style="display: flex; gap: 1em; flex-wrap: wrap;">
           <button type="submit" class="btn btn-primary" id="thread-submit-btn">Post Thread</button>
