@@ -1,3 +1,40 @@
+import { authModal } from './auth-modal.js';
+
+// ─── In-memory auth state ─────────────────────────────────────────────────────
+// We maintain our own lightweight session on top of the Netlify Identity widget
+// so that users who sign in via the custom modal are immediately recognised
+// without a page reload.
+let _sessionUser = null; // { email, token }
+
+function _initSessionFromStorage() {
+  try {
+    const raw = localStorage.getItem('gotrue.user');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.access_token && parsed.email) {
+      // Check expiry
+      if (parsed.expires_at && parsed.expires_at < Date.now()) {
+        localStorage.removeItem('gotrue.user');
+        return;
+      }
+      _sessionUser = { email: parsed.email, token: parsed.access_token };
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Initialise from localStorage on module load
+_initSessionFromStorage();
+
+// Listen for successful logins from the custom auth modal
+window.addEventListener('auth-modal:login', e => {
+  _sessionUser = { email: e.detail.email, token: e.detail.token };
+  updateModalAuth();
+  refreshDeleteButtons();
+  refreshReplyForms();
+});
+
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const threadsList  = document.getElementById('threads-list');
 const loadingEl    = document.getElementById('loading');
@@ -18,32 +55,24 @@ const loginBtnBoard = document.getElementById('login-btn-board');
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 function currentUser() {
+  // Prefer the in-memory session (set after custom-modal login)
+  if (_sessionUser) return _sessionUser;
+  // Fall back to Netlify Identity widget session
   return window.netlifyIdentity?.currentUser() ?? null;
 }
 
 async function getToken() {
   try {
-    const user = currentUser();
+    // In-memory session token (from custom modal login)
+    if (_sessionUser?.token) return _sessionUser.token;
+
+    // Netlify Identity widget token
+    const user = window.netlifyIdentity?.currentUser();
     if (!user) return null;
     return await user.jwt();
   } catch {
     return null;
   }
-}
-
-function isAdmin() {
-  const user = currentUser();
-  if (!user) return false;
-  const allowed = (window.__ALLOWED_AUTHORS__ || '').split(',')
-    .map(e => e.trim().toLowerCase()).filter(Boolean);
-  // Fall back to checking if the user has any app_metadata role hint
-  // In practice, ALLOWED_AUTHORS is a server-side env var, so we check via
-  // a lightweight heuristic: the user is admin if they can reach the board
-  // at all (any logged-in user can delete their own content; ALLOWED_AUTHORS
-  // guards the actual API). We expose a data attribute from the HTML if needed,
-  // but the simplest UX is: show delete buttons to all logged-in users and let
-  // the server enforce the ALLOWED_AUTHORS check.
-  return !!user;
 }
 
 function getDisplayName(email) {
@@ -62,10 +91,10 @@ function formatDate(iso) {
 function updateModalAuth() {
   const user = currentUser();
   if (user) {
-    authGate.hidden  = true;
+    authGate.hidden   = true;
     threadForm.hidden = false;
   } else {
-    authGate.hidden  = false;
+    authGate.hidden   = false;
     threadForm.hidden = true;
   }
 }
@@ -93,8 +122,11 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
 });
 
+// Open the custom auth modal when the "Sign In / Create Account" button is clicked
 loginBtnBoard.addEventListener('click', () => {
-  window.netlifyIdentity?.open('login');
+  // Close the thread modal first so modals don't stack
+  closeModal();
+  authModal.open('login');
 });
 
 // ─── Re-render all open reply form sections to reflect current auth state ─────
@@ -105,14 +137,11 @@ function refreshReplyForms() {
   });
 }
 
-// ─── Netlify Identity events ──────────────────────────────────────────────────
+// ─── Netlify Identity events (keep for users already signed in via widget) ────
 window.addEventListener('load', () => {
   const identity = window.netlifyIdentity;
   if (!identity) return;
 
-  // 'init' fires on page load — user may already be signed in from a previous
-  // session.  We need to refresh reply forms once the identity state is known
-  // so that "sign in to reply" is replaced with the actual reply form.
   identity.on('init', () => {
     updateModalAuth();
     refreshDeleteButtons();
@@ -122,14 +151,15 @@ window.addEventListener('load', () => {
   identity.on('login', () => {
     updateModalAuth();
     refreshDeleteButtons();
-    // Replace "sign in to reply" with the actual reply form in any open threads
     refreshReplyForms();
   });
 
   identity.on('logout', () => {
+    // Also clear our in-memory session on widget logout
+    _sessionUser = null;
+    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
     updateModalAuth();
     refreshDeleteButtons();
-    // Replace reply forms with the "sign in" prompt
     refreshReplyForms();
   });
 });
@@ -159,7 +189,6 @@ function buildReplyCard(reply, threadId) {
   dateMeta.className = 'reply-date';
   dateMeta.textContent = formatDate(reply.createdAt);
 
-  // Delete reply button — visible only when logged in
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'reply-delete-btn';
   deleteBtn.textContent = 'Delete';
@@ -205,10 +234,8 @@ async function handleDeleteReply(threadId, replyId, cardEl) {
       throw new Error(err.error || `Server error (${res.status})`);
     }
 
-    // Remove the card from the DOM
     cardEl.remove();
 
-    // Decrement the toggle button's reply count
     const threadCard = threadsList.querySelector(`[data-thread-id="${threadId}"]`);
     if (threadCard) {
       const toggleBtn = threadCard.querySelector('.toggle-replies-btn');
@@ -222,7 +249,6 @@ async function handleDeleteReply(threadId, replyId, cardEl) {
           : `${count} repl${count === 1 ? 'y' : 'ies'} ${arrow}`;
       }
 
-      // Show "no replies" message if list is now empty
       const repliesListEl = threadCard.querySelector('.replies-list');
       const noRepliesEl   = threadCard.querySelector('.no-replies');
       if (repliesListEl && noRepliesEl && !repliesListEl.children.length) {
@@ -261,10 +287,8 @@ async function handleDeleteThread(threadId, cardEl) {
       throw new Error(err.error || `Server error (${res.status})`);
     }
 
-    // Remove the card from the DOM
     cardEl.remove();
 
-    // Show empty state if no threads remain
     if (!threadsList.children.length) {
       emptyState.hidden = false;
     }
@@ -302,7 +326,7 @@ async function loadReplies(threadId, repliesListEl, noRepliesEl, loadingEl) {
 }
 
 // ─── Build the reply form section (auth-aware) ────────────────────────────────
-function renderReplyFormSection(container, threadId, onReplyPosted) {
+function renderReplyFormSection(container, threadId) {
   container.innerHTML = '';
 
   const user = currentUser();
@@ -313,7 +337,7 @@ function renderReplyFormSection(container, threadId, onReplyPosted) {
     authMsg.innerHTML = `Sign in to leave a reply &nbsp;
       <button class="btn btn-sm btn-primary" style="margin-inline-start:0.5em;" data-login-btn>Sign In</button>`;
     authMsg.querySelector('[data-login-btn]').addEventListener('click', () => {
-      window.netlifyIdentity?.open('login');
+      authModal.open('login');
     });
     container.appendChild(authMsg);
     return;
@@ -377,7 +401,6 @@ function renderReplyFormSection(container, threadId, onReplyPosted) {
 
       const reply = await res.json();
 
-      // Append the new reply to the replies list above the form
       const repliesListEl = container.closest('.replies-container')
         ?.querySelector('.replies-list');
       const noRepliesEl = container.closest('.replies-container')
@@ -388,7 +411,6 @@ function renderReplyFormSection(container, threadId, onReplyPosted) {
         repliesListEl.appendChild(buildReplyCard(reply, threadId));
       }
 
-      // Update reply count badge on the toggle button
       const card = container.closest('.thread-card');
       if (card) {
         const toggleBtn = card.querySelector('.toggle-replies-btn');
@@ -420,7 +442,6 @@ function buildThreadCard(thread) {
   card.className = 'thread-card';
   card.dataset.threadId = thread.id;
 
-  // Card header: title + delete button
   const cardHeader = document.createElement('div');
   cardHeader.className = 'thread-card-header';
 
@@ -428,7 +449,6 @@ function buildThreadCard(thread) {
   title.className = 'thread-title';
   title.textContent = thread.title;
 
-  // Delete thread button — only visible when logged in
   const deleteThreadBtn = document.createElement('button');
   deleteThreadBtn.className = 'thread-delete-btn';
   deleteThreadBtn.textContent = 'Delete thread';
@@ -440,7 +460,6 @@ function buildThreadCard(thread) {
   cardHeader.appendChild(deleteThreadBtn);
   card.appendChild(cardHeader);
 
-  // Meta: author + date
   const meta = document.createElement('div');
   meta.className = 'thread-meta';
 
@@ -454,13 +473,11 @@ function buildThreadCard(thread) {
   meta.appendChild(dateSpan);
   card.appendChild(meta);
 
-  // Body preview
   const preview = document.createElement('p');
   preview.className = 'thread-preview';
   preview.textContent = thread.body;
   card.appendChild(preview);
 
-  // Toggle replies button
   const replyCount = thread.replyCount || 0;
   const toggleBtn = document.createElement('button');
   toggleBtn.className = 'toggle-replies-btn';
@@ -471,7 +488,6 @@ function buildThreadCard(thread) {
     : `${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} ▸`;
   card.appendChild(toggleBtn);
 
-  // Replies container (hidden until toggled)
   const repliesContainer = document.createElement('div');
   repliesContainer.className = 'replies-container';
 
@@ -561,7 +577,6 @@ threadForm.addEventListener('submit', async e => {
 
     const thread = await res.json();
 
-    // Prepend the new thread card
     const card = buildThreadCard(thread);
     if (threadsList.firstChild) {
       threadsList.insertBefore(card, threadsList.firstChild);
