@@ -160,12 +160,18 @@ function initAuth() {
   const userEmailEl   = document.getElementById('user-email');
   const loginBtn      = document.getElementById('login-btn');
   const logoutBtn     = document.getElementById('logout-btn');
+  const installHelp   = document.getElementById('install-help');
+  const installBanner = document.getElementById('install-banner');
 
   function applyUser(user) {
     if (user) {
       authGate.hidden      = true;
       composerPanel.hidden = false;
       userEmailEl.textContent = user.email;
+
+      // Close any open modals when user logs in
+      if (installHelp) installHelp.hidden = true;
+      if (installBanner) installBanner.hidden = true;
     } else {
       authGate.hidden      = false;
       composerPanel.hidden = true;
@@ -177,7 +183,10 @@ function initAuth() {
   applyUser(identity.currentUser());
 
   identity.on('init',   user => applyUser(user));
-  identity.on('login',  user => { applyUser(user); identity.close(); });
+  identity.on('login',  user => {
+    applyUser(user);
+    identity.close();
+  });
   identity.on('logout', ()   => applyUser(null));
 
   loginBtn.addEventListener('click',  () => identity.open('login'));
