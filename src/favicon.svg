@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Dark background for visibility -->
+  <rect width="100" height="100" fill="#0d0d0d" rx="20"/>
+  
+  <!-- Asterisk: 6 lines radiating from center -->
+  <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Vertical line -->
+    <line x1="50" y1="10" x2="50" y2="90"/>
+    
+    <!-- 60° diagonal (upper-right to lower-left) -->
+    <line x1="81.65" y1="18.35" x2="18.35" y2="81.65"/>
+    
+    <!-- 120° diagonal (upper-left to lower-right) -->
+    <line x1="18.35" y1="18.35" x2="81.65" y2="81.65"/>
+  </g>
+</svg>
