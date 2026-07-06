@@ -281,14 +281,19 @@ export class AuthModal {
   }
 
   async login(email, password) {
+    // GoTrue's /token endpoint is an OAuth 2.0 token endpoint and requires
+    // application/x-www-form-urlencoded, NOT application/json.
+    // Sending JSON causes a "unsupported grant_type" error because the server
+    // cannot parse the grant_type field from a JSON body.
+    const params = new URLSearchParams();
+    params.append('grant_type', 'password');
+    params.append('username', email);
+    params.append('password', password);
+
     const response = await fetch(`${this.apiUrl}/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'password',
-        username: email,
-        password: password,
-      }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     });
 
     if (!response.ok) {
