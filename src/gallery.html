@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Slings & Arrows | Gallery</title>
+  <meta name="description" content="Photo and video gallery from Slings & Arrows">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://slingsandarrows.band/gallery">
+  <meta property="og:title" content="Slings & Arrows | Gallery">
+  <meta property="og:description" content="Photo and video gallery from Slings & Arrows">
+  <meta property="og:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Slings & Arrows hero image">
+  <meta property="og:site_name" content="Slings & Arrows">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://slingsandarrows.band/gallery">
+  <meta name="twitter:title" content="Slings & Arrows | Gallery">
+  <meta name="twitter:description" content="Photo and video gallery from Slings & Arrows">
+  <meta name="twitter:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
+
+  <link rel="preconnect" href="https://use.typekit.net">
+  <link rel="preconnect" href="https://res.cloudinary.com">
+  <link rel="preload"
+    href="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh"
+    as="image"
+    imagesrcset="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh 768w,
+                 https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh 1920w"
+    imagesizes="100vw">
+  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+  <link href="../styles/tailwind.css" rel="stylesheet">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <style>
+    main {
+      backdrop-filter: blur(50px);
+      align-items: flex-start;
+    }
+
+    .gallery-container {
+      width: 95%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1em;
+      margin-block-end: 1.5em;
+    }
+
+    .gallery-header h2 {
+      margin-block-end: 0;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.6em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: rgba(168, 245, 168, 0.12);
+      border-color: rgba(168, 245, 168, 0.45);
+      color: #a8f5a8;
+    }
+
+    .btn-primary:hover {
+      background: rgba(168, 245, 168, 0.22);
+    }
+
+    .btn-sm {
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+    }
+
+    .btn-danger {
+      background: rgba(245, 168, 168, 0.1);
+      border-color: rgba(245, 168, 168, 0.35);
+      color: #f5a8a8;
+    }
+
+    .btn-danger:hover {
+      background: rgba(245, 168, 168, 0.2);
+      border-color: rgba(245, 168, 168, 0.6);
+    }
+
+    /* ── Gallery grid ────────────────────────────────────────────────────── */
+    #gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1em;
+      margin-block-end: 2em;
+    }
+
+    @media (max-width: 768px) {
+      #gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75em;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.5em;
+      }
+    }
+
+    /* ── Gallery item ────────────────────────────────────────────────────── */
+    .gallery-item {
+      position: relative;
+      aspect-ratio: 1;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .gallery-item:hover {
+      transform: scale(1.02);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .gallery-item img,
+    .gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* ── Media type badge ────────────────────────────────────────────────── */
+    .media-badge {
+      position: absolute;
+      top: 0.5em;
+      right: 0.5em;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 0.7em;
+      padding: 0.3em 0.6em;
+      border-radius: 3px;
+      font-family: "ballinger-mono", sans-serif;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0.05ch;
+    }
+
+    /* ── Admin delete overlay ────────────────────────────────────────────── */
+    .gallery-item-delete {
+      position: absolute;
+      bottom: 0.5em;
+      right: 0.5em;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(245, 168, 168, 0.5);
+      color: #f5a8a8;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 0.72rem;
+      padding: 0.25em 0.6em;
+      border-radius: 3px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .gallery-item:hover .gallery-item-delete {
+      opacity: 1;
+    }
+
+    .gallery-item-delete:hover {
+      background: rgba(245, 168, 168, 0.2) !important;
+    }
+
+    /* ── Caption overlay on hover ────────────────────────────────────────── */
+    .gallery-item-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+      color: white;
+      font-size: 0.78em;
+      padding: 1.5em 0.75em 0.6em;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .gallery-item:hover .gallery-item-caption {
+      opacity: 1;
+    }
+
+    /* ── Loading/empty states ──────────────────────────────────────────── */
+    #loading, #empty-state, #error-state {
+      text-align: center;
+      padding: 3em 0;
+      opacity: 0.6;
+    }
+
+    /* ── Lightbox ──────────────────────────────────────────────────────────── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1em;
+    }
+
+    .lightbox.active {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .lightbox-inner {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1em;
+    }
+
+    /* Close button — top-right of the overlay */
+    .lightbox-close {
+      position: fixed;
+      top: 1em;
+      right: 1em;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 1.4rem;
+      width: 2.5em;
+      height: 2.5em;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      z-index: 1001;
+      line-height: 1;
+    }
+
+    .lightbox-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Media area */
+    .lightbox-media-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-height: 80vh;
+    }
+
+    .lightbox-media-wrap img,
+    .lightbox-media-wrap video {
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    /* Bottom bar: nav + caption */
+    .lightbox-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1em;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .lightbox-nav {
+      display: flex;
+      gap: 0.5em;
+      flex-shrink: 0;
+    }
+
+    .lightbox-nav button {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 1.1rem;
+      width: 2.5em;
+      height: 2.5em;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .lightbox-nav button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .lightbox-nav button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .lightbox-info {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .lightbox-caption {
+      font-size: 0.9em;
+      opacity: 0.8;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .lightbox-counter {
+      font-size: 0.78em;
+      opacity: 0.5;
+      margin-block-start: 0.25em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Upload modal ────────────────────────────────────────────────────── */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1em;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #0d0d0d;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.75em 2em;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-block-end: 1.25em;
+    }
+
+    .modal-header h3 {
+      font-family: "fatfrank", sans-serif;
+      text-transform: uppercase;
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .modal-close-btn:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .form-group {
+      margin-block-end: 1.1em;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9em;
+      opacity: 0.7;
+      margin-block-end: 0.3em;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      font-size: 1rem;
+      padding: 0.75em;
+      border-radius: 4px;
+      resize: vertical;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .form-group textarea {
+      min-height: 80px;
+    }
+
+    .form-group input[type="file"] {
+      background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      padding: 0.5em;
+      border-radius: 4px;
+    }
+
+    .form-group input[type="file"]::-webkit-file-upload-button {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: "ballinger-mono", sans-serif;
+      padding: 0.3em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-inline-end: 0.75em;
+    }
+
+    #media-preview-wrap {
+      margin-block-start: 0.75em;
+    }
+
+    #media-preview img,
+    #media-preview video {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    #media-status {
+      font-size: 0.85em;
+      margin-block-start: 0.5em;
+      min-height: 1.2em;
+    }
+
+    #media-status.error     { color: #f5a8a8; }
+    #media-status.uploading { opacity: 0.6; }
+
+    .form-actions {
+      display: flex;
+      gap: 1em;
+      flex-wrap: wrap;
+      margin-block-start: 1em;
+    }
+
+    #form-status {
+      font-size: 0.9em;
+      min-height: 1.4em;
+      margin-block-start: 1em;
+    }
+
+    #form-status.error   { color: #f5a8a8; }
+    #form-status.success { color: #a8f5a8; }
+
+    /* ── Auth gate inside modal ─────────────────────────────────────────── */
+    .auth-required {
+      font-size: 0.9em;
+      opacity: 0.65;
+      padding: 0.75em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrapper min-h-screen">
+    <header class="p-4 text-white">
+      <h1 class="glitch">
+        <a href="/">
+          <span aria-hidden="true">Slings & Arrows</span>
+          Slings & Arrows
+          <span aria-hidden="true">Slings & Arrows</span>
+        </a>
+      </h1>
+      <nav class="site-nav" aria-label="Site navigation">
+        <a href="./feed.html">Feed</a>
+        <a href="./community.html">Community</a>
+        <a href="./gallery.html">Gallery</a>
+        <a href="./shows.html">Shows</a>
+        <a href="./instruments.html">Instruments</a>
+      </nav>
+    </header>
+
+    <main class="p-4" id="main-content">
+      <div class="gallery-container">
+
+        <div class="gallery-header">
+          <h2>Gallery</h2>
+          <!-- Upload button — shown only when logged in as allowed author -->
+          <button class="btn btn-primary" id="upload-btn" type="button" hidden>
+            + Add Photo / Video
+          </button>
+        </div>
+
+        <div id="loading" role="status" aria-live="polite">Loading…</div>
+        <div id="empty-state" hidden>No photos yet.</div>
+        <div id="error-state" hidden>Could not load gallery.</div>
+        <div id="gallery-grid" role="list" aria-label="Photo and video gallery"></div>
+
+      </div>
+    </main>
+
+    <footer class="p-4 text-white text-center">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
+    </footer>
+  </div>
+
+  <!-- ── Lightbox ─────────────────────────────────────────────────────────── -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Media viewer">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close lightbox">✕</button>
+    <div class="lightbox-inner">
+      <div class="lightbox-media-wrap" id="lightbox-media-wrap">
+        <!-- populated by JS -->
+      </div>
+      <div class="lightbox-bar">
+        <nav class="lightbox-nav" aria-label="Gallery navigation">
+          <button id="lightbox-prev" aria-label="Previous item">&#8592;</button>
+          <button id="lightbox-next" aria-label="Next item">&#8594;</button>
+        </nav>
+        <div class="lightbox-info">
+          <p class="lightbox-caption" id="lightbox-caption"></p>
+          <p class="lightbox-counter" id="lightbox-counter"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Upload modal ─────────────────────────────────────────────────────── -->
+  <div class="modal" id="upload-modal" role="dialog"
+    aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Add to Gallery</h3>
+        <button class="modal-close-btn" id="modal-close" aria-label="Close modal">✕</button>
+      </div>
+
+      <!-- Auth gate — shown when logged out -->
+      <div id="gallery-auth-gate" hidden>
+        <p style="margin-block-end: 1em; opacity: 0.8;">Sign in to upload photos and videos</p>
+        <button class="btn" id="login-btn"
+          style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
+          Sign In
+        </button>
+      </div>
+
+      <!-- Upload form — shown when logged in -->
+      <form id="upload-form" hidden>
+        <div class="form-group">
+          <label for="media-file">Photo or Video *</label>
+          <input type="file" id="media-file" name="media" accept="image/*,video/*" required>
+          <div id="media-preview-wrap" hidden>
+            <div id="media-preview"></div>
+            <button type="button" id="remove-media-btn" class="btn btn-sm btn-danger"
+              style="margin-block-start: 0.5em;">
+              Remove
+            </button>
+          </div>
+          <p id="media-status" aria-live="polite"></p>
+        </div>
+        <div class="form-group">
+          <label for="media-caption">Caption (optional)</label>
+          <textarea id="media-caption" name="caption"
+            placeholder="Describe this photo or video…"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="upload-submit-btn">Upload</button>
+          <button type="button" class="btn" id="modal-cancel">Cancel</button>
+        </div>
+        <p id="form-status" role="status" aria-live="polite"></p>
+      </form>
+
+    </div>
+  </div>
+
+  <script type="module" src="./js/gallery.js"></script>
+</body>
+</html>

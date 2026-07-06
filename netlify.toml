@@ -35,6 +35,11 @@
   status = 200
 
 [[redirects]]
+  from = "/gallery"
+  to = "/gallery.html"
+  status = 200
+
+[[redirects]]
   from = "/board"
   to = "/community"
   status = 301
