@@ -1,4 +1,4 @@
-import { authModal } from './auth-modal.js';
+import { authModal, initAuthBar } from './auth-modal.js';
 
 // ─── Cloudinary upload ────────────────────────────────────────────────────────
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
@@ -990,3 +990,4 @@ async function loadThreads() {
 }
 
 loadThreads();
+initAuthBar();
