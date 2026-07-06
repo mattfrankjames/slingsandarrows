@@ -38,8 +38,8 @@
   <link href="../styles/tailwind.css" rel="stylesheet">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
-  <!-- RSS auto-discovery -->
-  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Feed" href="/feed.xml">
+  <!-- RSS auto-discovery (href set by script so Parcel doesn't try to bundle /feed.xml) -->
+  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Feed" id="rss-link">
 
   <!-- Netlify Identity — needed so posts.js can read currentUser() for the delete button -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
@@ -166,7 +166,7 @@
     <footer class="p-4 text-white text-center">
       <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
       <p style="font-size: 0.85em; margin-block-start: 0.5em;">
-        <a href="/feed.xml" style="opacity: 0.7; text-decoration: none;">RSS Feed</a>
+        <a id="rss-footer-link" href="#" style="opacity: 0.7; text-decoration: none;">RSS Feed</a>
       </p>
       <div class="social-icons flex justify-between gap-2">
         <a href="mailto:mattjamesmedia@gmail.com" aria-label="email slings and arrows">
@@ -207,5 +207,10 @@
     </footer>
   </div>
   <script type="module" src="./js/posts.js"></script>
+  <script>
+    // Set RSS links at runtime so Parcel doesn't try to resolve /feed.xml as a local asset
+    document.getElementById('rss-link').href = '/feed.xml';
+    document.getElementById('rss-footer-link').href = '/feed.xml';
+  </script>
 </body>
 </html>
