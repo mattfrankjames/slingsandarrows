@@ -522,6 +522,15 @@ export function stopDrumMachine() {
   if (isPlaying) stopSequencer();
 }
 
+/**
+ * Return the module-level GainNode so the mixer can insert itself
+ * between this gain and the shared masterGain.
+ * Returns null if the context hasn't been set up yet.
+ */
+export function getDrumGain() {
+  return drumGain;
+}
+
 
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
