@@ -552,6 +552,33 @@
 
     .reply-media-status.error { color: #f5a8a8; }
     .reply-media-status.uploading { opacity: 0.6; }
+
+    /* ── RSS button ────────────────────────────────────────────────────── */
+    .board-header {
+      align-items: center;
+    }
+    .rss-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 0.3em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      flex-shrink: 0;
+    }
+    .rss-btn:hover {
+      color: #f5a060;
+      border-color: rgba(245, 160, 96, 0.6);
+      background: rgba(245, 160, 96, 0.08);
+    }
+    .rss-btn svg {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -578,9 +605,22 @@
 
         <div class="board-header">
           <h2>Community</h2>
-          <button class="btn btn-primary" id="new-thread-btn" type="button">
-            + New Thread
-          </button>
+          <div style="display:flex;align-items:center;gap:0.75em;">
+            <a id="rss-btn" href="#" class="rss-btn"
+              aria-label="Subscribe to the Community RSS feed"
+              title="RSS feed">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
+                  C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0
+                  0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1
+                  9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+              </svg>
+            </a>
+            <button class="btn btn-primary" id="new-thread-btn" type="button">
+              + New Thread
+            </button>
+          </div>
         </div>
 
         <div id="loading" role="status" aria-live="polite">Loading…</div>
@@ -593,9 +633,6 @@
 
     <footer class="p-4 text-white text-center">
       <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
-      <p style="font-size: 0.85em; margin-block-start: 0.5em;">
-        <a id="rss-footer-link" href="#" style="opacity: 0.7; text-decoration: none;">RSS Feed</a>
-      </p>
     </footer>
   </div>
 
@@ -664,7 +701,7 @@
   <script>
     // Set RSS links at runtime so Parcel doesn't try to resolve /community.xml as a local asset
     document.getElementById('rss-link').href = '/community.xml';
-    document.getElementById('rss-footer-link').href = '/community.xml';
+    document.getElementById('rss-btn').href = '/community.xml';
   </script>
 </body>
 </html>
