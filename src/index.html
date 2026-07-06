@@ -25,20 +25,24 @@
     <meta name="twitter:description" content="Atmospheric, dark & dreamy instrumental music from the Midwest.">
     <meta name="twitter:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
 
-<link rel="preconnect" href="https://use.typekit.net">
-<link rel="preconnect" href="https://res.cloudinary.com">
+<link rel="preconnect" href="https://use.typekit.net" crossorigin>
+<link rel="dns-prefetch" href="https://res.cloudinary.com">
 <link rel="preload"
     href="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh"
     as="image"
+    fetchpriority="high"
     imagesrcset="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh 768w,
                  https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh 1920w"
     imagesizes="100vw">
+    <!-- Primary Typekit kit loads synchronously (contains critical display fonts) -->
     <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
-    <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css">
+    <!-- Secondary kit deferred — swap to all once loaded -->
+    <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
     <link href="../styles/tailwind.css" rel="stylesheet">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dy='.35em' text-anchor='middle' font-size='90'>*</text></svg>">
-    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <!-- Netlify Identity only needed on app page; removed from index -->
 </head>
 <body>
     <div class="wrapper min-h-screen">
@@ -66,6 +70,8 @@
                 <div class="iframe-container">
                     <iframe style="border: 0; width: 100%; height: 120px;"
                         src="https://bandcamp.com/EmbeddedPlayer/album=1704065415/size=large/bgcol=333333/linkcol=ffffff/tracklist=false/artwork=small/transparent=true/"
+                        loading="lazy"
+                        title="The Body Electric by Slings &amp; Arrows"
                         seamless><a href="https://slingsarrows.bandcamp.com/album/the-body-electric">The Body Electric by Slings &amp;
                             Arrows</a></iframe>
                 </div>

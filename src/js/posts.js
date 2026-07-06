@@ -59,7 +59,7 @@ function renderPost(post, { pending = false } = {}) {
       const video = document.createElement('video');
       video.className = 'post-image';
       video.controls  = true;
-      video.preload   = 'metadata';
+      video.preload   = 'none'; // don't preload video data until user interacts
       video.setAttribute('playsinline', '');
 
       const source = document.createElement('source');
@@ -70,9 +70,22 @@ function renderPost(post, { pending = false } = {}) {
     } else {
       const img = document.createElement('img');
       img.className = 'post-image';
-      img.src       = post.imageUrl;
       img.alt       = post.title || '';
       img.loading   = 'lazy';
+
+      // Build a responsive srcset using Cloudinary's on-the-fly transforms.
+      // Insert width/quality params after /upload/ in the URL.
+      const optimizedUrl = (url, w) =>
+        url.replace('/upload/', `/upload/f_auto,q_80,w_${w}/`);
+
+      img.srcset = [
+        `${optimizedUrl(post.imageUrl, 400)} 400w`,
+        `${optimizedUrl(post.imageUrl, 800)} 800w`,
+        `${optimizedUrl(post.imageUrl, 1200)} 1200w`,
+      ].join(', ');
+      img.sizes = '(max-width: 600px) 100vw, (max-width: 1200px) 95vw, 700px';
+      img.src   = optimizedUrl(post.imageUrl, 800); // fallback
+
       article.appendChild(img);
     }
   }

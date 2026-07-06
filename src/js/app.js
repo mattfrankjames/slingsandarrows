@@ -143,7 +143,19 @@ let deferredInstallPrompt = null;
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
   await postQueue.init();
-  initAuth();
+  // Netlify Identity is loaded async — wait for it before calling initAuth
+  if (window.netlifyIdentity) {
+    initAuth();
+  } else {
+    window.addEventListener('netlifyIdentityReady', initAuth, { once: true });
+    // Fallback: if the script loaded but the event already fired, check again
+    // after a short tick (covers race where async script finishes before this runs)
+    setTimeout(() => {
+      if (window.netlifyIdentity && !document.getElementById('composer-panel').hasAttribute('data-auth-init')) {
+        initAuth();
+      }
+    }, 500);
+  }
   initInstallPrompt();
   registerServiceWorker();
   listenForSWMessages();
@@ -153,6 +165,15 @@ let deferredInstallPrompt = null;
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 function initAuth() {
   const identity = window.netlifyIdentity;
+  if (!identity) {
+    console.warn('[app] netlifyIdentity not available yet');
+    return;
+  }
+
+  // Mark that auth has been initialised so the setTimeout fallback doesn't re-run
+  const composerPanel = document.getElementById('composer-panel');
+  composerPanel.setAttribute('data-auth-init', '1');
+
   identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
 
   const authGate      = document.getElementById('auth-gate');

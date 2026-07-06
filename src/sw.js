@@ -1,4 +1,6 @@
-const CACHE = 'sa-shell-v2';
+const CACHE       = 'sa-shell-v3';   // bumped from v2 — triggers activate cleanup
+const IMAGE_CACHE = 'sa-images-v1';  // long-lived cache for Cloudinary assets
+const API_CACHE   = 'sa-api-v1';     // short-lived network-first cache for API responses
 
 // ─── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', () => {
@@ -7,9 +9,14 @@ self.addEventListener('install', () => {
 
 // ─── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', e => {
+  const KNOWN_CACHES = [CACHE, IMAGE_CACHE, API_CACHE];
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter(k => !KNOWN_CACHES.includes(k))
+          .map(k => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
@@ -19,12 +26,41 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Never intercept API calls — let the app handle offline queuing itself
-  if (url.pathname.startsWith('/api/')) return;
-
-  // Only handle GET requests for caching
+  // Only cache GET requests
   if (e.request.method !== 'GET') return;
 
+  // ── Cloudinary images/videos: cache-first (URLs are content-addressed) ────
+  if (url.hostname.includes('cloudinary.com')) {
+    e.respondWith(
+      caches.open(IMAGE_CACHE).then(cache =>
+        cache.match(e.request).then(hit => {
+          if (hit) return hit;
+          return fetch(e.request).then(res => {
+            if (res.ok) cache.put(e.request, res.clone());
+            return res;
+          });
+        })
+      )
+    );
+    return;
+  }
+
+  // ── API calls: network-first with cache fallback ──────────────────────────
+  if (url.pathname.startsWith('/api/')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) {
+            caches.open(API_CACHE).then(cache => cache.put(e.request, res.clone()));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // ── Static shell assets: stale-while-revalidate ───────────────────────────
   e.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(e.request).then(hit => {
