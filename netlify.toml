@@ -5,8 +5,8 @@
 
 # Clean URLs
 [[redirects]]
-  from = "/posts"
-  to = "/posts.html"
+  from = "/feed"
+  to = "/feed.html"
   status = 200
 
 [[redirects]]
@@ -37,6 +37,11 @@
 [[redirects]]
   from = "/board"
   to = "/community"
+  status = 301
+
+[[redirects]]
+  from = "/posts"
+  to = "/feed"
   status = 301
 
 [[redirects]]
