@@ -21,8 +21,8 @@
 
 [[redirects]]
   from = "/bass-sequencer"
-  to = "/bass-sequencer.html"
-  status = 200
+  to = "/studio"
+  status = 301
 
 [[redirects]]
   from = "/shows"
