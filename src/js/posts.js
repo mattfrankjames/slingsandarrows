@@ -1,3 +1,5 @@
+import { initAuthBar } from './auth-modal.js';
+
 const feed       = document.getElementById('posts-feed');
 const loading    = document.getElementById('loading');
 const emptyState = document.getElementById('empty-state');
@@ -274,6 +276,7 @@ function getAllPending(db) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (async () => {
+  initAuthBar();
   listenForSWMessages();
   await showPendingPosts(); // show offline queue before network posts load
   await loadPosts();

@@ -1,4 +1,6 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
+import { initAuthBar } from './auth-modal.js';
+
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
 
@@ -42,6 +44,7 @@ const formStatus    = document.getElementById('form-status');
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
+  initAuthBar();
   initAuth();
   await loadGallery();
   initLightbox();

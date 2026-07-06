@@ -404,3 +404,92 @@ export class AuthModal {
 export const authModal = new AuthModal({
   apiUrl: 'https://slingsandarrows.band/.netlify/identity',
 });
+
+// ── Auth bar (header sign-out strip) ──────────────────────────────────────────
+/**
+ * Wire up the persistent auth bar that appears in the page header when a user
+ * is signed in.  Expects the following elements in the DOM:
+ *
+ *   <div id="auth-bar" hidden>
+ *     <span id="auth-bar-email"></span>
+ *     <button id="auth-bar-logout">Sign Out</button>
+ *   </div>
+ *
+ * Works with both the Netlify Identity widget session and the custom-modal
+ * session stored in localStorage under `gotrue.user`.
+ */
+export function initAuthBar() {
+  const authBar   = document.getElementById('auth-bar');
+  const emailEl   = document.getElementById('auth-bar-email');
+  const logoutBtn = document.getElementById('auth-bar-logout');
+
+  if (!authBar || !logoutBtn) return;
+
+  // ── Resolve current user from widget or localStorage ──────────────────────
+  function resolveUser() {
+    // 1. Netlify Identity widget (preferred — has refresh-token support)
+    const widgetUser = window.netlifyIdentity?.currentUser?.();
+    if (widgetUser) return { email: widgetUser.email, source: 'widget' };
+
+    // 2. Custom-modal session stored in localStorage
+    try {
+      const raw = localStorage.getItem('gotrue.user');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token && parsed?.email) {
+          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
+            return { email: parsed.email, source: 'storage' };
+          }
+          // Expired — clean up
+          localStorage.removeItem('gotrue.user');
+        }
+      }
+    } catch { /* ignore */ }
+
+    return null;
+  }
+
+  function applyUser(user) {
+    if (user) {
+      if (emailEl) emailEl.textContent = user.email;
+      authBar.hidden = false;
+    } else {
+      if (emailEl) emailEl.textContent = '';
+      authBar.hidden = true;
+    }
+  }
+
+  // Initial render
+  applyUser(resolveUser());
+
+  // ── Netlify Identity widget events ────────────────────────────────────────
+  const identity = window.netlifyIdentity;
+  if (identity) {
+    identity.on('init',   user => applyUser(user ? { email: user.email } : resolveUser()));
+    identity.on('login',  user => applyUser({ email: user.email }));
+    identity.on('logout', ()   => {
+      // Also clear custom-modal session on widget logout
+      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      applyUser(null);
+    });
+  }
+
+  // ── Custom auth-modal login event ─────────────────────────────────────────
+  window.addEventListener('auth-modal:login', e => {
+    applyUser({ email: e.detail.email });
+  });
+
+  // ── Sign-out button ───────────────────────────────────────────────────────
+  logoutBtn.addEventListener('click', () => {
+    // Clear custom-modal session
+    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+
+    // Sign out of the Netlify Identity widget if it has an active session
+    if (window.netlifyIdentity?.currentUser?.()) {
+      window.netlifyIdentity.logout();
+    } else {
+      // No widget session — just clear the bar immediately
+      applyUser(null);
+    }
+  });
+}
