@@ -49,3 +49,19 @@
   to = "/feed"
   status = 301
 
+# RSS feed clean URLs
+[[redirects]]
+  from = "/feed.xml"
+  to = "/api/rss/feed"
+  status = 200
+
+[[redirects]]
+  from = "/community.xml"
+  to = "/api/rss/community"
+  status = 200
+
+[[headers]]
+  for = "/api/rss/*"
+  [headers.values]
+    Content-Type = "application/rss+xml; charset=utf-8"
+
