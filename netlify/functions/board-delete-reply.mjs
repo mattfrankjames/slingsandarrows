@@ -35,19 +35,6 @@ export default async (req, context) => {
       });
     }
 
-    // ── Authorization — ALLOWED_AUTHORS only ──────────────────────────────
-    const allowed = (process.env.ALLOWED_AUTHORS || '')
-      .split(',')
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
-
-    if (!allowed.includes((user.email || '').toLowerCase())) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     // ── Parse body ────────────────────────────────────────────────────────
     let body;
     try {
@@ -73,8 +60,32 @@ export default async (req, context) => {
       });
     }
 
-    // ── Delete the reply blob ─────────────────────────────────────────────
+    // ── Authorization — owner or admin ────────────────────────────────────
     const replyStore = getStore('board-replies');
+    const reply = await replyStore.get(`${threadId}/${replyId}`, { type: 'json' });
+    if (!reply) {
+      return new Response(JSON.stringify({ error: 'Reply not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const admins = (process.env.ALLOWED_ADMINS || process.env.ALLOWED_AUTHORS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAdmin = admins.includes((user.email || '').toLowerCase());
+    const isOwner = reply.author === user.email;
+
+    if (!isAdmin && !isOwner) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Delete the reply blob ─────────────────────────────────────────────
     await replyStore.delete(`${threadId}/${replyId}`);
 
     // ── Decrement reply count on the parent thread ────────────────────────

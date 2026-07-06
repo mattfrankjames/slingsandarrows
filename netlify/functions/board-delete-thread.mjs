@@ -35,19 +35,6 @@ export default async (req, context) => {
       });
     }
 
-    // ── Authorization — ALLOWED_AUTHORS only ──────────────────────────────
-    const allowed = (process.env.ALLOWED_AUTHORS || '')
-      .split(',')
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
-
-    if (!allowed.includes((user.email || '').toLowerCase())) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     // ── Parse body ────────────────────────────────────────────────────────
     let body;
     try {
@@ -67,8 +54,32 @@ export default async (req, context) => {
       });
     }
 
-    // ── Delete the thread ─────────────────────────────────────────────────
+    // ── Authorization — owner or admin ────────────────────────────────────
     const threadStore = getStore('board-threads');
+    const thread = await threadStore.get(id, { type: 'json' });
+    if (!thread) {
+      return new Response(JSON.stringify({ error: 'Thread not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const admins = (process.env.ALLOWED_ADMINS || process.env.ALLOWED_AUTHORS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAdmin = admins.includes((user.email || '').toLowerCase());
+    const isOwner = thread.author === user.email;
+
+    if (!isAdmin && !isOwner) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Delete the thread ─────────────────────────────────────────────────
     await threadStore.delete(id);
 
     // ── Delete all replies that belong to this thread ─────────────────────
