@@ -14,6 +14,14 @@ function isCloudinaryVideo(url) {
   return url.includes('/video/upload/');
 }
 
+// Insert Cloudinary transformation params after /upload/ without double-inserting.
+// Uses q_auto so Cloudinary picks optimal quality for each requested format.
+function cloudinaryOptimize(url, width) {
+  if (!url || !isCloudinaryUrl(url)) return url;
+  if (url.includes('/upload/f_auto')) return url; // already optimized
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
     year:  'numeric',
