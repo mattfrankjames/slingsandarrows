@@ -265,7 +265,13 @@ function initPostForm() {
       submitBtn,
       uploadStatus,
       statusMsg,
-      onSuccess:   () => { selectedMedia = null; },
+      onSuccess:   () => {
+        selectedMedia = null;
+        mediaInput.value = '';
+        previewWrap.hidden = true;
+        previewImg.src = '';
+        clearUploadStatus(uploadStatus);
+      },
     });
   });
 }
