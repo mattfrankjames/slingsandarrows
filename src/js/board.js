@@ -484,6 +484,23 @@ async function loadReplies(threadId, repliesListEl, noRepliesEl, loadingEl) {
 
     loadingEl.hidden = true;
 
+    // ── Reconcile the toggle-button label with the actual fetched count ───
+    // The stored thread.replyCount can drift out of sync (e.g. if replies were
+    // deleted directly in the blob store, or a race condition occurred during
+    // creation). Always use the authoritative count from the fetched array.
+    const threadCard = repliesListEl.closest('.thread-card');
+    if (threadCard) {
+      const toggleBtn = threadCard.querySelector('.toggle-replies-btn');
+      if (toggleBtn) {
+        const actualCount = replies.length;
+        toggleBtn.dataset.replyCount = actualCount;
+        // Button is open at this point (we just expanded it)
+        toggleBtn.textContent = actualCount === 0
+          ? 'Replies (0) ▾'
+          : `${actualCount} repl${actualCount === 1 ? 'y' : 'ies'} ▾`;
+      }
+    }
+
     if (!replies.length) {
       noRepliesEl.hidden = false;
       return;
