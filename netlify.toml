@@ -55,6 +55,18 @@
   status = 301
 
 [[redirects]]
+  from = "/api/create-checkout-session"
+  to = "/.netlify/functions/create-checkout-session"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/webhook"
+  to = "/.netlify/functions/webhook"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/board/threads/delete"
   to = "/.netlify/functions/board-delete-thread"
   status = 200
