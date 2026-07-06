@@ -1,5 +1,9 @@
+// Import product data at build time — Parcel bundles the JSON so no runtime
+// fetch is needed and the page works even when the JSON path resolves
+// differently after bundling.
+import merchData from '../data/merch.json';
+
 // ─── State ────────────────────────────────────────────────────────────────────
-/** @type {Array<import('../data/merch.json').products[0]>} */
 let products = [];
 
 /**
@@ -10,6 +14,7 @@ let products = [];
  *     name: string,
  *     size: string|null,
  *     price: number,
+ *     stripePriceId: string,
  *     quantity: number,
  *   }
  * }
@@ -61,12 +66,12 @@ function saveCart() {
 }
 
 // ─── Load products ────────────────────────────────────────────────────────────
-// Import the JSON directly so Parcel bundles it — no runtime fetch needed.
-import merchData from '../data/merch.json';
-
+// Products come from the statically-imported JSON — no network request needed.
 function loadProducts() {
   try {
-    products = (merchData && merchData.products) ? merchData.products : [];
+    products = (merchData && Array.isArray(merchData.products))
+      ? merchData.products
+      : [];
 
     loadingEl.hidden = true;
 
@@ -164,7 +169,7 @@ function renderProductCard(product) {
   addBtn.className = 'add-to-cart-btn';
   addBtn.type      = 'button';
   addBtn.textContent = 'Add to Cart';
-  // Disable if sizes exist but none selected yet
+  // Disable until a size is chosen (when sizes exist)
   addBtn.disabled = product.sizes && product.sizes.length > 0;
 
   addBtn.addEventListener('click', () => {
@@ -286,12 +291,12 @@ async function handleCheckout() {
   try {
     // Build line items for the serverless function
     const lineItems = Object.values(cart).map(item => ({
-      productId:    item.productId,
-      name:         item.name,
-      size:         item.size,
-      price:        item.price,
+      productId:     item.productId,
+      name:          item.name,
+      size:          item.size,
+      price:         item.price,
       stripePriceId: item.stripePriceId,
-      quantity:     item.quantity,
+      quantity:      item.quantity,
     }));
 
     const res = await fetch('/api/create-checkout-session', {
