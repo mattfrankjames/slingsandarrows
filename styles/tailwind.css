@@ -291,6 +291,42 @@ header p {
   }
 }
 
+/* ── Site nav ────────────────────────────────────────────────────────────── */
+.site-nav {
+  display: flex;
+  gap: 1.25em;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-block-start: 0.5em;
+}
+
+.site-nav a {
+  position: relative;
+  text-decoration: none;
+  padding-top: 0.5em;
+  transition: color 0.2s;
+}
+
+.site-nav a::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(168, 245, 168, 0.6);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.site-nav a:hover::before {
+  opacity: 1;
+}
+
+.site-nav a:hover {
+  color: #a8f5a8;
+}
+
 /* ── Auth Modal ──────────────────────────────────────────────────────────── */
 .auth-modal {
   position: fixed;
