@@ -279,14 +279,21 @@ function renderLightboxItem() {
     video.controls   = true;
     video.preload    = 'metadata';
     video.setAttribute('playsinline', '');
+    // Show an optimised poster while the video loads
+    video.poster = buildVideoPoster(item.mediaUrl, 1200);
     const source = document.createElement('source');
     source.src = item.mediaUrl;
     video.appendChild(source);
     lightboxWrap.appendChild(video);
   } else {
+    // Serve an optimised, format-negotiated image capped at 1600px wide —
+    // wide enough for any lightbox but much smaller than the raw original.
     const img = document.createElement('img');
-    img.src = item.mediaUrl;
-    img.alt = item.caption || 'Gallery photo';
+    img.src     = buildCloudinaryDisplay(item.mediaUrl, 1600);
+    img.srcset  = buildCloudinarySrcset(item.mediaUrl, [800, 1200, 1600]);
+    img.sizes   = '(max-width: 900px) 100vw, 1100px';
+    img.alt     = item.caption || 'Gallery photo';
+    img.decoding = 'async';
     lightboxWrap.appendChild(img);
   }
 
