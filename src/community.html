@@ -604,50 +604,16 @@
 
       <!-- Auth gate inside modal — shown when logged out -->
       <div id="board-auth-gate" hidden>
-
-        <!-- Tab switcher -->
-        <div style="display: flex; gap: 1.5em; margin-block-end: 1.5em; border-block-end: 1px solid rgba(255,255,255,0.15); padding-block-end: 0.75em;">
-          <button class="tab-link" data-tab="sign-in"
-            style="background: none; border: none; border-block-end: 2px solid white; color: white; cursor: pointer; padding: 0 0 0.75em; font-family: 'ballinger-mono', sans-serif; font-size: 0.95rem; letter-spacing: -0.03ch; margin-block-end: -0.75em;">
-            Sign In
-          </button>
-          <button class="tab-link" data-tab="request-invite"
-            style="background: none; border: none; border-block-end: 2px solid transparent; color: rgba(255,255,255,0.5); cursor: pointer; padding: 0 0 0.75em; font-family: 'ballinger-mono', sans-serif; font-size: 0.95rem; letter-spacing: -0.03ch; margin-block-end: -0.75em;">
-            Request Invite
-          </button>
-        </div>
-
-        <!-- Sign in section -->
-        <div id="auth-tab-sign-in">
-          <p style="margin-block-end: 1em; opacity: 0.8;">
-            Already have an account? Sign in here.
-          </p>
-          <button class="btn" id="login-btn-board"
-            style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
-            Sign In
-          </button>
-        </div>
-
-        <!-- Request invite section -->
-        <div id="auth-tab-request-invite" hidden>
-          <p style="margin-block-end: 1em; opacity: 0.8;">
-            New to the community? Request an invite and we'll get you set up.
-          </p>
-          <form id="invite-request-form">
-            <div class="form-group">
-              <label for="invite-email">Email</label>
-              <input type="email" id="invite-email" name="email" required
-                placeholder="your@email.com">
-            </div>
-            <button type="submit" class="btn"
-              style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
-              Request Invite
-            </button>
-            <p id="invite-status" role="status" aria-live="polite"
-              style="margin-block-start: 1em; font-size: 0.9em; min-height: 1.4em;"></p>
-          </form>
-        </div>
-
+        <p style="margin-block-end: 1em; opacity: 0.8;">
+          Sign in to post on the message board
+        </p>
+        <button class="btn" id="login-btn-board"
+          style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
+          Sign In / Create Account
+        </button>
+        <p style="margin-block-start: 1em; font-size: 0.8em; opacity: 0.6; line-height: 1.6;">
+          New users can create an account directly from the sign-in dialog.
+        </p>
       </div>
 
       <!-- Thread form — shown when logged in -->
