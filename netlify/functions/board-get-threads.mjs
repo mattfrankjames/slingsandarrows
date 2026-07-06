@@ -25,6 +25,23 @@ export default async (req) => {
 
     threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    // Reconcile each thread's replyCount against the actual stored replies so
+    // the badge shown before a user opens the thread is always accurate.
+    const replyStore = getStore('board-replies');
+    await Promise.all(threads.map(async thread => {
+      try {
+        const { blobs: replyBlobs } = await replyStore.list({ prefix: `${thread.id}/` });
+        const actualCount = replyBlobs.length;
+        if (thread.replyCount !== actualCount) {
+          thread.replyCount = actualCount;
+          // Persist the corrected value so future reads are cheaper
+          await store.setJSON(thread.id, thread);
+        }
+      } catch {
+        // If the reply store is unavailable, leave the stored count as-is
+      }
+    }));
+
     return new Response(JSON.stringify(threads), {
       status: 200,
       headers: {
