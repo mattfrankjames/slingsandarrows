@@ -4,27 +4,28 @@
       <stop offset="0%" stop-color="#1a1030"></stop>
       <stop offset="100%" stop-color="#0a0714"></stop>
     </radialGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="1.6"></feGaussianBlur>
-    </filter>
   </defs>
   <rect width="100" height="100" rx="20" fill="url(#bg)"></rect>
-  
+
+  <!-- Cyan chromatic-aberration layer -->
   <g transform="translate(-2.6,0)">
     <polyline points="24,66 50,30 76,66" fill="none" stroke="#2fe6ff" stroke-width="11" opacity="0.85" stroke-linejoin="miter"></polyline>
     <polyline points="24,90 50,54 76,90" fill="none" stroke="#2fe6ff" stroke-width="11" opacity="0.85" stroke-linejoin="miter"></polyline>
   </g>
-  
+
+  <!-- Magenta chromatic-aberration layer -->
   <g transform="translate(2.6,0)">
     <polyline points="24,66 50,30 76,66" fill="none" stroke="#ff2fb9" stroke-width="11" opacity="0.85" stroke-linejoin="miter"></polyline>
     <polyline points="24,90 50,54 76,90" fill="none" stroke="#ff2fb9" stroke-width="11" opacity="0.85" stroke-linejoin="miter"></polyline>
   </g>
-  
-  <g filter="url(#glow)" opacity="0.55">
-    <polyline points="24,66 50,30 76,66" fill="none" stroke="#f7f2ff" stroke-width="11" stroke-linejoin="miter"></polyline>
-    <polyline points="24,90 50,54 76,90" fill="none" stroke="#f7f2ff" stroke-width="11" stroke-linejoin="miter"></polyline>
+
+  <!-- Glow layer (inline opacity instead of filter — iOS-safe) -->
+  <g opacity="0.55">
+    <polyline points="24,66 50,30 76,66" fill="none" stroke="#f7f2ff" stroke-width="15" stroke-linejoin="miter"></polyline>
+    <polyline points="24,90 50,54 76,90" fill="none" stroke="#f7f2ff" stroke-width="15" stroke-linejoin="miter"></polyline>
   </g>
-  
+
+  <!-- White top layer -->
   <g>
     <polyline points="24,66 50,30 76,66" fill="none" stroke="#f7f2ff" stroke-width="11" stroke-linejoin="miter"></polyline>
     <polyline points="24,90 50,54 76,90" fill="none" stroke="#f7f2ff" stroke-width="11" stroke-linejoin="miter"></polyline>

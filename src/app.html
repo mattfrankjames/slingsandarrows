@@ -32,12 +32,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="S&amp;A">
-  <link rel="apple-touch-icon" href="./images/icon-192.png">
-
-  <!-- MS Tile (Edge / Windows) -->
-  <meta name="msapplication-TileImage" content="./images/icon-192.png">
-  <meta name="msapplication-TileColor" content="#000000">
-
   <!-- Load Netlify Identity asynchronously — initAuth() waits for the ready event -->
   <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <link rel="preconnect" href="https://use.typekit.net" crossorigin>
@@ -46,7 +40,9 @@
   <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
   <link href="../styles/tailwind.css" rel="stylesheet">
+  <!-- Favicon (address bar) and Apple touch icon (iOS home screen) — SVG only -->
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./favicon.svg">
   <style>
     .composer {
       width: 95%;
