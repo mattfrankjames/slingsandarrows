@@ -3,6 +3,13 @@
 @tailwind utilities;
 */
 
+body::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: #7209b7;
+}
+
 html,
 body {
   margin: 0;
