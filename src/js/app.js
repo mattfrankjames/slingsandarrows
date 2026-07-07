@@ -556,6 +556,36 @@ function initInstallPrompt() {
   });
 }
 
+// ─── Image cache invalidation ─────────────────────────────────────────────────
+/**
+ * Ask the service worker to evict a specific Cloudinary URL from the image
+ * cache.  Used after a post (and its media) is deleted so the stale cached
+ * image doesn't persist indefinitely.
+ *
+ * @param {string} imageUrl  - The Cloudinary URL to remove from the cache.
+ */
+async function invalidateImageCache(imageUrl) {
+  if (!imageUrl) return;
+  try {
+    // Fast path: remove directly from the Cache API (same origin context).
+    if ('caches' in window) {
+      const cache = await caches.open('sa-images-v1');
+      await cache.delete(imageUrl);
+    }
+    // Belt-and-suspenders: also tell the SW so it can clean up any variant
+    // requests it may have stored (e.g. with different Accept headers).
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_IMAGE',
+        url:  imageUrl,
+      });
+    }
+  } catch (err) {
+    // Non-fatal — the image will eventually be evicted by the LRU trim.
+    console.warn('[app] invalidateImageCache error:', err);
+  }
+}
+
 // ─── Service Worker registration ──────────────────────────────────────────────
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;

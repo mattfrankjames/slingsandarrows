@@ -32,6 +32,32 @@ function formatDate(iso) {
   });
 }
 
+// ─── Image cache invalidation ─────────────────────────────────────────────────
+/**
+ * Evict a Cloudinary URL from the image cache after a post or gallery item is
+ * deleted.  Tries the Cache API directly first; also notifies the SW for any
+ * variant entries it may hold.
+ *
+ * @param {string} imageUrl
+ */
+async function invalidateImageCache(imageUrl) {
+  if (!imageUrl) return;
+  try {
+    if ('caches' in window) {
+      const cache = await caches.open('sa-images-v1');
+      await cache.delete(imageUrl);
+    }
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_IMAGE',
+        url:  imageUrl,
+      });
+    }
+  } catch (err) {
+    console.warn('[posts] invalidateImageCache error:', err);
+  }
+}
+
 // ─── Get a JWT from Netlify Identity if available ─────────────────────────────
 // netlify-identity-widget is loaded on posts.html so window.netlifyIdentity is
 // always present; this helper safely reads the JWT from the current session.
@@ -156,6 +182,10 @@ function renderPost(post, { pending = false } = {}) {
             const err = await res.json().catch(() => ({ error: res.statusText }));
             throw new Error(err.error || `Server error (${res.status})`);
           }
+
+          // Evict the deleted post's image from the SW cache so it doesn't
+          // linger and consume quota.
+          if (post.imageUrl) await invalidateImageCache(post.imageUrl);
 
           article.remove();
         } catch (err) {
