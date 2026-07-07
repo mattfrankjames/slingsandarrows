@@ -58,19 +58,46 @@ async function invalidateImageCache(imageUrl) {
   }
 }
 
-// ─── Get a JWT from Netlify Identity if available ─────────────────────────────
-// netlify-identity-widget is loaded on posts.html so window.netlifyIdentity is
-// always present; this helper safely reads the JWT from the current session.
+// ─── Get a JWT from Netlify Identity or custom-modal session ─────────────────
 async function getToken() {
   try {
+    // 1. Netlify Identity widget session
     const identity = window.netlifyIdentity;
-    if (!identity) return null;
-    const user = identity.currentUser();
-    if (!user) return null;
-    return await user.jwt();
+    if (identity) {
+      const user = identity.currentUser();
+      if (user) return await user.jwt();
+    }
+
+    // 2. Custom-modal session stored in localStorage
+    const raw = localStorage.getItem('gotrue.user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.access_token) {
+        if (!parsed.expires_at || parsed.expires_at > Date.now()) {
+          return parsed.access_token;
+        }
+        localStorage.removeItem('gotrue.user');
+      }
+    }
   } catch {
-    return null;
+    // ignore
   }
+  return null;
+}
+
+function isLoggedIn() {
+  // Check both widget session and custom-modal localStorage session
+  if (window.netlifyIdentity?.currentUser?.()) return true;
+  try {
+    const raw = localStorage.getItem('gotrue.user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.access_token && parsed?.email) {
+        if (!parsed.expires_at || parsed.expires_at > Date.now()) return true;
+      }
+    }
+  } catch { /* ignore */ }
+  return false;
 }
 
 // ─── Render a single post card ────────────────────────────────────────────────
@@ -147,10 +174,7 @@ function renderPost(post, { pending = false } = {}) {
 
   // Delete button — only for published posts when a session is active
   if (!pending) {
-    const identity = window.netlifyIdentity;
-    const isLoggedIn = identity && identity.currentUser();
-
-    if (isLoggedIn) {
+    if (isLoggedIn()) {
       const deleteBtn = document.createElement('button');
       deleteBtn.className   = 'post-delete-btn';
       deleteBtn.textContent = '✕ Delete';

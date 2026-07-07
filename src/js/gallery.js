@@ -1,5 +1,5 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
-import { initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar } from './auth-modal.js';
 
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
@@ -77,8 +77,24 @@ const formStatus    = document.getElementById('form-status');
 
 // ─── Authentication ───────────────────────────────────────────────────────────
 function initAuth() {
-  const identity = window.netlifyIdentity;
-  identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
+  // ── Resolve current user from widget or localStorage ─────────────────────
+  function resolveUser() {
+    const widgetUser = window.netlifyIdentity?.currentUser?.();
+    if (widgetUser) return widgetUser;
+    try {
+      const raw = localStorage.getItem('gotrue.user');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token && parsed?.email) {
+          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
+            return { email: parsed.email };
+          }
+          localStorage.removeItem('gotrue.user');
+        }
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
 
   function applyUser(user) {
     isAdmin = !!user;
@@ -96,12 +112,26 @@ function initAuth() {
     if (uploadForm) uploadForm.hidden = !user;
   }
 
-  applyUser(identity.currentUser());
-  identity.on('init',   user => applyUser(user));
-  identity.on('login',  user => { applyUser(user); identity.close(); });
-  identity.on('logout', ()   => applyUser(null));
+  applyUser(resolveUser());
 
-  loginBtn?.addEventListener('click', () => identity.open('login'));
+  const identity = window.netlifyIdentity;
+  if (identity) {
+    identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
+    identity.on('init',   user => applyUser(user || resolveUser()));
+    identity.on('login',  user => { applyUser(user); identity.close(); });
+    identity.on('logout', ()   => {
+      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      applyUser(null);
+    });
+  }
+
+  // Custom auth-modal login event
+  window.addEventListener('auth-modal:login', e => {
+    applyUser({ email: e.detail.email });
+  });
+
+  // Login button inside the upload modal opens the custom auth modal
+  loginBtn?.addEventListener('click', () => authModal.open('login'));
 }
 
 // ─── Gallery loading & rendering ─────────────────────────────────────────────
@@ -474,9 +504,19 @@ async function handleUpload(e) {
 
     // Get auth token
     const identity = window.netlifyIdentity;
-    const user     = identity.currentUser();
+    const user     = identity?.currentUser();
     let token = '';
-    try { token = user ? await user.jwt() : ''; } catch { /* expired */ }
+    try {
+      if (user) {
+        token = await user.jwt();
+      } else {
+        const raw = localStorage.getItem('gotrue.user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.access_token) token = parsed.access_token;
+        }
+      }
+    } catch { /* expired */ }
 
     const res = await fetch('/api/gallery/add', {
       method: 'POST',
@@ -520,9 +560,19 @@ async function handleDelete(item, cardEl) {
   if (!confirm(`Delete this ${item.mediaType || 'item'}? This cannot be undone.`)) return;
 
   const identity = window.netlifyIdentity;
-  const user     = identity.currentUser();
+  const user     = identity?.currentUser();
   let token = '';
-  try { token = user ? await user.jwt() : ''; } catch { /* expired */ }
+  try {
+    if (user) {
+      token = await user.jwt();
+    } else {
+      const raw = localStorage.getItem('gotrue.user');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token) token = parsed.access_token;
+      }
+    }
+  } catch { /* expired */ }
 
   try {
     const res = await fetch('/api/gallery/delete', {

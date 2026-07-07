@@ -32,7 +32,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="S&amp;A">
-  <!-- Load Netlify Identity asynchronously — initAuth() waits for the ready event -->
+  <!-- Netlify Identity widget — loaded async; custom auth modal works without it -->
   <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <link rel="preconnect" href="https://use.typekit.net" crossorigin>
   <link rel="dns-prefetch" href="https://res.cloudinary.com">
@@ -231,6 +231,18 @@
       opacity: 0.65;
       line-height: 1.55;
     }
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      margin-block-end: 1.25em;
+      padding-block-end: 0.75em;
+      border-block-end: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.85em;
+    }
+    .auth-bar-email {
+      opacity: 0.6;
+    }
   </style>
 </head>
 <body>
@@ -253,6 +265,11 @@
     </header>
     <main class="p-4" id="main-content">
       <div class="composer">
+
+        <div id="auth-bar" hidden class="auth-bar">
+          <span id="auth-bar-email" class="auth-bar-email"></span>
+          <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
+        </div>
 
         <div id="install-banner" hidden>
           <span>Add to Home Screen for quick access</span>
