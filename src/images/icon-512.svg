@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#000000"/>
-  <text x="256" y="256" dy=".35em" text-anchor="middle" font-size="420" fill="white" font-family="sans-serif">*</text>
+  <rect width="512" height="512" fill="#0d0d0d"/>
+  <g fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <!-- S glyph -->
+    <path d="M 196 72 Q 72 72 72 148 Q 72 224 164 224 Q 256 224 256 300 Q 256 378 132 378"/>
+    <!-- A glyph -->
+    <path d="M 288 378 L 384 72 L 480 378"/>
+    <line x1="322" y1="262" x2="446" y2="262"/>
+  </g>
 </svg>
