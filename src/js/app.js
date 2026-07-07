@@ -1,3 +1,5 @@
+import { authModal, initAuthBar } from './auth-modal.js';
+
 // ─── IndexedDB offline queue ──────────────────────────────────────────────────
 class PostQueue {
   constructor() {
@@ -144,20 +146,14 @@ let deferredInstallPrompt = null;
 (async () => {
   await postQueue.init();
 
-  // Netlify Identity widget loads asynchronously (async attribute on the script
-  // tag), so window.netlifyIdentity may not exist yet when this module runs.
-  // We try immediately, then fall back to the window 'load' event which fires
-  // after all scripts have finished executing.
-  if (window.netlifyIdentity) {
+  // initAuth() no longer requires the Netlify Identity widget to be present —
+  // it also supports the custom-modal (GoTrue) session stored in localStorage.
+  // We still wait for 'load' so the widget (if present) has time to initialise
+  // before we call identity.currentUser().
+  if (document.readyState === 'complete') {
     initAuth();
   } else {
-    window.addEventListener('load', () => {
-      if (window.netlifyIdentity) {
-        initAuth();
-      } else {
-        console.error('[app] Netlify Identity widget failed to load');
-      }
-    });
+    window.addEventListener('load', initAuth, { once: true });
   }
 
   initInstallPrompt();
@@ -168,53 +164,85 @@ let deferredInstallPrompt = null;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 function initAuth() {
-  const identity = window.netlifyIdentity;
-  if (!identity) {
-    console.warn('[app] netlifyIdentity not available yet');
-    return;
-  }
-
-  identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
-
   const authGate      = document.getElementById('auth-gate');
   const composerPanel = document.getElementById('composer-panel');
   const userEmailEl   = document.getElementById('user-email');
   const loginBtn      = document.getElementById('login-btn');
   const logoutBtn     = document.getElementById('logout-btn');
-  const installHelp   = document.getElementById('install-help');
-  const installBanner = document.getElementById('install-banner');
+
+  // ── Resolve current user from widget or localStorage ─────────────────────
+  function resolveUser() {
+    // 1. Netlify Identity widget (preferred)
+    const widgetUser = window.netlifyIdentity?.currentUser?.();
+    if (widgetUser) return widgetUser;
+
+    // 2. Custom-modal session stored in localStorage
+    try {
+      const raw = localStorage.getItem('gotrue.user');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token && parsed?.email) {
+          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
+            return { email: parsed.email };
+          }
+          localStorage.removeItem('gotrue.user');
+        }
+      }
+    } catch { /* ignore */ }
+
+    return null;
+  }
 
   function applyUser(user) {
     if (user) {
-      authGate.hidden      = true;
-      composerPanel.hidden = false;
+      authGate.hidden         = true;
+      composerPanel.hidden    = false;
       userEmailEl.textContent = user.email;
-
-      // Close any open modals when user logs in
-      if (installHelp) installHelp.hidden = true;
-      if (installBanner) installBanner.hidden = true;
+      // Close the custom auth modal in case it was open
+      authModal.close();
     } else {
-      authGate.hidden      = false;
-      composerPanel.hidden = true;
+      authGate.hidden         = false;
+      composerPanel.hidden    = true;
       userEmailEl.textContent = '';
     }
   }
 
   // Restore session on page load
-  applyUser(identity.currentUser());
+  applyUser(resolveUser());
 
-  identity.on('init',   user => applyUser(user));
-  identity.on('login',  user => {
-    applyUser(user);
-    identity.close();
+  // Netlify Identity widget events (for users already signed in via widget)
+  const identity = window.netlifyIdentity;
+  if (identity) {
+    identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
+    identity.on('init',   user => applyUser(user || resolveUser()));
+    identity.on('login',  user => { applyUser(user); identity.close(); });
+    identity.on('logout', ()   => {
+      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      applyUser(null);
+    });
+  }
+
+  // Custom auth-modal login event (fired by AuthModal after successful sign-in)
+  window.addEventListener('auth-modal:login', e => {
+    applyUser({ email: e.detail.email });
   });
-  identity.on('logout', ()   => applyUser(null));
 
-  loginBtn.addEventListener('click',  () => identity.open('login'));
-  logoutBtn.addEventListener('click', () => identity.logout());
+  // Login button opens the custom auth modal
+  loginBtn.addEventListener('click', () => authModal.open('login'));
+
+  // Logout: clear custom-modal session and sign out of widget if active
+  logoutBtn.addEventListener('click', () => {
+    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+    if (identity?.currentUser?.()) {
+      identity.logout();
+    } else {
+      applyUser(null);
+    }
+  });
 
   // Wire the post form once (it's always in the DOM)
   initPostForm();
+  initAuthBar();
 }
 
 // ─── Post Form ────────────────────────────────────────────────────────────────
@@ -352,12 +380,21 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
 
     // ── Get auth token ──────────────────────────────────────────────────────
     const identity = window.netlifyIdentity;
-    const user     = identity.currentUser();
+    const user     = identity?.currentUser();
     let token      = '';
     try {
-      token = user ? await user.jwt() : '';
+      if (user) {
+        token = await user.jwt();
+      } else {
+        // Fall back to custom-modal session token stored in localStorage
+        const raw = localStorage.getItem('gotrue.user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.access_token) token = parsed.access_token;
+        }
+      }
     } catch (err) {
-      console.warn('JWT fetch failed:', err);
+      console.warn('Token fetch failed:', err);
     }
 
     // ── Check connectivity ──────────────────────────────────────────────────
