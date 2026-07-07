@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#0d0d0d"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Stylized "S" curve -->
+    <path d="M 20 16 Q 28 16 28 22 Q 28 28 20 28 Q 12 28 12 34 Q 12 40 20 40 Q 28 40 28 46"/>
+    <!-- Stylized "A" with horizontal bar -->
+    <path d="M 36 48 L 44 16 L 52 48"/>
+    <line x1="40" y1="32" x2="48" y2="32"/>
+  </g>
+</svg>
