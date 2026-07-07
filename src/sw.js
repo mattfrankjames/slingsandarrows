@@ -1,6 +1,10 @@
-const CACHE       = 'sa-shell-v3';   // bumped from v2 — triggers activate cleanup
-const IMAGE_CACHE = 'sa-images-v1';  // long-lived cache for Cloudinary assets
+const CACHE       = 'sa-shell-v3';   // app-shell assets (HTML, CSS, JS)
+const IMAGE_CACHE = 'sa-images-v1';  // long-lived cache-first store for Cloudinary assets
 const API_CACHE   = 'sa-api-v1';     // short-lived network-first cache for API responses
+
+// Maximum number of Cloudinary images to keep in the image cache.
+// Older entries are evicted once this limit is exceeded.
+const IMAGE_CACHE_LIMIT = 100;
 
 // ─── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', () => {
@@ -35,10 +39,19 @@ self.addEventListener('fetch', e => {
       caches.open(IMAGE_CACHE).then(cache =>
         cache.match(e.request).then(hit => {
           if (hit) return hit;
+
           return fetch(e.request).then(res => {
-            if (res.ok) cache.put(e.request, res.clone());
+            if (res.ok) {
+              // Store the response, then asynchronously trim the cache to
+              // IMAGE_CACHE_LIMIT entries so we don't grow without bound.
+              cache.put(e.request, res.clone()).then(() => trimImageCache(cache));
+            }
             return res;
-          });
+          }).catch(() =>
+            // Network failed and nothing cached — return a minimal 503 so the
+            // browser doesn't show a broken-image icon forever.
+            new Response('', { status: 503, statusText: 'Image unavailable offline' })
+          );
         })
       )
     );
@@ -128,6 +141,57 @@ function notifyClients(msg) {
     clients.forEach(c => c.postMessage(msg))
   );
 }
+
+// ─── Image cache eviction ─────────────────────────────────────────────────────
+/**
+ * Keep the image cache under IMAGE_CACHE_LIMIT entries by deleting the oldest
+ * requests (Cache Storage preserves insertion order via keys()).
+ */
+async function trimImageCache(cache) {
+  try {
+    const keys = await cache.keys();
+    if (keys.length <= IMAGE_CACHE_LIMIT) return;
+    const toDelete = keys.slice(0, keys.length - IMAGE_CACHE_LIMIT);
+    await Promise.all(toDelete.map(req => cache.delete(req)));
+  } catch (err) {
+    console.warn('[SW] trimImageCache error:', err);
+  }
+}
+
+// ─── Cache invalidation message handler ──────────────────────────────────────
+/**
+ * Clients can send { type: 'INVALIDATE_IMAGE', url: '...' } to remove a
+ * specific Cloudinary URL from the image cache (e.g. after deleting a post).
+ */
+self.addEventListener('message', async e => {
+  if (!e.data) return;
+
+  if (e.data.type === 'INVALIDATE_IMAGE' && e.data.url) {
+    try {
+      const cache = await caches.open(IMAGE_CACHE);
+      await cache.delete(e.data.url);
+    } catch (err) {
+      console.warn('[SW] INVALIDATE_IMAGE error:', err);
+    }
+  }
+
+  if (e.data.type === 'GET_CACHE_STATS') {
+    try {
+      const [shellKeys, imageKeys] = await Promise.all([
+        caches.open(CACHE).then(c => c.keys()),
+        caches.open(IMAGE_CACHE).then(c => c.keys()),
+      ]);
+      e.source?.postMessage({
+        type: 'CACHE_STATS',
+        shell: shellKeys.length,
+        images: imageKeys.length,
+        imageLimit: IMAGE_CACHE_LIMIT,
+      });
+    } catch (err) {
+      console.warn('[SW] GET_CACHE_STATS error:', err);
+    }
+  }
+});
 
 // ─── IndexedDB helpers (service worker context) ───────────────────────────────
 function openDB() {

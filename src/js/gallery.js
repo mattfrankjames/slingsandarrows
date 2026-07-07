@@ -4,6 +4,30 @@ import { initAuthBar } from './auth-modal.js';
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
 
+// ─── Image cache invalidation ─────────────────────────────────────────────────
+/**
+ * Evict a Cloudinary URL from the image cache after a gallery item is deleted.
+ *
+ * @param {string} mediaUrl
+ */
+async function invalidateImageCache(mediaUrl) {
+  if (!mediaUrl) return;
+  try {
+    if ('caches' in window) {
+      const cache = await caches.open('sa-images-v1');
+      await cache.delete(mediaUrl);
+    }
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_IMAGE',
+        url:  mediaUrl,
+      });
+    }
+  } catch (err) {
+    console.warn('[gallery] invalidateImageCache error:', err);
+  }
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 /** @type {Array<{id:string, mediaUrl:string, mediaType:string, caption:string, createdAt:string}>} */
 let galleryItems = [];
@@ -519,6 +543,9 @@ async function handleDelete(item, cardEl) {
     const idx = galleryItems.findIndex(i => i.id === item.id);
     if (idx !== -1) galleryItems.splice(idx, 1);
     cardEl.remove();
+
+    // Evict the deleted item's media from the SW image cache.
+    await invalidateImageCache(item.mediaUrl);
 
     // Re-index remaining cards
     document.querySelectorAll('.gallery-item').forEach((card, i) => {
