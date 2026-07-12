@@ -49,16 +49,10 @@
   to = "/feed"
   status = 301
 
-# RSS feed clean URLs
-[[redirects]]
-  from = "/feed.xml"
-  to = "/api/rss/feed"
-  status = 200
-
-[[redirects]]
-  from = "/community.xml"
-  to = "/api/rss/community"
-  status = 200
+# RSS feeds are served directly by the rss-feed / rss-community functions,
+# which register /feed.xml and /community.xml via their config.path. A 200
+# rewrite here would NOT chain to a v2 function's in-code path, so it must
+# not shadow those routes.
 
 [[headers]]
   for = "/api/rss/*"

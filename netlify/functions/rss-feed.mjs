@@ -1,6 +1,6 @@
 import { getStore } from '@netlify/blobs';
 
-export const config = { path: '/api/rss/feed' };
+export const config = { path: ['/api/rss/feed', '/feed.xml'] };
 
 export default async (req) => {
   if (req.method !== 'GET') {
