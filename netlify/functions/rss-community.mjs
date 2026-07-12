@@ -1,6 +1,6 @@
 import { getStore } from '@netlify/blobs';
 
-export const config = { path: '/api/rss/community' };
+export const config = { path: ['/api/rss/community', '/community.xml'] };
 
 export default async (req) => {
   if (req.method !== 'GET') {
