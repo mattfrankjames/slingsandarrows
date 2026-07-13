@@ -577,6 +577,7 @@
 
     /* ── RSS button ────────────────────────────────────────────────────── */
     .rss-btn {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -597,6 +598,26 @@
     }
     .rss-btn svg {
       display: block;
+    }
+    .rss-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 0.72rem;
+      line-height: 1;
+      white-space: nowrap;
+      padding: 0.45em 0.65em;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      z-index: 10;
+    }
+    .rss-tooltip.show {
+      opacity: 1;
     }
   </style>
 </head>
@@ -631,8 +652,8 @@
           <h2>Community</h2>
           <div style="display:flex;align-items:center;gap:0.75em;">
             <a id="rss-btn" href="#" class="rss-btn"
-              aria-label="Subscribe to the Community RSS feed"
-              title="RSS feed">
+              aria-label="Copy the Community RSS feed URL to subscribe in your reader"
+              title="Copy RSS feed URL">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                 viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                 <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
@@ -640,6 +661,7 @@
                   0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1
                   9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
               </svg>
+              <span class="rss-tooltip" role="status" aria-live="polite"></span>
             </a>
             <button class="btn btn-primary" id="new-thread-btn" type="button">
               + New Thread
@@ -723,9 +745,59 @@
 
   <script type="module" src="./js/board.js"></script>
   <script>
-    // Set RSS links at runtime so Parcel doesn't try to resolve /community.xml as a local asset
-    document.getElementById('rss-link').href = '/community.xml';
-    document.getElementById('rss-btn').href = '/community.xml';
+    // RSS feed URL set at runtime so Parcel doesn't try to resolve /community.xml as a local asset.
+    // The button copies the absolute feed URL to the clipboard (browsers have no native
+    // "open in reader" action) so the user can paste it into their feed reader.
+    (function () {
+      var FEED_URL = window.location.origin + '/community.xml';
+      var link = document.getElementById('rss-link');
+      var btn = document.getElementById('rss-btn');
+      if (link) link.href = FEED_URL;
+      if (!btn) return;
+      btn.href = FEED_URL;
+
+      var tip = btn.querySelector('.rss-tooltip');
+      var hideTimer;
+      function flash(msg) {
+        if (!tip) return;
+        tip.textContent = msg;
+        tip.classList.add('show');
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () { tip.classList.remove('show'); }, 2000);
+      }
+
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            ok ? resolve() : reject();
+          } catch (err) { reject(err); }
+        });
+      }
+
+      btn.addEventListener('click', function (e) {
+        // Let modified / non-primary clicks behave like a normal link (open, copy link, new tab)
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        copy(FEED_URL).then(function () {
+          flash('Feed URL copied — paste into your reader');
+        }).catch(function () {
+          // Clipboard unavailable: fall back to navigating so the URL is in the address bar
+          window.location.href = FEED_URL;
+        });
+      });
+    })();
   </script>
 </body>
 </html>
