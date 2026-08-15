@@ -48,6 +48,10 @@
 	<!-- Favicon (SVG for the address bar) and Apple touch icon (PNG — iOS ignores SVG here) -->
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 	<link rel="apple-touch-icon" href="./images/icon-192.png">
+	<!-- Netlify Identity — loaded (and initialized, in the module script near
+	     the end of body) on every page, not just /app, so email confirmation
+	     and password-recovery links work no matter where they land. -->
+	<script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
 </head>
 
@@ -122,6 +126,13 @@
 </body>
 <script type="module">
 			import showsData from './data/shows.json';
+			import { initIdentityWidget } from './js/identity-widget.js';
+
+			if (document.readyState === 'complete') {
+				initIdentityWidget();
+			} else {
+				window.addEventListener('load', initIdentityWidget, { once: true });
+			}
 
 			function buildList(shows) {
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
