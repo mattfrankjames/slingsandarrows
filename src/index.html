@@ -49,7 +49,11 @@
     <!-- Favicon (SVG for the address bar) and Apple touch icon (PNG — iOS ignores SVG here) -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <link rel="apple-touch-icon" href="./images/icon-192.png">
-    <!-- Netlify Identity only needed on app page; removed from index -->
+    <!-- Netlify Identity — loaded (and initialized, in the module script near
+         the end of body) on every page, not just /app. Email confirmation
+         and password-recovery links only work if the widget is initialized
+         on whatever page the user lands on when they click the link. -->
+    <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
     <style>
         footer {
             background: #000000e6;
@@ -167,5 +171,13 @@
     </div>
         </footer>
     </div>
+    <script type="module">
+        import { initIdentityWidget } from './js/identity-widget.js';
+        if (document.readyState === 'complete') {
+            initIdentityWidget();
+        } else {
+            window.addEventListener('load', initIdentityWidget, { once: true });
+        }
+    </script>
 </body>
 </html>

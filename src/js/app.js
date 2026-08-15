@@ -212,10 +212,12 @@ function initAuth() {
   // Restore session on page load
   applyUser(resolveUser());
 
-  // Netlify Identity widget events (for users already signed in via widget)
+  // Netlify Identity widget events (for users already signed in via widget).
+  // The widget itself is initialized by initAuthBar() below, which must run
+  // after these listeners are attached so it doesn't fire 'init' before
+  // anything is listening for it.
   const identity = window.netlifyIdentity;
   if (identity) {
-    identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
     identity.on('init',   user => applyUser(user || resolveUser()));
     identity.on('login',  user => { applyUser(user); identity.close(); });
     identity.on('logout', ()   => {

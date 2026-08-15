@@ -72,8 +72,11 @@ const formStatus    = document.getElementById('form-status');
   // initAuth()/initAuthBar() check it — otherwise a session past its 1-hour
   // access-token lifetime looks logged-out on every page load.
   await ensureFreshSession();
-  initAuthBar();
+  // initAuth() attaches identity.on() listeners; initAuthBar() (which
+  // initializes the widget) must run after so it doesn't fire 'init' before
+  // anything is listening for it.
   initAuth();
+  initAuthBar();
   registerServiceWorker();
   listenForSWMessages();
   await loadGallery();
@@ -120,9 +123,11 @@ function initAuth() {
 
   applyUser(resolveUser());
 
+  // The widget itself is initialized by initAuthBar() (called after initAuth()
+  // in the bootstrap below) — these listeners must be attached first so it
+  // doesn't fire 'init' before anything is listening for it.
   const identity = window.netlifyIdentity;
   if (identity) {
-    identity.init({ APIUrl: 'https://slingsandarrows.band/.netlify/identity' });
     identity.on('init',   user => applyUser(user || resolveUser()));
     identity.on('login',  user => { applyUser(user); identity.close(); });
     identity.on('logout', ()   => {

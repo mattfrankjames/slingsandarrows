@@ -3,7 +3,9 @@
  * Provides sign-up and sign-in flows without relying on Netlify Identity widget
  */
 
-const GOTRUE_API_URL = 'https://slingsandarrows.band/.netlify/identity';
+import { GOTRUE_API_URL, initIdentityWidget } from './identity-widget.js';
+
+export { initIdentityWidget };
 
 export class AuthModal {
   constructor(options = {}) {
@@ -478,6 +480,10 @@ export async function ensureFreshSession() {
  * session stored in localStorage under `gotrue.user`.
  */
 export function initAuthBar() {
+  // Initialize the widget regardless of whether this page has auth-bar
+  // markup — see initIdentityWidget() for why this has to run everywhere.
+  initIdentityWidget();
+
   const authBar   = document.getElementById('auth-bar');
   const emailEl   = document.getElementById('auth-bar-email');
   const logoutBtn = document.getElementById('auth-bar-logout');
