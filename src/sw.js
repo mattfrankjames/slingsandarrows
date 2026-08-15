@@ -58,17 +58,34 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // ── API calls: network-first with cache fallback ──────────────────────────
+  // ── API calls: stale-while-revalidate ──────────────────────────────────────
+  // Serve the cached response immediately if we have one (so repeat visits to
+  // the feed/board/gallery paint instantly instead of waiting on a network
+  // round-trip), then revalidate in the background. If the fresh response
+  // differs from what was cached, tell open pages so they can silently
+  // re-render without the user having to reload.
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          if (res.ok) {
-            caches.open(API_CACHE).then(cache => cache.put(e.request, res.clone()));
-          }
-          return res;
-        })
-        .catch(() => caches.match(e.request))
+      caches.open(API_CACHE).then(async cache => {
+        const cached = await cache.match(e.request);
+
+        if (cached) {
+          e.waitUntil(revalidateApiCache(e.request, cache, cached));
+          return cached;
+        }
+
+        // Nothing cached yet — this request has to wait on the network, but
+        // populate the cache so the next visit can paint instantly.
+        return fetch(e.request)
+          .then(res => {
+            if (res.ok) cache.put(e.request, res.clone());
+            return res;
+          })
+          .catch(() => new Response('[]', {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          }));
+      })
     );
     return;
   }
@@ -140,6 +157,34 @@ function notifyClients(msg) {
   self.clients.matchAll({ includeUncontrolled: true }).then(clients =>
     clients.forEach(c => c.postMessage(msg))
   );
+}
+
+// ─── API cache revalidation ───────────────────────────────────────────────────
+/**
+ * Background half of the stale-while-revalidate strategy for /api/* GETs.
+ * Fetches a fresh copy, updates the cache, and — only if the response body
+ * actually changed — notifies open pages via postMessage so they can
+ * silently re-render instead of showing stale data until the next reload.
+ */
+async function revalidateApiCache(request, cache, cachedResponse) {
+  try {
+    const res = await fetch(request);
+    if (!res.ok) return;
+
+    const [freshText, cachedText] = await Promise.all([
+      res.clone().text(),
+      cachedResponse.clone().text(),
+    ]);
+
+    await cache.put(request, res.clone());
+
+    if (freshText !== cachedText) {
+      notifyClients({ type: 'API_UPDATED', url: request.url });
+    }
+  } catch {
+    // Offline or network error — the cached copy was already served to the
+    // page, nothing more to do until the next request.
+  }
 }
 
 // ─── Image cache eviction ─────────────────────────────────────────────────────

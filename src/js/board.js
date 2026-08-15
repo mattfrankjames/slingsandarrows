@@ -1,4 +1,4 @@
-import { authModal, initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 
 // ─── Cloudinary upload ────────────────────────────────────────────────────────
@@ -236,6 +236,11 @@ function currentUser() {
 
 async function getToken() {
   try {
+    // Silently refresh an expired custom-modal token, then re-sync the
+    // in-memory session from localStorage so the fresh token is used.
+    await ensureFreshSession();
+    _initSessionFromStorage();
+
     // In-memory session token (from custom modal login)
     if (_sessionUser?.token) return _sessionUser.token;
 
@@ -994,5 +999,66 @@ async function loadThreads() {
   }
 }
 
-loadThreads();
-initAuthBar();
+// ─── Silent background refresh ─────────────────────────────────────────────────
+// Re-fetches and re-renders the thread list without disturbing the user —
+// re-expands (and reloads replies for) any threads that were already open.
+async function refreshThreadsSilently() {
+  try {
+    const res = await fetch('/api/board/threads');
+    if (!res.ok) return;
+    const threads = await res.json();
+
+    const openThreadIds = Array.from(threadsList.querySelectorAll('.thread-card'))
+      .filter(card => card.querySelector('.replies-container.visible'))
+      .map(card => card.dataset.threadId);
+
+    threadsList.innerHTML = '';
+
+    if (!threads.length) {
+      emptyState.hidden = false;
+      return;
+    }
+    emptyState.hidden = true;
+
+    threads.forEach(thread => {
+      const card = threadsList.appendChild(buildThreadCard(thread));
+      if (openThreadIds.includes(thread.id)) {
+        card.querySelector('.toggle-replies-btn')?.click();
+      }
+    });
+  } catch (err) {
+    console.warn('[board] refreshThreadsSilently error:', err);
+  }
+}
+
+// ─── Service Worker registration + messages ────────────────────────────────────
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker
+    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .catch(err => console.warn('[board] SW registration failed:', err));
+}
+
+function listenForSWMessages() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.addEventListener('message', e => {
+    const { type, url } = e.data || {};
+    // The SW revalidated /api/board/threads in the background and found the
+    // response actually changed — silently re-render instead of leaving
+    // stale content on screen until the user manually reloads.
+    if (type === 'API_UPDATED' && url?.includes('/api/board/threads')) {
+      refreshThreadsSilently();
+    }
+  });
+}
+
+(async () => {
+  // Refresh an expired session (if a refresh token is available) before the
+  // auth-gated UI below (delete buttons, reply forms, auth bar) renders.
+  await ensureFreshSession();
+  _initSessionFromStorage();
+  registerServiceWorker();
+  listenForSWMessages();
+  loadThreads();
+  initAuthBar();
+})();
