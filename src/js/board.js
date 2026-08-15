@@ -1,4 +1,5 @@
 import { authModal, initAuthBar } from './auth-modal.js';
+import { lightbox } from './lightbox.js';
 
 // ─── Cloudinary upload ────────────────────────────────────────────────────────
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
@@ -163,6 +164,10 @@ function buildMediaElement(mediaUrl, className) {
     // Container is capped at 760px (max-width of board-container)
     img.sizes = '(max-width: 760px) 100vw, 760px';
     img.src   = cloudinaryOptimize(mediaUrl, 760); // fallback
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      lightbox.open(cloudinaryOptimize(mediaUrl, 1600), '');
+    });
     container.appendChild(img);
   }
   return container;

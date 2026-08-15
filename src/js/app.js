@@ -252,17 +252,44 @@ function initPostForm() {
   const bodyInput     = document.getElementById('post-body');
   const mediaInput    = document.getElementById('post-image');
   const previewWrap   = document.getElementById('image-preview-wrap');
-  const previewImg    = document.getElementById('preview-img');
+  const previewMedia  = document.getElementById('preview-media');
   const removeBtn     = document.getElementById('remove-image-btn');
   const uploadStatus  = document.getElementById('upload-status');
   const statusMsg     = document.getElementById('status-msg');
   const submitBtn     = document.getElementById('submit-btn');
 
-  // selectedMedia: { file: File, type: 'image'|'video' } | null
+  // selectedMedia: { file: File, type: 'image'|'video'|'audio' } | null
   let selectedMedia = null;
 
+  function clearPreview() {
+    previewWrap.hidden = true;
+    previewMedia.innerHTML = '';
+  }
+
+  function buildPreviewEl(file, type) {
+    const objectUrl = URL.createObjectURL(file);
+    if (type === 'image') {
+      const img = document.createElement('img');
+      img.src = objectUrl;
+      img.alt = 'Image preview';
+      return img;
+    }
+    if (type === 'video') {
+      const video = document.createElement('video');
+      video.src = objectUrl;
+      video.controls = true;
+      video.preload = 'metadata';
+      video.setAttribute('playsinline', '');
+      return video;
+    }
+    const audio = document.createElement('audio');
+    audio.src = objectUrl;
+    audio.controls = true;
+    return audio;
+  }
+
   // ── Media picker ──────────────────────────────────────────────────────────
-  mediaInput.accept = 'image/*,video/*';
+  mediaInput.accept = 'image/*,video/*,audio/*';
 
   mediaInput.addEventListener('change', async e => {
     const file = e.target.files?.[0];
@@ -273,9 +300,10 @@ function initPostForm() {
 
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
+    const isAudio = file.type.startsWith('audio/');
 
-    if (!isImage && !isVideo) {
-      setUploadStatus(uploadStatus, 'Only images and videos are supported.', 'error');
+    if (!isImage && !isVideo && !isAudio) {
+      setUploadStatus(uploadStatus, 'Only images, videos, and audio files are supported.', 'error');
       mediaInput.value = '';
       return;
     }
@@ -295,22 +323,24 @@ function initPostForm() {
       }
     }
 
-    selectedMedia = { file, type: isImage ? 'image' : 'video' };
+    const type = isImage ? 'image' : isVideo ? 'video' : 'audio';
+    selectedMedia = { file, type };
 
     // Show local preview immediately (before upload)
-    const objectUrl = URL.createObjectURL(file);
-    previewImg.src = objectUrl;
-    previewImg.alt = isVideo ? 'Video preview' : 'Image preview';
+    previewMedia.innerHTML = '';
+    previewMedia.appendChild(buildPreviewEl(file, type));
     previewWrap.hidden = false;
   });
 
   removeBtn.addEventListener('click', () => {
     selectedMedia = null;
     mediaInput.value = '';
-    previewWrap.hidden = true;
-    previewImg.src = '';
+    clearPreview();
     clearUploadStatus(uploadStatus);
   });
+
+  // ── Insert-link toolbar ─────────────────────────────────────────────────
+  initLinkInsertPanel(bodyInput);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   form.addEventListener('submit', async e => {
@@ -326,11 +356,75 @@ function initPostForm() {
       onSuccess:   () => {
         selectedMedia = null;
         mediaInput.value = '';
-        previewWrap.hidden = true;
-        previewImg.src = '';
+        clearPreview();
         clearUploadStatus(uploadStatus);
       },
     });
+  });
+}
+
+// ─── Insert-link toolbar ────────────────────────────────────────────────────
+// Lets the signed-in author insert a safe `[text](https://…)` link into the
+// body textarea. Rendered as a real <a> on the feed by posts.js, which parses
+// only this exact syntax — no raw HTML is ever stored, so there's no XSS
+// surface even though the feed renders it via innerHTML.
+function initLinkInsertPanel(bodyInput) {
+  const toggleBtn  = document.getElementById('insert-link-btn');
+  const panel      = document.getElementById('link-insert-panel');
+  const textInput  = document.getElementById('link-text-input');
+  const urlInput   = document.getElementById('link-url-input');
+  const confirmBtn = document.getElementById('link-insert-confirm');
+  const cancelBtn  = document.getElementById('link-insert-cancel');
+  const status     = document.getElementById('link-insert-status');
+  if (!toggleBtn || !panel) return;
+
+  let savedSelection = { start: 0, end: 0 };
+
+  toggleBtn.addEventListener('click', () => {
+    savedSelection = {
+      start: bodyInput.selectionStart ?? bodyInput.value.length,
+      end:   bodyInput.selectionEnd   ?? bodyInput.value.length,
+    };
+    textInput.value = bodyInput.value.slice(savedSelection.start, savedSelection.end);
+    urlInput.value = '';
+    status.textContent = '';
+    status.className = 'link-insert-status';
+    panel.hidden = false;
+    urlInput.focus();
+  });
+
+  cancelBtn.addEventListener('click', () => { panel.hidden = true; });
+
+  confirmBtn.addEventListener('click', () => {
+    const text = textInput.value.trim();
+    const url  = urlInput.value.trim();
+
+    if (!text || !url) {
+      status.textContent = 'Link text and URL are both required.';
+      status.className = 'link-insert-status error';
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      status.textContent = 'URL must start with http:// or https://';
+      status.className = 'link-insert-status error';
+      return;
+    }
+    // Guard against brackets/parens in the label breaking the [text](url) syntax
+    if (/[[\]()]/.test(text)) {
+      status.textContent = 'Link text can’t contain [ ] ( ) characters.';
+      status.className = 'link-insert-status error';
+      return;
+    }
+
+    const markup = `[${text}](${url})`;
+    const { start, end } = savedSelection;
+    const value = bodyInput.value;
+    bodyInput.value = value.slice(0, start) + markup + value.slice(end);
+    bodyInput.focus();
+    const caret = start + markup.length;
+    bodyInput.setSelectionRange(caret, caret);
+
+    panel.hidden = true;
   });
 }
 

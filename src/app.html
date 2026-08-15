@@ -124,21 +124,29 @@
       margin-inline-end: 0.75em;
     }
     #image-preview-wrap {
-      position: relative;
-      display: inline-block;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75em;
       margin-block-start: -0.5em;
       margin-block-end: 1.25em;
     }
-    #preview-img {
+    #preview-media {
+      flex: 1;
+      min-width: 0;
+    }
+    #preview-media img,
+    #preview-media video {
       max-width: 100%;
       max-height: 200px;
       border-radius: 4px;
       display: block;
     }
+    #preview-media audio {
+      width: 100%;
+      display: block;
+    }
     #remove-image-btn {
-      position: absolute;
-      top: 0.3em;
-      right: 0.3em;
+      flex-shrink: 0;
       background: rgba(0, 0, 0, 0.7);
       border: none;
       color: white;
@@ -151,6 +159,35 @@
       align-items: center;
       justify-content: center;
     }
+    .composer-toolbar {
+      margin-block-end: 0.5em;
+      display: flex;
+      gap: 0.5em;
+    }
+    .link-insert-panel {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 0.75em 1em;
+      margin-block-end: 1em;
+    }
+    .link-insert-panel label {
+      margin-block-end: 0.25em;
+    }
+    .link-insert-panel input {
+      margin-block-end: 0.75em;
+    }
+    .link-insert-actions {
+      display: flex;
+      gap: 0.5em;
+    }
+    .link-insert-status {
+      font-size: 0.85em;
+      min-height: 1.2em;
+      margin-block-start: 0.5em;
+      margin-block-end: 0;
+    }
+    .link-insert-status.error { color: #f5a8a8; }
     #upload-status {
       font-size: 0.85em;
       min-height: 1.2em;
@@ -319,12 +356,26 @@
             <label for="post-title">Title (optional)</label>
             <input type="text" id="post-title" name="title" placeholder="Leave blank to post without a title">
             <label for="post-body">Body *</label>
+            <div class="composer-toolbar">
+              <button type="button" class="btn btn-sm" id="insert-link-btn">🔗 Insert Link</button>
+            </div>
+            <div id="link-insert-panel" hidden class="link-insert-panel">
+              <label for="link-text-input">Link text</label>
+              <input type="text" id="link-text-input" placeholder="e.g. Get tickets">
+              <label for="link-url-input">URL</label>
+              <input type="url" id="link-url-input" placeholder="https://…">
+              <div class="link-insert-actions">
+                <button type="button" class="btn btn-sm" id="link-insert-confirm">Insert</button>
+                <button type="button" class="btn btn-sm" id="link-insert-cancel">Cancel</button>
+              </div>
+              <p id="link-insert-status" class="link-insert-status"></p>
+            </div>
             <textarea id="post-body" name="body" placeholder="What's happening with the band?" required></textarea>
-            <label for="post-image">Photo / Video (optional)</label>
-            <input type="file" id="post-image" name="image" accept="image/*,video/*">
+            <label for="post-image">Photo / Video / Audio (optional)</label>
+            <input type="file" id="post-image" name="image" accept="image/*,video/*,audio/*">
             <div id="image-preview-wrap" hidden>
-              <img id="preview-img" alt="Image preview">
-              <button type="button" id="remove-image-btn" aria-label="Remove photo">✕</button>
+              <div id="preview-media"></div>
+              <button type="button" id="remove-image-btn" aria-label="Remove media">✕</button>
             </div>
             <p id="upload-status" aria-live="polite"></p>
             <button type="submit" class="btn" id="submit-btn">Publish Post</button>

@@ -24,16 +24,29 @@ export default async (req) => {
       : new Date().toUTCString();
 
     const itemsXml = posts
-      .map(post => `
+      .map(post => {
+        const isVideo = post.imageUrl?.includes('/video/upload/');
+        // Embed the post's own image in the item content so readers that don't
+        // support media:content/enclosure (or that scrape a thumbnail from the
+        // item body) still show the post's photo instead of falling back to
+        // the channel-level image (the site's static hero/background photo).
+        const contentHtml = post.imageUrl && !isVideo
+          ? `<img src="${escapeXml(post.imageUrl)}" alt="" />\n<p>${escapeXml(post.body)}</p>`
+          : `<p>${escapeXml(post.body)}</p>`;
+
+        return `
     <item>
       <title>${escapeXml(post.title || '(Untitled)')}</title>
       <link>${feedUrl}#post-${escapeXml(post.id)}</link>
       <description>${escapeXml(post.body)}</description>
-      ${post.imageUrl ? `<media:content url="${escapeXml(post.imageUrl)}" medium="${post.imageUrl.includes('/video/upload/') ? 'video' : 'image'}" />` : ''}
+      <content:encoded><![CDATA[${contentHtml}]]></content:encoded>
+      ${post.imageUrl ? `<media:content url="${escapeXml(post.imageUrl)}" medium="${isVideo ? 'video' : 'image'}" />` : ''}
+      ${post.imageUrl && !isVideo ? `<enclosure url="${escapeXml(post.imageUrl)}" type="image/jpeg" length="0" />` : ''}
       <author>${escapeXml(post.author)}</author>
       <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
       <guid isPermaLink="false">${escapeXml(post.id)}</guid>
-    </item>`)
+    </item>`;
+      })
       .join('\n');
 
     const rss = `<?xml version="1.0" encoding="UTF-8"?>
