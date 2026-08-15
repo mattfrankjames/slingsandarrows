@@ -70,7 +70,13 @@ self.addEventListener('fetch', e => {
         const cached = await cache.match(e.request);
 
         if (cached) {
-          e.waitUntil(revalidateApiCache(e.request, cache, cached));
+          // Clone before handing off: `cached` is about to be consumed to
+          // deliver the response to the page, and a Response body can only
+          // be read once. Without cloning here, revalidateApiCache's later
+          // clone() (after its own network round-trip) throws on an
+          // already-read body — silently, since it's inside a catch-all —
+          // so the cache would never actually update.
+          e.waitUntil(revalidateApiCache(e.request, cache, cached.clone()));
           return cached;
         }
 
@@ -181,9 +187,12 @@ async function revalidateApiCache(request, cache, cachedResponse) {
     if (freshText !== cachedText) {
       notifyClients({ type: 'API_UPDATED', url: request.url });
     }
-  } catch {
-    // Offline or network error — the cached copy was already served to the
-    // page, nothing more to do until the next request.
+  } catch (err) {
+    // Usually just offline/network error — the cached copy was already
+    // served to the page, nothing more to do until the next request. Logged
+    // (not swallowed silently) since a bug here means the cache never
+    // updates again for this URL, with no other visible symptom.
+    console.warn('[SW] revalidateApiCache error for', request.url, err);
   }
 }
 
