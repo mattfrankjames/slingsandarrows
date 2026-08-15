@@ -1,4 +1,4 @@
-import { authModal, initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 
 const feed       = document.getElementById('posts-feed');
@@ -101,6 +101,9 @@ async function invalidateImageCache(imageUrl) {
 // ─── Get a JWT from Netlify Identity or custom-modal session ─────────────────
 async function getToken() {
   try {
+    // Silently refresh an expired custom-modal token before reading it.
+    await ensureFreshSession();
+
     // 1. Netlify Identity widget session
     const identity = window.netlifyIdentity;
     if (identity) {
@@ -728,6 +731,7 @@ function getAllPending(db) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (async () => {
+  await ensureFreshSession(); // refresh an expired session before any auth checks below
   initAuthBar();
   listenForSWMessages();
   await loadMyLikes(); // resolve like state before rendering post cards

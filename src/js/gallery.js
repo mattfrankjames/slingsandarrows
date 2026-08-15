@@ -1,5 +1,5 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
-import { authModal, initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 
 const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
@@ -68,6 +68,10 @@ const formStatus    = document.getElementById('form-status');
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
+  // Refresh an expired session (if a refresh token is available) before
+  // initAuth()/initAuthBar() check it — otherwise a session past its 1-hour
+  // access-token lifetime looks logged-out on every page load.
+  await ensureFreshSession();
   initAuthBar();
   initAuth();
   await loadGallery();

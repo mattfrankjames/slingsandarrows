@@ -1,4 +1,4 @@
-import { authModal, initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 
 // ─── IndexedDB offline queue ──────────────────────────────────────────────────
 class PostQueue {
@@ -140,10 +140,13 @@ async function uploadToCloudinary(file) {
 
 // ─── Globals ──────────────────────────────────────────────────────────────────
 const postQueue = new PostQueue();
-let deferredInstallPrompt = null;
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
+  // Silently refresh an expired custom-modal session (if a refresh token is
+  // available) before initAuth() checks it — otherwise a session older than
+  // its 1-hour access token lifetime looks logged-out on every page load.
+  await ensureFreshSession();
   await postQueue.init();
 
   // initAuth() no longer requires the Netlify Identity widget to be present —
@@ -156,7 +159,6 @@ let deferredInstallPrompt = null;
     window.addEventListener('load', initAuth, { once: true });
   }
 
-  initInstallPrompt();
   registerServiceWorker();
   listenForSWMessages();
   listenForOnline();
@@ -590,100 +592,6 @@ function listenForSWMessages() {
     if (type === 'POST_SYNC_FAILED') {
       console.warn('[app] Background sync permanently failed for post:', e.data.postId);
     }
-  });
-}
-
-// ─── PWA install prompt ───────────────────────────────────────────────────────
-
-/**
- * Detect platform characteristics for install-flow branching.
- * We avoid sniffing the full UA string where possible; these checks are
- * deliberately coarse — we only need to know whether the
- * `beforeinstallprompt` API is available.
- */
-function detectPlatform() {
-  const ua = navigator.userAgent;
-  // iOS: iPhone, iPad (including iPadOS 13+ which reports as Macintosh)
-  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  // Safari but not Chrome/Edge/Firefox (those all include "Chrome" or "Firefox")
-  const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgA/.test(ua);
-  const isFirefox = /Firefox|FxiOS/.test(ua);
-  return { isIOS, isSafari, isFirefox };
-}
-
-function updateBannerText(text) {
-  const span = document.querySelector('#install-banner > span');
-  if (span) span.textContent = text;
-}
-
-function initInstallPrompt() {
-  const banner     = document.getElementById('install-banner');
-  const installBtn = document.getElementById('install-btn');
-  const dismissBtn = document.getElementById('install-dismiss');
-
-  if (!banner) return;
-
-  const { isIOS, isSafari, isFirefox } = detectPlatform();
-
-  // ── iOS Safari: no programmatic install API ───────────────────────────────
-  if (isIOS && isSafari) {
-    // Only show once per session — don't nag on every visit
-    if (!sessionStorage.getItem('install-banner-dismissed')) {
-      banner.hidden = false;
-      updateBannerText('Tap Share ↗ then "Add to Home Screen" to install');
-      if (installBtn) installBtn.hidden = true; // no programmatic prompt
-      if (dismissBtn) dismissBtn.textContent = 'Got it';
-    }
-    // Always surface the how-to guide on iOS (users frequently need it)
-    const helpEl = document.getElementById('install-help');
-    if (helpEl) helpEl.hidden = false;
-  }
-
-  // ── Firefox: no beforeinstallprompt, but does support PWA install via menu ─
-  else if (isFirefox) {
-    if (!sessionStorage.getItem('install-banner-dismissed')) {
-      banner.hidden = false;
-      updateBannerText('Install via browser menu: ⋯ → Add to Home Screen');
-      if (installBtn) installBtn.hidden = true;
-      if (dismissBtn) dismissBtn.textContent = 'Dismiss';
-    }
-    const helpEl = document.getElementById('install-help');
-    if (helpEl) helpEl.hidden = false;
-  }
-
-  // ── Chrome / Edge / Samsung Internet: beforeinstallprompt available ───────
-  else {
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      if (!sessionStorage.getItem('install-banner-dismissed')) {
-        banner.hidden = false;
-        updateBannerText('Add to Home Screen for quick access');
-      }
-    });
-
-    installBtn?.addEventListener('click', async () => {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      const { outcome } = await deferredInstallPrompt.userChoice;
-      console.log('[app] Install prompt outcome:', outcome);
-      deferredInstallPrompt = null;
-      banner.hidden = true;
-    });
-
-    window.addEventListener('appinstalled', () => {
-      console.log('[app] PWA installed');
-      deferredInstallPrompt = null;
-      banner.hidden = true;
-      sessionStorage.setItem('install-banner-dismissed', 'true');
-    });
-  }
-
-  // ── Dismiss handler (all platforms) ──────────────────────────────────────
-  dismissBtn?.addEventListener('click', () => {
-    banner.hidden = true;
-    sessionStorage.setItem('install-banner-dismissed', 'true');
   });
 }
 

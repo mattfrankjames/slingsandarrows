@@ -1,4 +1,4 @@
-import { authModal, initAuthBar } from './auth-modal.js';
+import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 
 // ─── Cloudinary upload ────────────────────────────────────────────────────────
@@ -236,6 +236,11 @@ function currentUser() {
 
 async function getToken() {
   try {
+    // Silently refresh an expired custom-modal token, then re-sync the
+    // in-memory session from localStorage so the fresh token is used.
+    await ensureFreshSession();
+    _initSessionFromStorage();
+
     // In-memory session token (from custom modal login)
     if (_sessionUser?.token) return _sessionUser.token;
 
@@ -994,5 +999,11 @@ async function loadThreads() {
   }
 }
 
-loadThreads();
-initAuthBar();
+(async () => {
+  // Refresh an expired session (if a refresh token is available) before the
+  // auth-gated UI below (delete buttons, reply forms, auth bar) renders.
+  await ensureFreshSession();
+  _initSessionFromStorage();
+  loadThreads();
+  initAuthBar();
+})();
