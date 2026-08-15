@@ -657,12 +657,23 @@ async function showPendingPosts() {
   }
 }
 
+// ─── Service Worker registration ───────────────────────────────────────────────
+// Registers the SW so the feed benefits from its stale-while-revalidate /api/
+// caching (instant repaint on repeat visits) even for visitors who land here
+// without ever going through /app first.
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker
+    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .catch(err => console.warn('[posts] SW registration failed:', err));
+}
+
 // ─── Listen for SW sync messages ──────────────────────────────────────────────
 function listenForSWMessages() {
   if (!('serviceWorker' in navigator)) return;
 
   navigator.serviceWorker.addEventListener('message', e => {
-    const { type, postId, post } = e.data || {};
+    const { type, postId, post, url } = e.data || {};
 
     if (type === 'POST_SYNCED') {
       // Replace the pending card with the real published post
@@ -678,7 +689,37 @@ function listenForSWMessages() {
         document.getElementById('pending-notice')?.remove();
       }
     }
+
+    // The SW revalidated /api/get-posts in the background and found the
+    // response actually changed — silently re-render instead of leaving
+    // stale content on screen until the user manually reloads.
+    if (type === 'API_UPDATED' && url?.includes('/api/get-posts')) {
+      refreshPostsSilently();
+    }
   });
+}
+
+// ─── Silent background refresh ─────────────────────────────────────────────────
+async function refreshPostsSilently() {
+  try {
+    const res = await fetch('/api/get-posts');
+    if (!res.ok) return;
+    const posts = await res.json();
+
+    await loadMyLikes(); // like counts/state may have moved too
+
+    // Replace only published cards — leave any pending (offline-queued) ones
+    feed.querySelectorAll('.post-card:not([data-pending-id])').forEach(el => el.remove());
+
+    if (posts.length === 0 && !feed.querySelector('[data-pending-id]')) {
+      emptyState.hidden = false;
+    } else {
+      emptyState.hidden = true;
+      posts.forEach(post => feed.appendChild(renderPost(post)));
+    }
+  } catch (err) {
+    console.warn('[posts] refreshPostsSilently error:', err);
+  }
 }
 
 // ─── Load published posts from API ───────────────────────────────────────────
@@ -733,6 +774,7 @@ function getAllPending(db) {
 (async () => {
   await ensureFreshSession(); // refresh an expired session before any auth checks below
   initAuthBar();
+  registerServiceWorker();
   listenForSWMessages();
   await loadMyLikes(); // resolve like state before rendering post cards
   await showPendingPosts(); // show offline queue before network posts load

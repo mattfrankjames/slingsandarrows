@@ -74,6 +74,8 @@ const formStatus    = document.getElementById('form-status');
   await ensureFreshSession();
   initAuthBar();
   initAuth();
+  registerServiceWorker();
+  listenForSWMessages();
   await loadGallery();
   initLightbox();
   initUploadModal();
@@ -136,6 +138,46 @@ function initAuth() {
 
   // Login button inside the upload modal opens the custom auth modal
   loginBtn?.addEventListener('click', () => authModal.open('login'));
+}
+
+// ─── Silent background refresh ─────────────────────────────────────────────────
+async function refreshGallerySilently() {
+  try {
+    const res = await fetch('/api/gallery/list');
+    if (!res.ok) return;
+    galleryItems = await res.json();
+
+    grid.innerHTML = '';
+    if (!galleryItems.length) {
+      emptyState.hidden = false;
+      return;
+    }
+    emptyState.hidden = true;
+    galleryItems.forEach((item, idx) => grid.appendChild(renderThumbnail(item, idx)));
+  } catch (err) {
+    console.warn('[gallery] refreshGallerySilently error:', err);
+  }
+}
+
+// ─── Service Worker registration + messages ────────────────────────────────────
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker
+    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .catch(err => console.warn('[gallery] SW registration failed:', err));
+}
+
+function listenForSWMessages() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.addEventListener('message', e => {
+    const { type, url } = e.data || {};
+    // The SW revalidated /api/gallery/list in the background and found the
+    // response actually changed — silently re-render instead of leaving
+    // stale content on screen until the user manually reloads.
+    if (type === 'API_UPDATED' && url?.includes('/api/gallery/list')) {
+      refreshGallerySilently();
+    }
+  });
 }
 
 // ─── Gallery loading & rendering ─────────────────────────────────────────────
