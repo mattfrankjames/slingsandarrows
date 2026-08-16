@@ -88,6 +88,17 @@
 		"venue": "Off Broadway",
 		"lineup": ["Soft Crisis", "Hopeful Utopian"],
 		"setlist": ["<placeholder>"],
+		"status": "past"
+	},
+	{
+		"date": "2026-09-05",
+		"venue": "The Crow's Nest // Nest Fest",
+		"venueHref": "https://www.instagram.com/thecrowsnestbar/p/DbvpCL_klnZ/",
+		"lineup": ["Fister", "Mattie Schell", "Voidgazer", "Hunter Peebles & the Moonlighters", "Beau Diamond", "Daybringer", "Peck of Dirt", "Whiplash Love"],
+		"setlist": ["<placeholder>"],
+		"doorTime": "11am - 8pm",
+		"showTime": "S&A at 12pm",
+		"cost": "No Cover",
 		"status": "upcoming"
 	}
 ]
