@@ -82,6 +82,11 @@ footer {
   gap: 1em;
 }
 
+.social-icons svg {
+  width: 24px;
+  height: 24px;
+}
+
 footer a:hover {
   text-decoration: underline;
 }
