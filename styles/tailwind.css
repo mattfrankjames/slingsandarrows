@@ -261,8 +261,13 @@ header p {
     padding: 0;
     justify-content: flex-start;
     list-style: none;
-    gap: 1em;
+    gap: 0.5em 1em;
+    flex-wrap: wrap;
     margin-block-end: .25em;
+  }
+
+  .lineup li {
+    white-space: nowrap;
   }
 
   .show:not(:last-child) {
