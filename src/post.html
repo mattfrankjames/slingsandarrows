@@ -10,36 +10,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="S&amp;A">
 
-  <title>Slings & Arrows | Feed</title>
-  <meta name="description" content="Latest updates and announcements from Slings & Arrows">
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://slingsandarrows.band/feed">
-  <meta property="og:title" content="Slings & Arrows | Feed">
-  <meta property="og:description" content="Latest updates and announcements from Slings & Arrows">
-  <meta property="og:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Slings & Arrows hero image">
-  <meta property="og:site_name" content="Slings & Arrows">
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://slingsandarrows.band/feed">
-  <meta name="twitter:title" content="Slings & Arrows | Feed">
-  <meta name="twitter:description" content="Latest updates and announcements from Slings & Arrows">
-  <meta name="twitter:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
+  <title>Slings & Arrows | Post</title>
+  <meta name="description" content="A post from Slings & Arrows">
+  <meta name="robots" content="noindex">
 
   <link rel="preconnect" href="https://use.typekit.net" crossorigin>
   <link rel="dns-prefetch" href="https://res.cloudinary.com">
-  <link rel="preload"
-    href="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh"
-    as="image"
-    fetchpriority="high"
-    imagesrcset="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh 768w,
-                 https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh 1920w"
-    imagesizes="100vw">
   <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
   <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
@@ -47,10 +23,8 @@
   <!-- Favicon (SVG for the address bar) and Apple touch icon (PNG — iOS ignores SVG here) -->
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="apple-touch-icon" href="./images/icon-192.png">
-  <!-- RSS auto-discovery (href set by script so Parcel doesn't try to bundle /feed.xml) -->
-  <link rel="alternate" type="application/rss+xml" title="Slings &amp; Arrows Feed" id="rss-link">
 
-  <!-- Netlify Identity — needed so posts.js can read currentUser() for the delete button -->
+  <!-- Netlify Identity — needed so post-view.js can read currentUser() for the delete button -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <style>
     main {
@@ -61,13 +35,21 @@
       max-width: 700px;
       margin: 0 auto;
     }
+    .back-link {
+      display: inline-block;
+      margin-block-end: 1.25em;
+      font-size: 0.9em;
+      opacity: 0.7;
+      text-decoration: none;
+    }
+    .back-link:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
     .post-card {
       background: rgba(0, 0, 0, 0.5);
       padding: 1.25em 1.5em;
       margin-block-end: 1.5em;
-    }
-    .post-card:not(:last-child) {
-      border-block-end: 1px solid rgba(255, 255, 255, 0.2);
     }
     .post-title {
       font-family: "fatfrank", sans-serif;
@@ -84,17 +66,6 @@
       font-size: 0.8em;
       opacity: 0.5;
     }
-    .read-more-link {
-      display: inline-block;
-      margin-block-end: 0.75em;
-      color: rgba(255, 255, 255, 0.85);
-      font-size: 0.9em;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-    .read-more-link:hover {
-      color: white;
-    }
     .post-image,
     video.post-image {
       max-width: 100%;
@@ -110,24 +81,10 @@
       display: block;
       margin-block-end: 1em;
     }
-    #loading, #empty-state, #error-state {
+    #loading, #error-state {
       text-align: center;
       padding: 3em 0;
       opacity: 0.6;
-    }
-    .post-card--pending {
-      opacity: 0.55;
-    }
-    .post-meta--pending {
-      font-style: italic;
-    }
-    .pending-notice {
-      font-size: 0.85em;
-      opacity: 0.65;
-      margin-block-end: 1.25em;
-      padding: 0.6em 0.75em;
-      border: 1px dashed rgba(255, 255, 255, 0.3);
-      border-radius: 4px;
     }
     .post-footer {
       display: flex;
@@ -342,58 +299,6 @@
     .auth-bar-email {
       opacity: 0.6;
     }
-    .page-heading {
-      display: flex;
-      align-items: center;
-      gap: 0.6em;
-      margin-block-end: 1em;
-    }
-    .page-heading h2 {
-      margin: 0;
-    }
-    .rss-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 4px;
-      color: rgba(255, 255, 255, 0.6);
-      padding: 0.3em;
-      cursor: pointer;
-      text-decoration: none;
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
-      flex-shrink: 0;
-    }
-    .rss-btn:hover {
-      color: #f5a060;
-      border-color: rgba(245, 160, 96, 0.6);
-      background: rgba(245, 160, 96, 0.08);
-    }
-    .rss-btn svg {
-      display: block;
-    }
-    .rss-tooltip {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 0;
-      background: #1a1a1a;
-      color: #fff;
-      font-size: 0.72rem;
-      line-height: 1;
-      white-space: nowrap;
-      padding: 0.45em 0.65em;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s;
-      z-index: 10;
-    }
-    .rss-tooltip.show {
-      opacity: 1;
-    }
   </style>
 </head>
 <body>
@@ -420,25 +325,10 @@
           <span id="auth-bar-email" class="auth-bar-email"></span>
           <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
         </div>
-        <div class="page-heading">
-          <h2>Posts</h2>
-          <a id="rss-btn" href="#" class="rss-btn"
-            aria-label="Copy the Posts RSS feed URL to subscribe in your reader"
-            title="Copy RSS feed URL">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-              viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-              <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
-                C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0
-                0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1
-                9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
-            </svg>
-            <span class="rss-tooltip" role="status" aria-live="polite"></span>
-          </a>
-        </div>
+        <a href="/feed" class="back-link">← Back to Feed</a>
         <div id="loading" role="status" aria-live="polite">Loading…</div>
-        <div id="empty-state" hidden>No posts yet.</div>
-        <div id="error-state" hidden>Could not load posts.</div>
-        <div id="posts-feed"></div>
+        <div id="error-state" hidden>Could not find this post.</div>
+        <div id="post-detail"></div>
       </div>
     </main>
     <footer class="p-4 text-white text-center">
@@ -481,61 +371,6 @@
       </div>
     </footer>
   </div>
-  <script type="module" src="./js/posts.js"></script>
-  <script>
-    // RSS feed URL set at runtime so Parcel doesn't try to resolve /feed.xml as a local asset.
-    // The button copies the absolute feed URL to the clipboard (browsers have no native
-    // "open in reader" action) so the user can paste it into their feed reader.
-    (function () {
-      var FEED_URL = window.location.origin + '/feed.xml';
-      var link = document.getElementById('rss-link');
-      var btn = document.getElementById('rss-btn');
-      if (link) link.href = FEED_URL;
-      if (!btn) return;
-      btn.href = FEED_URL;
-
-      var tip = btn.querySelector('.rss-tooltip');
-      var hideTimer;
-      function flash(msg) {
-        if (!tip) return;
-        tip.textContent = msg;
-        tip.classList.add('show');
-        clearTimeout(hideTimer);
-        hideTimer = setTimeout(function () { tip.classList.remove('show'); }, 2000);
-      }
-
-      function copy(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          return navigator.clipboard.writeText(text);
-        }
-        return new Promise(function (resolve, reject) {
-          try {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.setAttribute('readonly', '');
-            ta.style.position = 'absolute';
-            ta.style.left = '-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            var ok = document.execCommand('copy');
-            document.body.removeChild(ta);
-            ok ? resolve() : reject();
-          } catch (err) { reject(err); }
-        });
-      }
-
-      btn.addEventListener('click', function (e) {
-        // Let modified / non-primary clicks behave like a normal link (open, copy link, new tab)
-        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        copy(FEED_URL).then(function () {
-          flash('Feed URL copied — paste into your reader');
-        }).catch(function () {
-          // Clipboard unavailable: fall back to navigating so the URL is in the address bar
-          window.location.href = FEED_URL;
-        });
-      });
-    })();
-  </script>
+  <script type="module" src="./js/post-view.js"></script>
 </body>
 </html>

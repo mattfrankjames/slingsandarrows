@@ -162,7 +162,13 @@
     .composer-toolbar {
       margin-block-end: 0.5em;
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5em;
+    }
+    .composer-hint {
+      font-size: 0.8em;
+      opacity: 0.55;
+      margin-block-end: 0.75em;
     }
     .link-insert-panel {
       background: rgba(255, 255, 255, 0.05);
@@ -281,7 +287,9 @@
             <label for="post-body">Body *</label>
             <div class="composer-toolbar">
               <button type="button" class="btn btn-sm" id="insert-link-btn">🔗 Insert Link</button>
+              <button type="button" class="btn btn-sm" id="insert-readmore-btn">✂ Insert Read More Break</button>
             </div>
+            <p class="composer-hint">Everything above the break shows in the feed; readers click "Read more" to see the rest.</p>
             <div id="link-insert-panel" hidden class="link-insert-panel">
               <label for="link-text-input">Link text</label>
               <input type="text" id="link-text-input" placeholder="e.g. Get tickets">

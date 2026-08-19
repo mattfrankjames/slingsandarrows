@@ -49,6 +49,15 @@
   to = "/feed"
   status = 301
 
+# Status 200 rewrite — the browser's address bar (and window.location) stays
+# on /post/<id>, it's never rewritten client-side, so post-view.js reads the
+# id back out of the pathname rather than a query string.
+[[redirects]]
+  from = "/post/*"
+  to = "/post.html"
+  status = 200
+  force = true
+
 # RSS feeds are served directly by the rss-feed / rss-community functions,
 # which register /feed.xml and /community.xml via their config.path. A 200
 # rewrite here would NOT chain to a v2 function's in-code path, so it must
