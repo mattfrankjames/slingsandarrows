@@ -351,6 +351,9 @@
     .page-heading h2 {
       margin: 0;
     }
+    .new-post-btn {
+      margin-inline-start: auto;
+    }
     .rss-btn {
       position: relative;
       display: inline-flex;
@@ -422,6 +425,8 @@
         </div>
         <div class="page-heading">
           <h2>Posts</h2>
+          <button type="button" id="new-post-btn" class="btn btn-sm new-post-btn" hidden
+            aria-haspopup="dialog" aria-controls="post-composer-dialog">+ New Post</button>
           <a id="rss-btn" href="#" class="rss-btn"
             aria-label="Copy the Posts RSS feed URL to subscribe in your reader"
             title="Copy RSS feed URL">
