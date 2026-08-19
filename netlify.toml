@@ -53,6 +53,7 @@
   from = "/post/*"
   to = "/post.html?id=:splat"
   status = 200
+  force = true
 
 # RSS feeds are served directly by the rss-feed / rss-community functions,
 # which register /feed.xml and /community.xml via their config.path. A 200
