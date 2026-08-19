@@ -53,37 +53,6 @@
       max-width: 960px;
       margin: 0 auto;
     }
-    .composer label {
-      display: block;
-      margin-block-end: 0.25em;
-      font-size: 0.9em;
-      opacity: 0.7;
-    }
-    .composer input,
-    .composer textarea {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: white;
-      font-family: "ballinger-mono", sans-serif;
-      font-size: 1rem;
-      padding: 0.75em;
-      border-radius: 4px;
-      margin-block-end: 1.25em;
-      resize: vertical;
-    }
-    .composer input::placeholder,
-    .composer textarea::placeholder {
-      color: rgba(255, 255, 255, 0.35);
-    }
-    .composer input:focus,
-    .composer textarea:focus {
-      outline: none;
-      border-color: rgba(255, 255, 255, 0.6);
-    }
-    .composer textarea {
-      min-height: 200px;
-    }
     .btn {
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.45);
@@ -99,116 +68,10 @@
     .btn:hover {
       background: rgba(255, 255, 255, 0.22);
     }
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
     .btn-sm {
       font-size: 0.85em;
       padding: 0.4em 1em;
     }
-    .composer input[type="file"] {
-      background: transparent;
-      border: 1px dashed rgba(255, 255, 255, 0.25);
-      cursor: pointer;
-      padding: 0.5em;
-    }
-    .composer input[type="file"]::-webkit-file-upload-button {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.45);
-      color: white;
-      font-family: "ballinger-mono", sans-serif;
-      padding: 0.3em 0.8em;
-      cursor: pointer;
-      border-radius: 4px;
-      margin-inline-end: 0.75em;
-    }
-    #image-preview-wrap {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75em;
-      margin-block-start: -0.5em;
-      margin-block-end: 1.25em;
-    }
-    #preview-media {
-      flex: 1;
-      min-width: 0;
-    }
-    #preview-media img,
-    #preview-media video {
-      max-width: 100%;
-      max-height: 200px;
-      border-radius: 4px;
-      display: block;
-    }
-    #preview-media audio {
-      width: 100%;
-      display: block;
-    }
-    #remove-image-btn {
-      flex-shrink: 0;
-      background: rgba(0, 0, 0, 0.7);
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 50%;
-      width: 1.6em;
-      height: 1.6em;
-      font-size: 0.85em;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .composer-toolbar {
-      margin-block-end: 0.5em;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5em;
-    }
-    .composer-hint {
-      font-size: 0.8em;
-      opacity: 0.55;
-      margin-block-end: 0.75em;
-    }
-    .link-insert-panel {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-      padding: 0.75em 1em;
-      margin-block-end: 1em;
-    }
-    .link-insert-panel label {
-      margin-block-end: 0.25em;
-    }
-    .link-insert-panel input {
-      margin-block-end: 0.75em;
-    }
-    .link-insert-actions {
-      display: flex;
-      gap: 0.5em;
-    }
-    .link-insert-status {
-      font-size: 0.85em;
-      min-height: 1.2em;
-      margin-block-start: 0.5em;
-      margin-block-end: 0;
-    }
-    .link-insert-status.error { color: #f5a8a8; }
-    #upload-status {
-      font-size: 0.85em;
-      min-height: 1.2em;
-      margin-block-start: -1em;
-      margin-block-end: 1em;
-    }
-    #upload-status.uploading { opacity: 0.6; }
-    #upload-status.error { color: #f5a8a8; }
-    #status-msg {
-      margin-block-start: 1em;
-      min-height: 1.5em;
-      font-size: 0.9em;
-    }
-    #status-msg.success { color: #a8f5a8; }
-    #status-msg.error   { color: #f5a8a8; }
     #auth-gate {
       text-align: center;
       padding: 3em 1em;

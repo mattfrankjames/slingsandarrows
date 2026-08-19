@@ -1,10 +1,66 @@
 import { initAuthBar, ensureFreshSession } from './auth-modal.js';
-import { renderPost, loadMyLikes } from './post-render.js';
+import { renderPost, loadMyLikes, isLoggedIn } from './post-render.js';
+import { postComposerModal } from './post-composer-modal.js';
+import { retryQueuedPostsOnReconnect, syncQueuedPostsIfOnline } from './post-composer.js';
 
 const feed       = document.getElementById('posts-feed');
 const loading    = document.getElementById('loading');
 const emptyState = document.getElementById('empty-state');
 const errorState = document.getElementById('error-state');
+const newPostBtn = document.getElementById('new-post-btn');
+
+// ─── "+ New Post" button (feed-embedded composer) ──────────────────────────────
+// Shown to any signed-in user — same UX-convenience gating used for the
+// gallery upload button and the /app composer; the server still enforces
+// ALLOWED_AUTHORS on the actual publish (netlify/functions/create-post.mjs).
+function initComposerButton() {
+  function applyVisibility() {
+    if (newPostBtn) newPostBtn.hidden = !isLoggedIn();
+  }
+  applyVisibility();
+
+  const identity = window.netlifyIdentity;
+  if (identity) {
+    identity.on('init',   applyVisibility);
+    identity.on('login',  applyVisibility);
+    identity.on('logout', applyVisibility);
+  }
+  window.addEventListener('auth-modal:login', applyVisibility);
+
+  newPostBtn?.addEventListener('click', () => postComposerModal.open());
+}
+
+// Update (or remove) the "N posts queued" banner above the feed.
+function renderPendingNotice(count) {
+  let notice = document.getElementById('pending-notice');
+  if (count === 0) {
+    notice?.remove();
+    return;
+  }
+  if (!notice) {
+    notice = document.createElement('p');
+    notice.id        = 'pending-notice';
+    notice.className = 'pending-notice';
+    feed.before(notice);
+  }
+  notice.textContent = `${count} post${count > 1 ? 's' : ''} queued — will publish when back online.`;
+}
+
+// Publishing (or offline-queuing) from the feed's own composer modal should
+// show up immediately, the same way the gallery's upload modal prepends a
+// new item to the grid instead of waiting on a refetch.
+postComposerModal.onPublished((post, { pending } = {}) => {
+  emptyState.hidden = true;
+  if (pending) {
+    feed.insertBefore(
+      renderPost({ ...post.data, id: post.id, createdAt: post.createdAt }, { pending: true }),
+      feed.firstChild
+    );
+    renderPendingNotice(feed.querySelectorAll('[data-pending-id]').length);
+  } else {
+    feed.insertBefore(renderPost(post), feed.firstChild);
+  }
+});
 
 // ─── Pending-posts banner (offline queue) ─────────────────────────────────────
 async function showPendingPosts() {
@@ -18,12 +74,7 @@ async function showPendingPosts() {
   const pending = await getAllPending(db);
   if (!pending.length) return;
 
-  // Insert a notice at the top of the feed
-  const notice = document.createElement('p');
-  notice.id        = 'pending-notice';
-  notice.className = 'pending-notice';
-  notice.textContent = `${pending.length} post${pending.length > 1 ? 's' : ''} queued — will publish when back online.`;
-  feed.before(notice);
+  renderPendingNotice(pending.length);
 
   // Render each queued post as a greyed-out optimistic card
   for (const record of pending) {
@@ -42,6 +93,7 @@ function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
     .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .then(reg => syncQueuedPostsIfOnline(reg))
     .catch(err => console.warn('[posts] SW registration failed:', err));
 }
 
@@ -60,10 +112,8 @@ function listenForSWMessages() {
         pendingCard.remove();
       }
 
-      // Remove notice if no more pending cards
-      if (!feed.querySelector('[data-pending-id]')) {
-        document.getElementById('pending-notice')?.remove();
-      }
+      // Update (or remove) the notice to match however many pending cards remain
+      renderPendingNotice(feed.querySelectorAll('[data-pending-id]').length);
     }
 
     // The SW revalidated /api/get-posts in the background and found the
@@ -150,8 +200,10 @@ function getAllPending(db) {
 (async () => {
   await ensureFreshSession(); // refresh an expired session before any auth checks below
   initAuthBar();
+  initComposerButton();
   registerServiceWorker();
   listenForSWMessages();
+  retryQueuedPostsOnReconnect();
   await loadMyLikes(); // resolve like state before rendering post cards
   await showPendingPosts(); // show offline queue before network posts load
   await loadPosts();
