@@ -257,6 +257,9 @@ header p {
   }
 
   .shows {
+    width: 95%;
+    max-width: 960px;
+    margin: 0 auto;
     background: rgba(0, 0, 0, .5);
     padding: 1em 4em;
   }
