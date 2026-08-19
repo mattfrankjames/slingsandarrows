@@ -60,6 +60,16 @@
   to = "/post.html?id=:splat"
   status = 200
 
+[[redirects]]
+  from = "/xyzsplat2/*"
+  to = "/feed.html"
+  status = 200
+
+[[redirects]]
+  from = "/xyzsplat3/*"
+  to = "https://example.com/:splat"
+  status = 301
+
 # RSS feeds are served directly by the rss-feed / rss-community functions,
 # which register /feed.xml and /community.xml via their config.path. A 200
 # rewrite here would NOT chain to a v2 function's in-code path, so it must
