@@ -345,6 +345,7 @@ function initPostForm() {
 
   // ── Insert-link toolbar ─────────────────────────────────────────────────
   initLinkInsertPanel(bodyInput);
+  initReadMoreButton(bodyInput);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   form.addEventListener('submit', async e => {
@@ -429,6 +430,34 @@ function initLinkInsertPanel(bodyInput) {
     bodyInput.setSelectionRange(caret, caret);
 
     panel.hidden = true;
+  });
+}
+
+// ─── Read More break ────────────────────────────────────────────────────────
+// Inserts the same marker post-render.js's renderPost() looks for to split a
+// post into a feed excerpt + full permalink page. Must stay in sync with
+// READ_MORE_MARKER in src/js/post-render.js.
+const READ_MORE_MARKER = '<!--more-->';
+
+function initReadMoreButton(bodyInput) {
+  const btn = document.getElementById('insert-readmore-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    if (bodyInput.value.includes(READ_MORE_MARKER)) {
+      alert('This post already has a Read More break.');
+      return;
+    }
+
+    const start = bodyInput.selectionStart ?? bodyInput.value.length;
+    const end   = bodyInput.selectionEnd   ?? bodyInput.value.length;
+    const value = bodyInput.value;
+    const insertion = `\n\n${READ_MORE_MARKER}\n\n`;
+
+    bodyInput.value = value.slice(0, start) + insertion + value.slice(end);
+    bodyInput.focus();
+    const caret = start + insertion.length;
+    bodyInput.setSelectionRange(caret, caret);
   });
 }
 
