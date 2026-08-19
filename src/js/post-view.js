@@ -6,7 +6,14 @@ const errorState = document.getElementById('error-state');
 const detail     = document.getElementById('post-detail');
 
 function getPostId() {
-  // /post/:id is rewritten by Netlify to /post.html?id=:id
+  // /post/<id> is served (status 200 rewrite) as this same page's content,
+  // but the browser's address bar — and window.location — never changes:
+  // Netlify only passes ?id=:splat to the *file lookup* server-side, it's
+  // never exposed to client-side JS. So the id has to be read from the
+  // pathname the user actually navigated to, not the (always-empty) query
+  // string. Falls back to ?id= for direct /post.html?id=... access.
+  const pathMatch = window.location.pathname.match(/^\/post\/(.+)$/);
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
   return new URLSearchParams(window.location.search).get('id');
 }
 
