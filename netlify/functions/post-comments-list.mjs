@@ -1,54 +1,26 @@
-import { getStore } from '@netlify/blobs';
+import { route, json, cacheFor } from '../lib/http.mjs';
+import { requiredId, readPageParams } from '../lib/validate.mjs';
+import { page } from '../lib/store.mjs';
 
-export default async (req) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/** Comments on a post, oldest first — reading order for a thread. */
+export default route(async (req, context) => {
+  const postId = requiredId(
+    context.params?.postId ?? new URL(req.url).searchParams.get('postId'),
+    'postId'
+  );
+  const { limit, cursor } = readPageParams(req, { defaultLimit: 0 });
 
-  try {
-    const url = new URL(req.url);
-    const postId = url.searchParams.get('postId');
+  const { items, nextCursor, total } = await page('post-comments', {
+    prefix: `${postId}/`,
+    limit:  limit || undefined,
+    cursor,
+    order:  'asc',
+  });
 
-    if (!postId) {
-      return new Response(JSON.stringify({ error: 'postId is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  return json(limit ? { comments: items, nextCursor, total } : items, 200, cacheFor(30));
+});
 
-    const store = getStore('post-comments');
-    const { blobs } = await store.list({ prefix: `${postId}/` });
-
-    if (!blobs.length) {
-      return new Response('[]', {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=30',
-        },
-      });
-    }
-
-    const comments = (
-      await Promise.all(blobs.map(({ key }) => store.get(key, { type: 'json' })))
-    ).filter(Boolean);
-
-    comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    return new Response(JSON.stringify(comments), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30',
-      },
-    });
-  } catch (err) {
-    console.error('post-comments-list error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/posts/:postId/comments', '/api/posts/comments'],
 };
-
-export const config = { path: '/api/posts/comments' };

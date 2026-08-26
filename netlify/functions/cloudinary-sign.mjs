@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { getUser } from '../lib/auth.mjs';
+import { requireUser } from '../lib/auth.mjs';
+import { route, json, noStore } from '../lib/http.mjs';
 
 /**
  * Issue a short-lived Cloudinary upload signature to a signed-in user.
@@ -17,29 +18,17 @@ import { getUser } from '../lib/auth.mjs';
  * allowlist on the content itself. Uploading media and publishing it are
  * separate gates on purpose.
  */
-export default async (req) => {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
-
-  const user = await getUser(req);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export default route(async req => {
+  await requireUser(req);
 
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey    = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
-    console.error('[cloudinary-sign] Missing CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET');
-    return new Response(JSON.stringify({ error: 'Upload is not configured' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Deliberately not an HttpError: this is our misconfiguration, not the
+    // caller's mistake, and it should read as a 500 in logs and metrics.
+    throw new Error('CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY or CLOUDINARY_API_SECRET is not set');
   }
 
   // Cloudinary's scheme: take every parameter that will be sent with the upload
@@ -51,13 +40,10 @@ export default async (req) => {
     .update(`timestamp=${timestamp}${apiSecret}`)
     .digest('hex');
 
-  return new Response(JSON.stringify({ cloudName, apiKey, timestamp, signature }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
-    },
-  });
-};
+  return json({ cloudName, apiKey, timestamp, signature }, 200, noStore);
+});
 
-export const config = { path: '/api/cloudinary-sign' };
+export const config = {
+  method: 'POST',
+  path: ['/api/v1/uploads/signature', '/api/cloudinary-sign'],
+};

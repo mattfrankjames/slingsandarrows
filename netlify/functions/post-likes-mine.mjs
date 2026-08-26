@@ -1,40 +1,28 @@
-import { getStore } from '@netlify/blobs';
-import { getUser } from '../lib/auth.mjs';
+import { route, json, noStore } from '../lib/http.mjs';
+import { requireUser } from '../lib/auth.mjs';
+import { getStore } from '../lib/store.mjs';
 
-// Returns the postIds the signed-in user has liked, via a single prefix
-// query against the email-first `${email}::${postId}` keys — lets the feed
-// initialise heart-fill state for every post in one request.
-export default async (req, context) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/**
+ * The postIds the signed-in user has liked.
+ *
+ * Likes are keyed `${email}::${postId}`, so one prefix query answers this for
+ * the whole feed — the page initialises every heart from a single request.
+ *
+ * Explicitly no-store: this is per-user, and a shared cache keyed by URL alone
+ * would hand one person's likes to the next. The service worker skips
+ * authenticated requests for the same reason.
+ */
+export default route(async req => {
+  const user   = await requireUser(req);
+  const prefix = `${user.email.toLowerCase()}::`;
 
-  try {
-    const user = await getUser(req);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const { blobs } = await getStore('post-likes').list({ prefix });
+  const postIds = blobs.map(({ key }) => key.slice(prefix.length));
 
-    const email = (user.email || '').toLowerCase();
-    const store = getStore('post-likes');
-    const { blobs } = await store.list({ prefix: `${email}::` });
+  return json({ postIds }, 200, noStore);
+});
 
-    const postIds = blobs.map(({ key }) => key.slice(`${email}::`.length));
-
-    return new Response(JSON.stringify({ postIds }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('post-likes-mine error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/me/likes', '/api/posts/likes/mine'],
 };
-
-export const config = { path: '/api/posts/likes/mine' };

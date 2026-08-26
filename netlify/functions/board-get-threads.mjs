@@ -1,61 +1,48 @@
-import { getStore } from '@netlify/blobs';
+import { route, json, cacheFor } from '../lib/http.mjs';
+import { readPageParams } from '../lib/validate.mjs';
+import { page, countUnder, getStore } from '../lib/store.mjs';
 
-export default async (req) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/**
+ * Board threads, newest first.
+ *
+ * Reply counts are reconciled against the reply store, because the stored
+ * `replyCount` drifts — a delete that fails partway, or two replies racing on
+ * the same read-modify-write, and the badge is wrong until something corrects
+ * it. That reconciliation is why this used to be the most expensive endpoint
+ * on the site: it listed every thread, read every thread, then listed every
+ * thread's replies, then wrote back any thread whose count disagreed.
+ *
+ * Two things make it cheaper here. Only the current page is reconciled rather
+ * than the whole board, and counting uses a key listing instead of reading
+ * reply records. It still writes on a GET, which is the wrong shape; that
+ * disappears in Phase 4 when the count becomes an aggregate and cannot drift.
+ */
+export default route(async req => {
+  const { limit, cursor } = readPageParams(req, { defaultLimit: 0 });
 
-  try {
-    const store = getStore('board-threads');
-    const { blobs } = await store.list();
+  const { items: threads, nextCursor, total } = await page('board-threads', {
+    limit: limit || undefined,
+    cursor,
+  });
 
-    if (!blobs.length) {
-      return new Response('[]', {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=30',
-        },
-      });
-    }
-
-    const threads = (
-      await Promise.all(blobs.map(({ key }) => store.get(key, { type: 'json' })))
-    ).filter(Boolean);
-
-    threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    // Reconcile each thread's replyCount against the actual stored replies so
-    // the badge shown before a user opens the thread is always accurate.
-    const replyStore = getStore('board-replies');
-    await Promise.all(threads.map(async thread => {
-      try {
-        const { blobs: replyBlobs } = await replyStore.list({ prefix: `${thread.id}/` });
-        const actualCount = replyBlobs.length;
-        if (thread.replyCount !== actualCount) {
-          thread.replyCount = actualCount;
-          // Persist the corrected value so future reads are cheaper
-          await store.setJSON(thread.id, thread);
-        }
-      } catch {
-        // If the reply store is unavailable, leave the stored count as-is
+  const store = getStore('board-threads');
+  await Promise.all(threads.map(async thread => {
+    try {
+      const actual = await countUnder('board-replies', `${thread.id}/`);
+      if (thread.replyCount !== actual) {
+        thread.replyCount = actual;
+        await store.setJSON(thread.id, thread);
       }
-    }));
+    } catch {
+      // Reply store unavailable — serve the stored count rather than failing
+      // the whole listing over a badge.
+    }
+  }));
 
-    return new Response(JSON.stringify(threads), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30',
-      },
-    });
-  } catch (err) {
-    console.error('board-get-threads error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  return json(limit ? { threads, nextCursor, total } : threads, 200, cacheFor(30));
+});
+
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/board/threads', '/api/board/threads'],
 };
-
-export const config = { path: '/api/board/threads' };

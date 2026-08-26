@@ -1,6 +1,8 @@
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 import { uploadToCloudinary } from './lib/media.js';
+import { currentEmail, clearSession } from './lib/session.js';
+import { api } from './lib/api.js';
 
 
 async function validateMediaFile(file) {
@@ -151,36 +153,9 @@ function buildMediaElement(mediaUrl, className) {
   return container;
 }
 
-// ─── In-memory auth state ─────────────────────────────────────────────────────
-// We maintain our own lightweight session on top of the Netlify Identity widget
-// so that users who sign in via the custom modal are immediately recognised
-// without a page reload.
-let _sessionUser = null; // { email, token }
-
-function _initSessionFromStorage() {
-  try {
-    const raw = localStorage.getItem('gotrue.user');
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.access_token && parsed.email) {
-      // Check expiry
-      if (parsed.expires_at && parsed.expires_at < Date.now()) {
-        localStorage.removeItem('gotrue.user');
-        return;
-      }
-      _sessionUser = { email: parsed.email, token: parsed.access_token };
-    }
-  } catch {
-    // ignore
-  }
-}
-
-// Initialise from localStorage on module load
-_initSessionFromStorage();
-
-// Listen for successful logins from the custom auth modal
-window.addEventListener('auth-modal:login', e => {
-  _sessionUser = { email: e.detail.email, token: e.detail.token };
+// Re-render the signed-in affordances when the modal reports a sign-in.
+// There is no local session copy to update — session.js reads storage.
+window.addEventListener('auth-modal:login', () => {
   updateModalAuth();
   refreshDeleteButtons();
   refreshReplyForms();
@@ -205,30 +180,10 @@ const formStatus    = document.getElementById('form-status');
 const loginBtnBoard = document.getElementById('login-btn-board');
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
+// Board code asks "is anyone signed in" rather than for a user object.
 function currentUser() {
-  // Prefer the in-memory session (set after custom-modal login)
-  if (_sessionUser) return _sessionUser;
-  // Fall back to Netlify Identity widget session
-  return window.netlifyIdentity?.currentUser() ?? null;
-}
-
-async function getToken() {
-  try {
-    // Silently refresh an expired custom-modal token, then re-sync the
-    // in-memory session from localStorage so the fresh token is used.
-    await ensureFreshSession();
-    _initSessionFromStorage();
-
-    // In-memory session token (from custom modal login)
-    if (_sessionUser?.token) return _sessionUser.token;
-
-    // Netlify Identity widget token
-    const user = window.netlifyIdentity?.currentUser();
-    if (!user) return null;
-    return await user.jwt();
-  } catch {
-    return null;
-  }
+  const email = currentEmail();
+  return email ? { email } : null;
 }
 
 function getDisplayName(email) {
@@ -316,9 +271,8 @@ window.addEventListener('load', () => {
   });
 
   identity.on('logout', () => {
-    // Also clear our in-memory session on widget logout
-    _sessionUser = null;
-    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+    // The widget's session is gone; drop the custom-modal one too.
+    clearSession();
     updateModalAuth();
     refreshDeleteButtons();
     refreshReplyForms();
@@ -385,22 +339,7 @@ async function handleDeleteReply(threadId, replyId, cardEl) {
   if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
 
   try {
-    const token = await getToken();
-    if (!token) throw new Error('Not signed in');
-
-    const res = await fetch('/api/board/replies/delete', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ threadId, replyId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
+    await api.board.replies.remove(threadId, replyId);
 
     cardEl.remove();
 
@@ -450,22 +389,7 @@ async function handleDeleteThread(threadId, cardEl) {
   if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
 
   try {
-    const token = await getToken();
-    if (!token) throw new Error('Not signed in');
-
-    const res = await fetch('/api/board/threads/delete', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ id: threadId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
+    await api.board.threads.remove(threadId);
 
     cardEl.remove();
 
@@ -486,9 +410,7 @@ async function loadReplies(threadId, repliesListEl, noRepliesEl, loadingEl) {
   repliesListEl.innerHTML = '';
 
   try {
-    const res = await fetch(`/api/board/replies?threadId=${encodeURIComponent(threadId)}`);
-    if (!res.ok) throw new Error(res.statusText);
-    const replies = await res.json();
+    const replies = await api.board.replies.list(threadId);
 
     loadingEl.hidden = true;
 
@@ -654,9 +576,6 @@ function renderReplyFormSection(container, threadId) {
     status.className = 'reply-status';
 
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Not signed in');
-
       let mediaUrl = '';
 
       if (selectedReplyMedia) {
@@ -674,21 +593,7 @@ function renderReplyFormSection(container, threadId) {
         }
       }
 
-      const res = await fetch('/api/board/replies/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ threadId, body, mediaUrl }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `Server error (${res.status})`);
-      }
-
-      const reply = await res.json();
+      const reply = await api.board.replies.create(threadId, { body, mediaUrl });
 
       const repliesListEl = container.closest('.replies-container')
         ?.querySelector('.replies-list');
@@ -900,9 +805,6 @@ threadForm.addEventListener('submit', async e => {
   formStatus.textContent = '';
 
   try {
-    const token = await getToken();
-    if (!token) throw new Error('Not signed in — please sign in first.');
-
     let mediaUrl = '';
 
     if (selectedThreadMedia) {
@@ -920,21 +822,7 @@ threadForm.addEventListener('submit', async e => {
       }
     }
 
-    const res = await fetch('/api/board/threads/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title, body, mediaUrl }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
-
-    const thread = await res.json();
+    const thread = await api.board.threads.create({ title, body, mediaUrl });
 
     const card = buildThreadCard(thread);
     if (threadsList.firstChild) {
@@ -958,9 +846,7 @@ threadForm.addEventListener('submit', async e => {
 // ─── Load all threads on page load ───────────────────────────────────────────
 async function loadThreads() {
   try {
-    const res = await fetch('/api/board/threads');
-    if (!res.ok) throw new Error(res.statusText);
-    const threads = await res.json();
+    const threads = await api.board.threads.list();
 
     loadingEl.hidden = true;
 
@@ -982,9 +868,7 @@ async function loadThreads() {
 // re-expands (and reloads replies for) any threads that were already open.
 async function refreshThreadsSilently() {
   try {
-    const res = await fetch('/api/board/threads');
-    if (!res.ok) return;
-    const threads = await res.json();
+    const threads = await api.board.threads.list();
 
     const openThreadIds = Array.from(threadsList.querySelectorAll('.thread-card'))
       .filter(card => card.querySelector('.replies-container.visible'))
@@ -1034,7 +918,6 @@ function listenForSWMessages() {
   // Refresh an expired session (if a refresh token is available) before the
   // auth-gated UI below (delete buttons, reply forms, auth bar) renders.
   await ensureFreshSession();
-  _initSessionFromStorage();
   registerServiceWorker();
   listenForSWMessages();
   loadThreads();

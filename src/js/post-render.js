@@ -2,6 +2,11 @@
 // single-post permalink page (post-view.js), so the two stay in sync.
 import { authModal, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
+import { isLoggedIn } from './lib/session.js';
+import { api } from './lib/api.js';
+
+// posts.js imports isLoggedIn from here; session.js is the implementation.
+export { isLoggedIn };
 
 // Marks the cut point an author can insert in the composer for a "Read more"
 // break. Plain text (not real HTML) since renderBodyHtml escapes the body
@@ -105,50 +110,6 @@ async function invalidateImageCache(imageUrl) {
   }
 }
 
-// ─── Get a JWT from Netlify Identity or custom-modal session ─────────────────
-async function getToken() {
-  try {
-    // Silently refresh an expired custom-modal token before reading it.
-    await ensureFreshSession();
-
-    // 1. Netlify Identity widget session
-    const identity = window.netlifyIdentity;
-    if (identity) {
-      const user = identity.currentUser();
-      if (user) return await user.jwt();
-    }
-
-    // 2. Custom-modal session stored in localStorage
-    const raw = localStorage.getItem('gotrue.user');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.access_token) {
-        if (!parsed.expires_at || parsed.expires_at > Date.now()) {
-          return parsed.access_token;
-        }
-        localStorage.removeItem('gotrue.user');
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-export function isLoggedIn() {
-  // Check both widget session and custom-modal localStorage session
-  if (window.netlifyIdentity?.currentUser?.()) return true;
-  try {
-    const raw = localStorage.getItem('gotrue.user');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.access_token && parsed?.email) {
-        if (!parsed.expires_at || parsed.expires_at > Date.now()) return true;
-      }
-    }
-  } catch { /* ignore */ }
-  return false;
-}
 
 // ─── Render a single post card ────────────────────────────────────────────────
 /**
@@ -278,25 +239,7 @@ export function renderPost(post, { pending = false, fullView = false } = {}) {
         deleteBtn.textContent = 'Deleting…';
 
         try {
-          const token = await getToken();
-
-          if (!token) {
-            throw new Error('Not signed in — please sign in on the App page first.');
-          }
-
-          const res = await fetch('/api/delete-post', {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ id: post.id }),
-          });
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(err.error || `Server error (${res.status})`);
-          }
+          await api.posts.remove(post.id);
 
           // Evict the deleted post's image from the SW cache so it doesn't
           // linger and consume quota.
@@ -346,19 +289,7 @@ function buildPostActions(post) {
     }
     likeBtn.disabled = true;
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Not signed in');
-
-      const res = await fetch('/api/posts/likes/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ postId: post.id }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `Server error (${res.status})`);
-      }
-      const { liked: nowLiked, likeCount } = await res.json();
+      const { liked: nowLiked, likeCount } = await api.posts.toggleLike(post.id);
       if (nowLiked) myLikedPostIds.add(post.id); else myLikedPostIds.delete(post.id);
       likeBtn.classList.toggle('liked', nowLiked);
       likeBtn.setAttribute('aria-label', nowLiked ? 'Unlike this post' : 'Like this post');
@@ -453,9 +384,7 @@ async function loadComments(postId, listEl, noneEl, loadingEl, toggleBtn) {
   listEl.innerHTML = '';
 
   try {
-    const res = await fetch(`/api/posts/comments?postId=${encodeURIComponent(postId)}`);
-    if (!res.ok) throw new Error(res.statusText);
-    const comments = await res.json();
+    const comments = await api.posts.comments.list(postId);
 
     loadingEl.hidden = true;
 
@@ -525,19 +454,7 @@ async function handleDeleteComment(postId, commentId, cardEl, listEl, noneEl, to
   if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
 
   try {
-    const token = await getToken();
-    if (!token) throw new Error('Not signed in');
-
-    const res = await fetch('/api/posts/comments/delete', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ postId, commentId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
+    await api.posts.comments.remove(postId, commentId);
 
     cardEl.remove();
 
@@ -603,21 +520,7 @@ function renderCommentFormSection(container, postId, listEl, noneEl, toggleBtn) 
     status.className = 'comment-status';
 
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Not signed in');
-
-      const res = await fetch('/api/posts/comments/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ postId, body }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `Server error (${res.status})`);
-      }
-
-      const comment = await res.json();
+      const comment = await api.posts.comments.create(postId, body);
       if (noneEl) noneEl.hidden = true;
       listEl?.appendChild(buildCommentCard(comment, postId, listEl, noneEl, toggleBtn));
 
@@ -646,13 +549,7 @@ function renderCommentFormSection(container, postId, listEl, noneEl, toggleBtn) 
 export async function loadMyLikes() {
   if (!isLoggedIn()) return;
   try {
-    const token = await getToken();
-    if (!token) return;
-    const res = await fetch('/api/posts/likes/mine', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const { postIds } = await res.json();
+    const { postIds } = await api.me.likes();
     myLikedPostIds = new Set(postIds || []);
   } catch (err) {
     console.warn('[post-render] loadMyLikes error:', err);

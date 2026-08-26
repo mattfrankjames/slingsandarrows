@@ -5,6 +5,8 @@
 // initPostComposerForm() is called.
 
 import { uploadToCloudinary } from './lib/media.js';
+import { getToken } from './lib/session.js';
+import { api } from './lib/api.js';
 
 // ─── IndexedDB offline queue ──────────────────────────────────────────────────
 class PostQueue {
@@ -282,23 +284,10 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
       imageUrl: mediaUrl,
     };
 
-    // ── Get auth token ──────────────────────────────────────────────────────
-    const identity = window.netlifyIdentity;
-    const user     = identity?.currentUser();
-    let token      = '';
-    try {
-      if (user) {
-        token = await user.jwt();
-      } else {
-        const raw = localStorage.getItem('gotrue.user');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed?.access_token) token = parsed.access_token;
-        }
-      }
-    } catch (err) {
-      console.warn('Token fetch failed:', err);
-    }
+    // The token is read here rather than left to the API client because the
+    // offline queue stores it alongside the post, to replay the publish from
+    // the service worker once connectivity returns.
+    const token = await getToken() || '';
 
     // ── Check connectivity ──────────────────────────────────────────────────
     if (!navigator.onLine) {
@@ -310,22 +299,7 @@ async function handleSubmit({ title, body, media, form, submitBtn, uploadStatus,
     }
 
     // ── Send to backend ─────────────────────────────────────────────────────
-    const res = await fetch('/api/create-post', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(postData),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(errData.error || `Server error (${res.status})`);
-    }
-
-    // ── SUCCESS ─────────────────────────────────────────────────────────────
-    const createdPost = await res.json();
+    const createdPost = await api.posts.create(postData);
 
     setStatus(statusMsg, '✓ Post published!', 'success');
     form.reset();
@@ -523,7 +497,9 @@ export function retryQueuedPostsOnReconnect() {
 
     for (const record of pending) {
       try {
-        const res = await fetch('/api/create-post', {
+        // Not the api client: this replays a queued post using the token
+        // captured when it was written, not the current session's.
+        const res = await fetch('/api/v1/posts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

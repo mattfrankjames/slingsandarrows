@@ -1,6 +1,8 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { uploadToCloudinary } from './lib/media.js';
+import { currentEmail, clearSession } from './lib/session.js';
+import { api } from './lib/api.js';
 
 
 // ─── Image cache invalidation ─────────────────────────────────────────────────
@@ -85,24 +87,10 @@ const formStatus    = document.getElementById('form-status');
 
 // ─── Authentication ───────────────────────────────────────────────────────────
 function initAuth() {
-  // ── Resolve current user from widget or localStorage ─────────────────────
-  function resolveUser() {
-    const widgetUser = window.netlifyIdentity?.currentUser?.();
-    if (widgetUser) return widgetUser;
-    try {
-      const raw = localStorage.getItem('gotrue.user');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.access_token && parsed?.email) {
-          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
-            return { email: parsed.email };
-          }
-          localStorage.removeItem('gotrue.user');
-        }
-      }
-    } catch { /* ignore */ }
-    return null;
-  }
+  const resolveUser = () => {
+    const email = currentEmail();
+    return email ? { email } : null;
+  };
 
   function applyUser(user) {
     isAdmin = !!user;
@@ -130,7 +118,7 @@ function initAuth() {
     identity.on('init',   user => applyUser(user || resolveUser()));
     identity.on('login',  user => { applyUser(user); identity.close(); });
     identity.on('logout', ()   => {
-      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      clearSession();
       applyUser(null);
     });
   }
@@ -147,9 +135,7 @@ function initAuth() {
 // ─── Silent background refresh ─────────────────────────────────────────────────
 async function refreshGallerySilently() {
   try {
-    const res = await fetch('/api/gallery/list');
-    if (!res.ok) return;
-    galleryItems = await res.json();
+    galleryItems = await api.gallery.list();
 
     grid.innerHTML = '';
     if (!galleryItems.length) {
@@ -187,9 +173,7 @@ function listenForSWMessages() {
 // ─── Gallery loading & rendering ─────────────────────────────────────────────
 async function loadGallery() {
   try {
-    const res = await fetch('/api/gallery/list');
-    if (!res.ok) throw new Error(res.statusText);
-    galleryItems = await res.json();
+    galleryItems = await api.gallery.list();
 
     loading.hidden = true;
 
@@ -552,37 +536,7 @@ async function handleUpload(e) {
     const mediaType = selectedFile.type;
     const caption   = captionInput?.value.trim() || '';
 
-    // Get auth token
-    const identity = window.netlifyIdentity;
-    const user     = identity?.currentUser();
-    let token = '';
-    try {
-      if (user) {
-        token = await user.jwt();
-      } else {
-        const raw = localStorage.getItem('gotrue.user');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed?.access_token) token = parsed.access_token;
-        }
-      }
-    } catch { /* expired */ }
-
-    const res = await fetch('/api/gallery/add', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ mediaUrl, mediaType, caption }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
-
-    const newItem = await res.json();
+    const newItem = await api.gallery.add({ mediaUrl, mediaType, caption });
 
     // Prepend to local array and grid
     galleryItems.unshift(newItem);
@@ -609,35 +563,8 @@ async function handleUpload(e) {
 async function handleDelete(item, cardEl) {
   if (!confirm(`Delete this ${item.mediaType || 'item'}? This cannot be undone.`)) return;
 
-  const identity = window.netlifyIdentity;
-  const user     = identity?.currentUser();
-  let token = '';
   try {
-    if (user) {
-      token = await user.jwt();
-    } else {
-      const raw = localStorage.getItem('gotrue.user');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.access_token) token = parsed.access_token;
-      }
-    }
-  } catch { /* expired */ }
-
-  try {
-    const res = await fetch('/api/gallery/delete', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ id: item.id }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
+    await api.gallery.remove(item.id);
 
     // Remove from local state and DOM
     const idx = galleryItems.findIndex(i => i.id === item.id);

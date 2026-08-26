@@ -1,5 +1,6 @@
 import { initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { renderPost, loadMyLikes } from './post-render.js';
+import { api } from './lib/api.js';
 
 const loading    = document.getElementById('loading');
 const errorState = document.getElementById('error-state');
@@ -37,9 +38,7 @@ function registerServiceWorker() {
   }
 
   try {
-    const res = await fetch('/api/get-posts');
-    if (!res.ok) throw new Error(res.statusText);
-    const posts = await res.json();
+    const posts = await api.posts.list();
     const post = posts.find(p => p.id === id);
 
     loading.hidden = true;

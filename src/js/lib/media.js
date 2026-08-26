@@ -11,7 +11,7 @@
  * one-shot signature, which requires a valid session, and sends that instead.
  */
 
-import { getToken } from './session.js';
+import { api } from './api.js';
 
 /**
  * Upload a File or Blob to Cloudinary and return the raw Cloudinary response.
@@ -23,20 +23,7 @@ import { getToken } from './session.js';
  * @returns {Promise<{ secure_url: string, resource_type: string, [k: string]: unknown }>}
  */
 export async function uploadToCloudinary(file) {
-  const token = await getToken();
-  if (!token) throw new Error('Sign in to upload media');
-
-  const signRes = await fetch('/api/cloudinary-sign', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!signRes.ok) {
-    if (signRes.status === 401) throw new Error('Your session expired — sign in again');
-    throw new Error('Could not start the upload. Try again in a moment.');
-  }
-
-  const { cloudName, apiKey, timestamp, signature } = await signRes.json();
+  const { cloudName, apiKey, timestamp, signature } = await api.uploads.signature();
 
   const fd = new FormData();
   fd.append('file', file);

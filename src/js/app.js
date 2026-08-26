@@ -1,5 +1,6 @@
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { initPostComposerForm, retryQueuedPostsOnReconnect, syncQueuedPostsIfOnline } from './post-composer.js';
+import { currentEmail, clearSession, signOut } from './lib/session.js';
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
@@ -8,10 +9,9 @@ import { initPostComposerForm, retryQueuedPostsOnReconnect, syncQueuedPostsIfOnl
   // its 1-hour access token lifetime looks logged-out on every page load.
   await ensureFreshSession();
 
-  // initAuth() no longer requires the Netlify Identity widget to be present —
-  // it also supports the custom-modal (GoTrue) session stored in localStorage.
-  // We still wait for 'load' so the widget (if present) has time to initialise
-  // before we call identity.currentUser().
+  // initAuth() works with either auth system — see lib/session.js. We still
+  // wait for 'load' so the widget, if present, has initialised before
+  // currentEmail() consults it.
   if (document.readyState === 'complete') {
     initAuth();
   } else {
@@ -31,28 +31,10 @@ function initAuth() {
   const loginBtn      = document.getElementById('login-btn');
   const logoutBtn     = document.getElementById('logout-btn');
 
-  // ── Resolve current user from widget or localStorage ─────────────────────
-  function resolveUser() {
-    // 1. Netlify Identity widget (preferred)
-    const widgetUser = window.netlifyIdentity?.currentUser?.();
-    if (widgetUser) return widgetUser;
-
-    // 2. Custom-modal session stored in localStorage
-    try {
-      const raw = localStorage.getItem('gotrue.user');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.access_token && parsed?.email) {
-          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
-            return { email: parsed.email };
-          }
-          localStorage.removeItem('gotrue.user');
-        }
-      }
-    } catch { /* ignore */ }
-
-    return null;
-  }
+  const resolveUser = () => {
+    const email = currentEmail();
+    return email ? { email } : null;
+  };
 
   function applyUser(user) {
     if (user) {
@@ -80,7 +62,7 @@ function initAuth() {
     identity.on('init',   user => applyUser(user || resolveUser()));
     identity.on('login',  user => { applyUser(user); identity.close(); });
     identity.on('logout', ()   => {
-      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      clearSession();
       applyUser(null);
     });
   }
@@ -93,14 +75,12 @@ function initAuth() {
   // Login button opens the custom auth modal
   loginBtn.addEventListener('click', () => authModal.open('login'));
 
-  // Logout: clear custom-modal session and sign out of widget if active
   logoutBtn.addEventListener('click', () => {
-    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
-    if (identity?.currentUser?.()) {
-      identity.logout();
-    } else {
-      applyUser(null);
-    }
+    const hadWidgetSession = Boolean(identity?.currentUser?.());
+    signOut();
+    // The widget's 'logout' handler repaints when there was a widget session;
+    // otherwise nothing else will.
+    if (!hadWidgetSession) applyUser(null);
   });
 
   // Wire the post form once (it's always in the DOM)

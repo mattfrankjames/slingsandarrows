@@ -1,44 +1,29 @@
-import { getStore } from '@netlify/blobs';
+import { route, json, cacheFor } from '../lib/http.mjs';
+import { readPageParams } from '../lib/validate.mjs';
+import { page } from '../lib/store.mjs';
 
-export default async (req) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/**
+ * List posts, newest first.
+ *
+ * Paging is opt-in: without a `limit` the whole feed comes back, because the
+ * deployed frontend asks for everything and must keep working through this
+ * change. New callers should send one — see lib/store.mjs for why unbounded
+ * reads are a problem.
+ */
+export default route(async req => {
+  const { limit, cursor } = readPageParams(req, { defaultLimit: 0 });
+  const { items, nextCursor, total } = await page('posts', {
+    limit: limit || undefined,
+    cursor,
+  });
 
-  try {
-    const store = getStore('posts');
-    const { blobs } = await store.list();
+  // Unpaged callers get the bare array they have always got. Paged callers get
+  // the cursor too, which needs an envelope.
+  const body = limit ? { posts: items, nextCursor, total } : items;
+  return json(body, 200, cacheFor(60));
+});
 
-    if (!blobs.length) {
-      return new Response('[]', {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=60',
-        },
-      });
-    }
-
-    const posts = (
-      await Promise.all(blobs.map(({ key }) => store.get(key, { type: 'json' })))
-    ).filter(Boolean);
-
-    posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    return new Response(JSON.stringify(posts), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60',
-      },
-    });
-  } catch (err) {
-    console.error('get-posts error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/posts', '/api/get-posts'],
 };
-
-export const config = { path: '/api/get-posts' };

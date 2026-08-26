@@ -2,6 +2,7 @@ import { initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { renderPost, loadMyLikes, isLoggedIn } from './post-render.js';
 import { postComposerModal } from './post-composer-modal.js';
 import { retryQueuedPostsOnReconnect, syncQueuedPostsIfOnline } from './post-composer.js';
+import { api } from './lib/api.js';
 
 const feed       = document.getElementById('posts-feed');
 const loading    = document.getElementById('loading');
@@ -128,9 +129,7 @@ function listenForSWMessages() {
 // ─── Silent background refresh ─────────────────────────────────────────────────
 async function refreshPostsSilently() {
   try {
-    const res = await fetch('/api/get-posts');
-    if (!res.ok) return;
-    const posts = await res.json();
+    const posts = await api.posts.list();
 
     await loadMyLikes(); // like counts/state may have moved too
 
@@ -151,9 +150,7 @@ async function refreshPostsSilently() {
 // ─── Load published posts from API ───────────────────────────────────────────
 async function loadPosts() {
   try {
-    const res = await fetch('/api/get-posts');
-    if (!res.ok) throw new Error(res.statusText);
-    const posts = await res.json();
+    const posts = await api.posts.list();
 
     loading.hidden = true;
 

@@ -5,7 +5,9 @@
 	"scripts": {
 		"build": "parcel build src/*.html --dist-dir dist",
 		"start": "parcel src/*.html",
-		"verify:auth": "node scripts/verify-auth.mjs"
+		"verify:auth": "node scripts/verify-auth.mjs",
+		"verify:lib": "node scripts/verify-lib.mjs",
+		"verify": "npm run verify:auth && npm run verify:lib"
 	},
 	"dependencies": {
 		"@netlify/blobs": "^8.1.0"
