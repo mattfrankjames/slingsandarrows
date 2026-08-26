@@ -1,6 +1,9 @@
 const CACHE       = 'sa-shell-v3';   // app-shell assets (HTML, CSS, JS)
 const IMAGE_CACHE = 'sa-images-v1';  // long-lived cache-first store for Cloudinary assets
-const API_CACHE   = 'sa-api-v1';     // short-lived network-first cache for API responses
+// Bumped to v2 to evict caches written before authenticated requests were
+// excluded below — existing installs may hold a per-user response keyed by URL
+// alone, and the activate handler drops any cache not named here.
+const API_CACHE   = 'sa-api-v2';     // short-lived network-first cache for API responses
 
 // Maximum number of Cloudinary images to keep in the image cache.
 // Older entries are evicted once this limit is exceeded.
@@ -65,6 +68,17 @@ self.addEventListener('fetch', e => {
   // differs from what was cached, tell open pages so they can silently
   // re-render without the user having to reload.
   if (url.pathname.startsWith('/api/')) {
+    // Never cache a response that depends on who is asking. The Cache API keys
+    // entries by URL alone, so a per-user GET like /api/posts/likes/mine would
+    // otherwise be stored once and replayed to whoever asks next — the wrong
+    // likes after a sign-out, or another person's on a shared device. The same
+    // reasoning will cover carts, stock, and orders once the store exists, so
+    // this checks for the header rather than naming individual paths.
+    if (e.request.headers.has('Authorization')) {
+      e.respondWith(fetch(e.request));
+      return;
+    }
+
     e.respondWith(
       caches.open(API_CACHE).then(async cache => {
         const cached = await cache.match(e.request);
