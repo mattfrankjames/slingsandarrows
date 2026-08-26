@@ -4,6 +4,8 @@
 // markup (and its child field IDs) is present in the document wherever
 // initPostComposerForm() is called.
 
+import { uploadToCloudinary } from './lib/media.js';
+
 // ─── IndexedDB offline queue ──────────────────────────────────────────────────
 class PostQueue {
   constructor() {
@@ -65,9 +67,6 @@ function ensureQueueReady() {
 }
 
 // ─── Media helpers ────────────────────────────────────────────────────────────
-const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
-
 /**
  * Compress an image File to WebP at ≤1920×1080, quality 0.82.
  * Returns a Blob.
@@ -115,35 +114,6 @@ function getVideoDuration(file) {
     video.onerror = () => { URL.revokeObjectURL(src); reject(new Error('Could not read video')); };
     video.src = src;
   });
-}
-
-/**
- * Upload a File/Blob to Cloudinary using the unsigned upload preset.
- * Uses the "auto" resource type so both images and videos are handled.
- * Returns the Cloudinary response JSON.
- */
-async function uploadToCloudinary(file) {
-  if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
-    console.error('Cloudinary env vars missing:', { CLOUDINARY_CLOUD, CLOUDINARY_PRESET });
-    throw new Error('Cloudinary configuration missing');
-  }
-
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
-    { method: 'POST', body: fd }
-  );
-
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    console.error('Cloudinary error response:', detail);
-    throw new Error(detail?.error?.message || `Cloudinary upload failed (${res.status})`);
-  }
-
-  return res.json();
 }
 
 // ─── Read More break ────────────────────────────────────────────────────────

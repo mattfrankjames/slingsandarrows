@@ -1,29 +1,7 @@
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
+import { uploadToCloudinary } from './lib/media.js';
 
-// ─── Cloudinary upload ────────────────────────────────────────────────────────
-const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET;
-
-async function uploadToCloudinary(file) {
-  if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
-    throw new Error('Cloudinary env vars not set');
-  }
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
-    { method: 'POST', body: fd }
-  );
-
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail?.error?.message || `Upload failed (${res.status})`);
-  }
-  return res.json();
-}
 
 async function validateMediaFile(file) {
   const maxSize = 50 * 1024 * 1024; // 50 MB

@@ -1,24 +1,5 @@
 import { getStore } from '@netlify/blobs';
-
-function getUserFromRequest(req, context) {
-  if (context.clientContext?.user) {
-    return context.clientContext.user;
-  }
-
-  const auth = req.headers.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-
-  try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(
-      Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-    );
-    return decoded.email ? { email: decoded.email } : null;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from '../lib/auth.mjs';
 
 // Likes are keyed `${email}::${postId}` in the 'post-likes' store — the
 // email-first key lets post-likes-mine.mjs list a user's likes with a single
@@ -29,7 +10,7 @@ export default async (req, context) => {
   }
 
   try {
-    const user = getUserFromRequest(req, context);
+    const user = await getUser(req);
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
