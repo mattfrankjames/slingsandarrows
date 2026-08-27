@@ -26,6 +26,16 @@ export const POSTS = [
     commentCount: 3,
   },
   {
+    id: '1736966000000-eeeeaaa',
+    title: 'A post with an image',
+    body: 'Media posts lay out differently from text-only ones, and this is what opens the shared lightbox.',
+    imageUrl: 'https://res.cloudinary.com/demo/image/upload/post-media.jpg',
+    author: AUTHOR,
+    createdAt: '2026-01-12T09:00:00.000Z',
+    likeCount: 4,
+    commentCount: 0,
+  },
+  {
     id: '1736966000000-bbbbbbb',
     title: '',
     body: 'An untitled post, which renders without the heading — a distinct layout worth covering.',
@@ -121,9 +131,15 @@ export async function stubContent(page) {
     route.fulfill({ status: 401, contentType: 'application/json', body: '{"error":"Unauthorized"}' })
   );
 
-  // Uploaded media, deterministically.
-  await page.route('**res.cloudinary.com/**', route =>
-    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: PLACEHOLDER_IMAGE })
+  // Uploaded media, deterministically. Matched by hostname rather than a glob:
+  // the same image is requested at several Cloudinary transformation paths
+  // (thumbnail, srcset candidates, the lightbox's c_limit,w_1600) and a
+  // pattern that missed any of them would quietly let the real network image
+  // through — which is how the first lightbox baseline ended up capturing
+  // Cloudinary's demo photograph instead of the placeholder.
+  await page.route(
+    url => url.hostname === 'res.cloudinary.com',
+    route => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: PLACEHOLDER_IMAGE })
   );
 }
 

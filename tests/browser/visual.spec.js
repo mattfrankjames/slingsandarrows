@@ -2,6 +2,20 @@ import { test, expect } from '@playwright/test';
 import { PAGES } from './pages.js';
 import { stubContent } from './fixtures.js';
 
+// The service worker serves Cloudinary media cache-first (sw.js), and a service
+// worker's fetch is not interceptable by page.route — so stubbed images would
+// leak the real network response as soon as the worker took control. That is
+// not hypothetical: it produced a lightbox baseline containing Cloudinary's
+// demo photograph while the thumbnail behind it showed the placeholder,
+// because the tile loaded before the worker claimed the page and the lightbox
+// image after. Blocking registration keeps every capture deterministic.
+//
+// Scoped to the visual specs on purpose: the smoke suite should keep
+// exercising a page that registers a worker, since that is what real visitors
+// get.
+test.use({ serviceWorkers: 'block' });
+
+
 /**
  * Per-page screenshot baselines.
  *

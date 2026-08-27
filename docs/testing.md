@@ -102,15 +102,27 @@ would read, which is the same as having it off.
 ## Visual baselines
 
 Screenshot diffs are the safety net for Phase 3, which rebuilds every page shell
-and moves ~83 KB of inline CSS. Twenty-four baselines are committed under
-`tests/browser/__screenshots__/` — seven public pages plus five signed-in
-surfaces, each at desktop and mobile.
+and moves ~83 KB of inline CSS. Thirty baselines are committed under
+`tests/browser/__screenshots__/` — seven public pages plus eight interaction
+states, each at desktop and mobile.
 
-The signed-in ones (`visual-authed.spec.js`) matter most: the composer, its
-link-insert panel, the feed's composer dialog, the gallery upload modal and the
-board's new-thread modal. Signed out, none of those render at all, so a
-baseline taken without a session captures a sign-in prompt and protects
-nothing. `signIn()` seeds the same localStorage record the sign-in modal
+The interaction states (`visual-authed.spec.js`) matter most, because none of
+them render on a plain page load:
+
+- the composer at `/app`, and its link-insert panel;
+- the feed's composer dialog, the gallery upload modal, the board's new-thread
+  modal;
+- **both lightboxes** — the gallery's own viewer, with previous/next and a
+  counter, and the shared one in `lightbox.js` used by feed posts and board
+  media, plus a paged state to cover navigation.
+
+The lightboxes and the three modals are all hand-rolled
+`<div role="dialog" aria-modal="true">` overlays that Phase 3 replaces with
+native `<dialog>` (finding F-12). Their layout should survive that swap
+unchanged, which is precisely what these baselines are for.
+
+Signed out, the composer surfaces do not render at all, so a baseline taken
+without a session captures a sign-in prompt and protects nothing. `signIn()` seeds the same localStorage record the sign-in modal
 writes; it is a fixture, not a credential, and every write it might attempt is
 stubbed.
 
@@ -134,7 +146,11 @@ something fails — it is far more likely to be a real change:
   (`tests/browser/fixtures.js`), so post cards, thread cards and gallery tiles
   render from fixed data. Without this a new post changes every baseline.
 - **Media** — Cloudinary requests are answered with a fixed SVG placeholder, so
-  aspect ratio, `object-fit` and the tile grid stay under test.
+  aspect ratio, `object-fit` and the tile grid stay under test. Matched by
+  hostname rather than a URL glob, because the same image is requested at
+  several transformation paths and `srcset` candidates.
+- **The service worker** — blocked in the visual specs only
+  (`test.use({ serviceWorkers: 'block' })`). See below.
 - **Animation** — the glitch and static loops run indefinitely, so every frame
   differs. Handled by `reducedMotion: 'reduce'` plus `animations: 'disabled'`.
 - **Fonts** — Typekit faces land after first paint. Handled by awaiting
@@ -155,6 +171,14 @@ Both were made while setting these up:
 - **Hiding images rather than serving fixture bytes.** Same mistake, quieter:
   the gallery baseline was two empty boxes. The tile frames were captured and
   nothing inside them was.
+- **Forgetting that a service worker is not interceptable.** `sw.js` serves
+  Cloudinary media cache-first, and a service worker's own fetch does not pass
+  through `page.route`. The result was a lightbox baseline containing
+  Cloudinary's demo photograph while the thumbnail behind it showed the
+  placeholder — the tile had loaded before the worker claimed the page and the
+  lightbox image after. Registration is now blocked in the visual specs.
+  The smoke suite still exercises a page that registers a worker, because that
+  is what real visitors get.
 - **Omitting `{projectName}` from `snapshotPathTemplate`.** The desktop and
   mobile projects wrote to the same filenames and the second silently
   overwrote the first, leaving seven files for fourteen tests.
