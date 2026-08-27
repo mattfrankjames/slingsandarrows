@@ -101,30 +101,49 @@ would read, which is the same as having it off.
 
 ## Visual baselines
 
-Screenshot diffs are the safety net for Phase 3, which rebuilds every page
-shell and moves ~83 KB of inline CSS. They are **not** part of the default run —
-an absent baseline would fail CI with a file it had just written.
+Screenshot diffs are the safety net for Phase 3, which rebuilds every page shell
+and moves ~83 KB of inline CSS. Baselines for all seven pages, desktop and
+mobile, are committed under `tests/browser/__screenshots__/`.
 
-Capture them once, immediately before starting Phase 3, from a deployment that
-reflects current `main`:
+They are **not** part of the default run — an absent baseline would fail CI with
+a file it had just written — so run them deliberately:
 
 ```bash
-BASE_URL=https://slingsandarrows.band npm run test:visual -- --update-snapshots
-git add tests/browser/__screenshots__ && git commit -m "test: capture visual baselines"
+BASE_URL=https://deploy-preview-99--slingsandarrows.netlify.app npm run test:visual
 ```
 
-Then during Phase 3, `npm run test:visual` against that branch's preview. Every
-diff should be either identical or an intentional, reviewed change.
+Every diff should be either identical or an intentional, reviewed change. To
+accept a batch of intentional changes, re-run with `-- --update-snapshots` and
+**look at the resulting images in the diff** before committing them.
 
-Three sources of false positives are already handled, so resist lowering the
-threshold when something fails:
+### Why they are stable
 
+Four sources of false positives are handled. Resist lowering the threshold when
+something fails — it is far more likely to be a real change:
+
+- **Content** — the read endpoints are stubbed with fixtures
+  (`tests/browser/fixtures.js`), so post cards, thread cards and gallery tiles
+  render from fixed data. Without this a new post changes every baseline.
 - **Animation** — the glitch and static loops run indefinitely, so every frame
   differs. Handled by `reducedMotion: 'reduce'` plus `animations: 'disabled'`.
 - **Fonts** — Typekit faces land after first paint. Handled by awaiting
   `document.fonts.ready` before capture.
-- **Live content and remote media** — a new post would otherwise "fail" the
-  feed. Handled by masking the content regions and Cloudinary images.
+- **The hero photograph** — flattened to a flat colour by
+  `tests/browser/screenshot.css`. It is the background of `.wrapper` on every
+  page, so leaving it in made the baselines 6 MB while being the one thing least
+  likely to change. Contrast against the real background is axe's job.
+
+### Two mistakes worth not repeating
+
+Both were made while setting these up:
+
+- **Masking the content containers instead of stubbing them.** The feed baseline
+  came out as a single pink rectangle — every post card hidden, so the refactor
+  the baselines exist to protect could have broken all of them without a single
+  test failing. A baseline that cannot fail is worse than no baseline.
+- **Omitting `{projectName}` from `snapshotPathTemplate`.** The desktop and
+  mobile projects wrote to the same filenames and the second silently
+  overwrote the first, leaving seven files for fourteen tests.
 
 ## What is not covered
 
