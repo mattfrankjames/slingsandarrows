@@ -64,10 +64,12 @@ jobs:
       # Baselines are per-platform: text rasterises differently on macOS and on
       # these runners. This job's set is the one that gates a merge.
       #
-      # `--update-snapshots` writes any that are missing and the artifact below
-      # carries them out, so a first run on a new platform produces the files
-      # to commit rather than only complaining that they are absent. Existing
-      # baselines that differ still fail.
+      # Deliberately no --update-snapshots: a suite that rewrites its own
+      # expectations cannot fail. Playwright writes a *missing* baseline anyway
+      # and still fails the test, and the artifact below carries the written
+      # files out — so bootstrapping a new platform is one red run followed by
+      # committing what it produced. Use update-baselines.yml for intentional
+      # visual changes.
       - name: Visual baselines
         if: ${{ !cancelled() }}
         env:
@@ -80,7 +82,7 @@ jobs:
           name: playwright-report
           path: |
             playwright-report/
-            test-results/
+            tests/browser/__screenshots__/
           retention-days: 7
 
   lighthouse:
