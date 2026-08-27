@@ -3,7 +3,20 @@
 // and injects its whole login/signup DOM into the page as an import
 // side-effect — just to initialize the Netlify Identity widget.
 
-export const GOTRUE_API_URL = 'https://slingsandarrows.band/.netlify/identity';
+/**
+ * This site's Identity (GoTrue) endpoint.
+ *
+ * Derived from wherever the page is served rather than hardcoded. The literal
+ * production URL that used to live here meant a deploy preview authenticated
+ * against production across origins — and, once this code is shared, that any
+ * other band's deployment would silently sign users in against *this* band's
+ * Identity instance.
+ *
+ * Locally this needs `netlify dev`, which serves /.netlify/identity on the dev
+ * origin — the same thing the /api routes already require. Under a plain
+ * `parcel serve` there is no Identity endpoint to talk to either way.
+ */
+export const GOTRUE_API_URL = `${window.location.origin}/.netlify/identity`;
 
 /**
  * Initialize the Netlify Identity widget with this site's APIUrl.

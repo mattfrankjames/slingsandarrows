@@ -51,21 +51,21 @@ export default [
   // Each of these prevents a specific regression that has already happened.
   {
     files: ['src/**/*.js'],
-    ignores: ['src/js/lib/**'],
+    ignores: ['src/core/js/lib/**'],
     rules: {
       'no-restricted-properties': [
         'error',
         {
           object: 'localStorage',
           message:
-            'The session lives in src/js/lib/session.js. Six modules used to read `gotrue.user` directly and two forgot to check expires_at.',
+            'The session lives in src/core/js/lib/session.js. Six modules used to read `gotrue.user` directly and two forgot to check expires_at.',
         },
       ],
       'no-restricted-globals': [
         'error',
         {
           name: 'localStorage',
-          message: 'Use src/js/lib/session.js — it owns the stored session.',
+          message: 'Use src/core/js/lib/session.js — it owns the stored session.',
         },
       ],
     },
@@ -77,7 +77,7 @@ export default [
   // Only lib/media.js talks to Cloudinary.
   {
     files: ['src/**/*.js'],
-    ignores: ['src/js/lib/media.js'],
+    ignores: ['src/core/js/lib/media.js'],
     rules: {
       // NOTE: flat config *replaces* a rule rather than merging it, so this
       // list must repeat the innerHTML selector from the block above —
@@ -99,12 +99,39 @@ export default [
         {
           selector: "Literal[value='upload_preset']",
           message:
-            'Uploads go through src/js/lib/media.js, which fetches a signed signature. An unsigned upload_preset in client code ships to the browser.',
+            'Uploads go through src/core/js/lib/media.js, which fetches a signed signature. An unsigned upload_preset in client code ships to the browser.',
         },
         {
           selector: "MemberExpression[object.property.name='env'][property.name=/^CLOUDINARY/]",
           message:
             'Parcel inlines process.env at build time, so this would put the credential in a public bundle. Cloudinary config is server-side only.',
+        },
+      ],
+    },
+  },
+
+  // ── The core / site boundary ───────────────────────────────────────────────
+  // src/core is the part of this codebase that is not about one band; src/site
+  // is everything that is. Keeping the dependency pointing one way is the cheap
+  // half of making this shareable later — the expensive half is retrofitting
+  // the discipline, which means auditing every file.
+  //
+  // This catches imports. tests/unit/boundary.test.js catches the other
+  // direction of the same problem: core *containing* band-specific values,
+  // which no import rule can see.
+  {
+    files: ['src/core/**/*.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/site/**', '../site/*', './site/*'],
+              message:
+                'src/core must stay band-agnostic. Take the value through configuration rather than importing it from src/site.',
+            },
+          ],
         },
       ],
     },

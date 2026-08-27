@@ -93,7 +93,7 @@ async function showPendingPosts() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
-    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .register(new URL('../../sw.js', import.meta.url), { scope: '/' })
     .then(reg => syncQueuedPostsIfOnline(reg))
     .catch(err => console.warn('[posts] SW registration failed:', err));
 }

@@ -108,7 +108,7 @@ function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
   navigator.serviceWorker
-    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .register(new URL('../../sw.js', import.meta.url), { scope: '/' })
     .then(reg => {
       console.log('[app] SW registered, scope:', reg.scope);
       syncQueuedPostsIfOnline(reg);

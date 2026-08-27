@@ -1,3 +1,14 @@
+// ─── Why this file is not under src/core/ ─────────────────────────────────────
+// It is core code — nothing in here is specific to one band — but a service
+// worker can only control the pages beneath its own URL. Served from
+// /core/sw.js it could claim scope '/core/' and nothing else, so registering it
+// with { scope: '/' } throws and offline support, background sync and image
+// caching all fail quietly. Parcel emits it where it sits in the source tree,
+// so the source has to sit at the root too.
+//
+// tests/unit/boundary.test.js keeps it honest about band-specific values, and
+// CI asserts dist/sw.js lands at the root.
+
 const CACHE       = 'sa-shell-v3';   // app-shell assets (HTML, CSS, JS)
 const IMAGE_CACHE = 'sa-images-v1';  // long-lived cache-first store for Cloudinary assets
 // Bumped to v2 to evict caches written before authenticated requests were
