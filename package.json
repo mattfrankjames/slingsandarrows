@@ -12,7 +12,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:browser": "playwright test",
-		"test:visual": "VISUAL=1 playwright test visual.spec.js",
+		"test:visual": "VISUAL=1 playwright test visual.spec.js visual-authed.spec.js",
 		"verify": "npm run lint && npm run typecheck && npm run test"
 	},
 	"dependencies": {

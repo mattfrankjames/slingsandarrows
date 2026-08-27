@@ -1,5 +1,20 @@
 import { test, expect } from '@playwright/test';
 import { PAGES } from './pages.js';
+import { stubContent } from './fixtures.js';
+
+// The service worker serves Cloudinary media cache-first (sw.js), and a service
+// worker's fetch is not interceptable by page.route — so stubbed images would
+// leak the real network response as soon as the worker took control. That is
+// not hypothetical: it produced a lightbox baseline containing Cloudinary's
+// demo photograph while the thumbnail behind it showed the placeholder,
+// because the tile loaded before the worker claimed the page and the lightbox
+// image after. Blocking registration keeps every capture deterministic.
+//
+// Scoped to the visual specs on purpose: the smoke suite should keep
+// exercising a page that registers a worker, since that is what real visitors
+// get.
+test.use({ serviceWorkers: 'block' });
+
 
 /**
  * Per-page screenshot baselines.
@@ -17,6 +32,9 @@ import { PAGES } from './pages.js';
  */
 for (const page of PAGES) {
   test(`${page.name} matches its baseline`, async ({ page: browserPage }) => {
+    // Fixed content, so the cards render from known data and the diff is about
+    // layout rather than whatever was posted this week.
+    await stubContent(browserPage);
     await browserPage.goto(page.path);
     await browserPage.locator(page.ready).first().waitFor({ timeout: 15_000 });
 
@@ -24,14 +42,11 @@ for (const page of PAGES) {
     // every subsequent run a false failure.
     await browserPage.evaluate(() => document.fonts.ready);
 
-    // Content is live data — a new post would otherwise "fail" the gallery.
-    const dynamic = browserPage.locator(
-      '#posts-feed, #threads-list, #gallery-grid, .iframe-container, img[src*="cloudinary"]'
-    );
-
     await expect(browserPage).toHaveScreenshot(`${page.name}.png`, {
       fullPage: true,
-      mask: await dynamic.count() ? [dynamic] : [],
+      // See screenshot.css — flattens the hero photograph so the diffs are
+      // about layout rather than a background that is not going to change.
+      stylePath: 'tests/browser/screenshot.css',
     });
   });
 }

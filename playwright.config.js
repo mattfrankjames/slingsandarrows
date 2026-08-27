@@ -19,9 +19,11 @@ export default defineConfig({
   // Visual baselines are captured deliberately, not on a first CI run — an
   // absent snapshot would otherwise fail the build with a file it just wrote.
   // See docs/testing.md: they get generated once, immediately before Phase 3.
-  testIgnore: process.env.VISUAL ? [] : ['**/visual.spec.js'],
+  testIgnore: process.env.VISUAL ? [] : ['**/visual*.spec.js'],
   // Screenshot comparisons live next to the specs so they're reviewable in a diff.
-  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
+  // {projectName} is load-bearing: without it the desktop and mobile projects
+  // write to the same file and the second silently overwrites the first.
+  snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
