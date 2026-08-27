@@ -16,14 +16,20 @@ const baseURL = process.env.BASE_URL || 'http://localhost:1234';
 
 export default defineConfig({
   testDir: 'tests/browser',
-  // Visual baselines are captured deliberately, not on a first CI run — an
-  // absent snapshot would otherwise fail the build with a file it just wrote.
-  // See docs/testing.md: they get generated once, immediately before Phase 3.
-  testIgnore: process.env.VISUAL ? [] : ['**/visual*.spec.js'],
+  // Visual specs run everywhere now that baselines are committed. They were
+  // excluded while none existed, because an absent snapshot fails the build
+  // with a file it has just written.
+  //
+  // VISUAL=1 remains as a way to run *only* them (npm run test:visual).
   // Screenshot comparisons live next to the specs so they're reviewable in a diff.
   // {projectName} is load-bearing: without it the desktop and mobile projects
   // write to the same file and the second silently overwrites the first.
-  snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
+  //
+  // {platform} likewise: text rasterisation differs between macOS and the
+  // Linux runners, enough that a baseline captured on one fails on the other
+  // for reasons that have nothing to do with the change under review. Each
+  // platform keeps its own set; CI's is the one that gates a merge.
+  snapshotPathTemplate: '{testDir}/__screenshots__/{platform}/{projectName}/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

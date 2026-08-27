@@ -61,11 +61,26 @@ jobs:
           BASE_URL: ${{ env.PREVIEW_URL }}
         run: npx playwright test --project=desktop
 
+      # Baselines are per-platform: text rasterises differently on macOS and on
+      # these runners. This job's set is the one that gates a merge.
+      #
+      # `--update-snapshots` writes any that are missing and the artifact below
+      # carries them out, so a first run on a new platform produces the files
+      # to commit rather than only complaining that they are absent. Existing
+      # baselines that differ still fail.
+      - name: Visual baselines
+        if: ${{ !cancelled() }}
+        env:
+          BASE_URL: ${{ env.PREVIEW_URL }}
+        run: npx playwright test --project=desktop --project=mobile visual.spec.js visual-authed.spec.js
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
 
   lighthouse:
