@@ -1,16 +1,30 @@
 name: Browser tests
 
-# Runs against the Netlify Deploy Preview rather than a local server, so the
-# redirects, cache headers and functions in netlify.toml are actually
-# exercised. Netlify publishes a GitHub deployment when a preview is ready;
-# this waits for that rather than guessing a URL or racing the build.
+# Runs against the pull request's Netlify Deploy Preview rather than a local
+# server, so the redirects, cache headers and functions in netlify.toml are
+# actually exercised. A suite pointed at `parcel serve` would have no opinion
+# about any of them.
+#
+# On waiting for the preview: this polls a URL derived from the PR number
+# instead of reacting to a deployment event. Two reasons. Netlify announces
+# previews on this repo with a *commit status*, not a GitHub Deployment — the
+# deployments API returns nothing — so `on: deployment_status` never fires. And
+# `status`/`deployment_status` workflows only run from the copy of the file on
+# the default branch, so a change to one cannot be tested in the pull request
+# that makes it. Polling has neither problem.
 on:
-  deployment_status:
+  pull_request:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PREVIEW_URL: https://deploy-preview-${{ github.event.number }}--slingsandarrows.netlify.app
 
 jobs:
   browser:
     name: Smoke, routing, API contract, accessibility
-    if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +39,26 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      # Netlify usually builds in well under two minutes; the ceiling is there
+      # so a stuck deploy fails the job rather than burning the runner budget.
+      - name: Wait for the Deploy Preview
+        run: |
+          echo "Waiting for $PREVIEW_URL"
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$PREVIEW_URL" || echo 000)
+            if [ "$status" = "200" ]; then
+              echo "Preview ready after ~$((attempt * 10))s"
+              exit 0
+            fi
+            echo "  attempt $attempt: HTTP $status"
+            sleep 10
+          done
+          echo "::error::Deploy Preview never became reachable at $PREVIEW_URL"
+          exit 1
+
       - name: Run browser tests
         env:
-          BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          BASE_URL: ${{ env.PREVIEW_URL }}
         run: npx playwright test --project=desktop
 
       - uses: actions/upload-artifact@v4
@@ -39,17 +70,26 @@ jobs:
 
   lighthouse:
     name: Performance budget
-    if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Audit the feed and home pages
+      - name: Wait for the Deploy Preview
+        run: |
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$PREVIEW_URL" || echo 000)
+            [ "$status" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Deploy Preview never became reachable at $PREVIEW_URL"
+          exit 1
+
+      - name: Audit the home and feed pages
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
-            ${{ github.event.deployment_status.environment_url }}
-            ${{ github.event.deployment_status.environment_url }}/feed
+            ${{ env.PREVIEW_URL }}
+            ${{ env.PREVIEW_URL }}/feed
           budgetPath: .github/lighthouse-budget.json
           uploadArtifacts: true
           temporaryPublicStorage: true

@@ -35,8 +35,20 @@ BASE_URL=https://deploy-preview-99--slingsandarrows.netlify.app npm run test:bro
 The clean-URL rewrites, the RSS routes, the cache headers and the functions all
 live in `netlify.toml`. None of them exist in front of `parcel serve`, so a
 suite that passed against localhost would have no opinion about the parts most
-likely to break. `.github/workflows/e2e.yml` waits for Netlify's deployment
-notification rather than guessing a URL or racing the build.
+likely to break.
+
+`e2e.yml` derives the preview URL from the PR number and polls until it
+answers, rather than reacting to a deployment event. Two reasons, both learned
+the hard way:
+
+- Netlify announces previews on this repo with a **commit status**, not a
+  GitHub Deployment. The deployments API returns nothing, so a workflow
+  triggered `on: deployment_status` never fires at all.
+- `status` and `deployment_status` workflows only run from the copy of the file
+  on the **default branch**, so a change to one cannot be tested in the pull
+  request that makes it.
+
+Polling has neither problem, at the cost of a job that waits.
 
 ## ⚠️ Branch protection is the actual gate
 
@@ -52,6 +64,11 @@ In **Settings → Branches → Add branch ruleset** for `main`:
 - Require branches to be up to date before merging
 
 Repository settings are yours to change; nothing in this repo can set them.
+
+Require **`Lint, types, unit tests`** — it is fast and needs nothing deployed.
+Adding the browser job as well is reasonable once it has run a few times; it
+depends on Netlify finishing a build, so it is slower and has one more thing
+that can be flaky.
 
 ## The rules ESLint enforces
 
