@@ -1,54 +1,26 @@
-import { getStore } from '@netlify/blobs';
+import { route, json, cacheFor } from '../lib/http.mjs';
+import { requiredId, readPageParams } from '../lib/validate.mjs';
+import { page } from '../lib/store.mjs';
 
-export default async (req) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/** Replies to a thread, oldest first. */
+export default route(async (req, context) => {
+  const threadId = requiredId(
+    context.params?.threadId ?? new URL(req.url).searchParams.get('threadId'),
+    'threadId'
+  );
+  const { limit, cursor } = readPageParams(req, { defaultLimit: 0 });
 
-  try {
-    const url = new URL(req.url);
-    const threadId = url.searchParams.get('threadId');
+  const { items, nextCursor, total } = await page('board-replies', {
+    prefix: `${threadId}/`,
+    limit:  limit || undefined,
+    cursor,
+    order:  'asc',
+  });
 
-    if (!threadId) {
-      return new Response(JSON.stringify({ error: 'threadId is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  return json(limit ? { replies: items, nextCursor, total } : items, 200, cacheFor(30));
+});
 
-    const store = getStore('board-replies');
-    const { blobs } = await store.list({ prefix: `${threadId}/` });
-
-    if (!blobs.length) {
-      return new Response('[]', {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=30',
-        },
-      });
-    }
-
-    const replies = (
-      await Promise.all(blobs.map(({ key }) => store.get(key, { type: 'json' })))
-    ).filter(Boolean);
-
-    replies.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    return new Response(JSON.stringify(replies), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30',
-      },
-    });
-  } catch (err) {
-    console.error('board-get-replies error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/board/threads/:threadId/replies', '/api/board/replies'],
 };
-
-export const config = { path: '/api/board/replies' };

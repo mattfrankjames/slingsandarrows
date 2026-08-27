@@ -1,45 +1,19 @@
-import { getStore } from '@netlify/blobs';
+import { route, json, cacheFor } from '../lib/http.mjs';
+import { readPageParams } from '../lib/validate.mjs';
+import { page } from '../lib/store.mjs';
 
-export default async (req) => {
-  if (req.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/** Gallery items, newest first. */
+export default route(async req => {
+  const { limit, cursor } = readPageParams(req, { defaultLimit: 0 });
+  const { items, nextCursor, total } = await page('gallery', {
+    limit: limit || undefined,
+    cursor,
+  });
 
-  try {
-    const store = getStore('gallery');
-    const { blobs } = await store.list();
+  return json(limit ? { items, nextCursor, total } : items, 200, cacheFor(60));
+});
 
-    if (!blobs.length) {
-      return new Response('[]', {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=60',
-        },
-      });
-    }
-
-    const items = (
-      await Promise.all(blobs.map(({ key }) => store.get(key, { type: 'json' })))
-    ).filter(Boolean);
-
-    // Newest first
-    items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    return new Response(JSON.stringify(items), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60',
-      },
-    });
-  } catch (err) {
-    console.error('gallery-list error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'GET',
+  path: ['/api/v1/gallery', '/api/gallery/list'],
 };
-
-export const config = { path: '/api/gallery/list' };

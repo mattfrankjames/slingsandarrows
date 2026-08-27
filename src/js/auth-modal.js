@@ -4,8 +4,13 @@
  */
 
 import { GOTRUE_API_URL, initIdentityWidget } from './identity-widget.js';
+import { saveSession, clearSession, currentEmail, signOut, ensureFreshSession } from './lib/session.js';
 
 export { initIdentityWidget };
+
+// Re-exported for the pages that have always imported it from here. The
+// implementation moved to lib/session.js, which owns the stored session.
+export { ensureFreshSession };
 
 export class AuthModal {
   constructor(options = {}) {
@@ -307,18 +312,7 @@ export class AuthModal {
 
     const data = await response.json();
 
-    // Store the token so Netlify Identity widget can pick it up on the next
-    // page load, and so board.js can read it directly.
-    try {
-      localStorage.setItem('gotrue.user', JSON.stringify({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at: Date.now() + (data.expires_in || 3600) * 1000,
-        email,
-      }));
-    } catch {
-      // localStorage may be unavailable in some contexts — not fatal
-    }
+    saveSession({ ...data, email });
 
     this.showSuccess('Signed in successfully!');
 
@@ -409,62 +403,6 @@ export const authModal = new AuthModal({
   apiUrl: GOTRUE_API_URL,
 });
 
-// ── Session refresh ───────────────────────────────────────────────────────────
-/**
- * GoTrue access tokens issued by login() are short-lived (1 hour by default),
- * but a refresh_token was stored alongside them and never used — so once the
- * access token expired, every page load looked "logged out" and forced a
- * full sign-in again, even though the refresh token was still good.
- *
- * Call this once, awaited, before any page reads the stored session (i.e.
- * before initAuthBar() / resolveUser() / getToken()-style checks run) to
- * silently exchange an expired-or-expiring access token for a fresh one.
- * Refresh tokens are long-lived, so this keeps the user signed in across
- * visits until they explicitly sign out. No-op if there's nothing to do.
- */
-export async function ensureFreshSession() {
-  let parsed;
-  try {
-    const raw = localStorage.getItem('gotrue.user');
-    if (!raw) return;
-    parsed = JSON.parse(raw);
-  } catch {
-    return;
-  }
-  if (!parsed?.refresh_token) return;
-
-  // Refresh a little before actual expiry so we don't race a request that
-  // would land right as the token dies.
-  const REFRESH_MARGIN_MS = 5 * 60 * 1000;
-  if (parsed.expires_at && parsed.expires_at - Date.now() > REFRESH_MARGIN_MS) return;
-
-  try {
-    const params = new URLSearchParams();
-    params.append('grant_type', 'refresh_token');
-    params.append('refresh_token', parsed.refresh_token);
-
-    const response = await fetch(`${GOTRUE_API_URL}/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-
-    if (!response.ok) throw new Error('refresh failed');
-    const data = await response.json();
-
-    localStorage.setItem('gotrue.user', JSON.stringify({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token || parsed.refresh_token,
-      expires_at: Date.now() + (data.expires_in || 3600) * 1000,
-      email: parsed.email,
-    }));
-  } catch {
-    // The refresh token itself is dead (revoked/expired from long disuse) —
-    // drop the stale session so the page shows a clean sign-in prompt
-    // instead of silently sending expired-token requests to the API.
-    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
-  }
-}
 
 // ── Auth bar (header sign-out strip) ──────────────────────────────────────────
 /**
@@ -490,29 +428,10 @@ export function initAuthBar() {
 
   if (!authBar || !logoutBtn) return;
 
-  // ── Resolve current user from widget or localStorage ──────────────────────
-  function resolveUser() {
-    // 1. Netlify Identity widget (preferred — has refresh-token support)
-    const widgetUser = window.netlifyIdentity?.currentUser?.();
-    if (widgetUser) return { email: widgetUser.email, source: 'widget' };
-
-    // 2. Custom-modal session stored in localStorage
-    try {
-      const raw = localStorage.getItem('gotrue.user');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.access_token && parsed?.email) {
-          if (!parsed.expires_at || parsed.expires_at > Date.now()) {
-            return { email: parsed.email, source: 'storage' };
-          }
-          // Expired — clean up
-          localStorage.removeItem('gotrue.user');
-        }
-      }
-    } catch { /* ignore */ }
-
-    return null;
-  }
+  const resolveUser = () => {
+    const email = currentEmail();
+    return email ? { email } : null;
+  };
 
   function applyUser(user) {
     if (user) {
@@ -533,8 +452,8 @@ export function initAuthBar() {
     identity.on('init',   user => applyUser(user ? { email: user.email } : resolveUser()));
     identity.on('login',  user => applyUser({ email: user.email }));
     identity.on('logout', ()   => {
-      // Also clear custom-modal session on widget logout
-      try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
+      // The widget's own session is gone; clear the custom-modal one too.
+      clearSession();
       applyUser(null);
     });
   }
@@ -546,15 +465,10 @@ export function initAuthBar() {
 
   // ── Sign-out button ───────────────────────────────────────────────────────
   logoutBtn.addEventListener('click', () => {
-    // Clear custom-modal session
-    try { localStorage.removeItem('gotrue.user'); } catch { /* ignore */ }
-
-    // Sign out of the Netlify Identity widget if it has an active session
-    if (window.netlifyIdentity?.currentUser?.()) {
-      window.netlifyIdentity.logout();
-    } else {
-      // No widget session — just clear the bar immediately
-      applyUser(null);
-    }
+    const hadWidgetSession = Boolean(window.netlifyIdentity?.currentUser?.());
+    signOut();
+    // With a widget session the 'logout' handler above repaints; without one
+    // nothing else will, so do it here.
+    if (!hadWidgetSession) applyUser(null);
   });
 }

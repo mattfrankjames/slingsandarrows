@@ -1,89 +1,38 @@
-import { getStore } from '@netlify/blobs';
-import { getUser } from '../lib/auth.mjs';
+import { route, json, notFound } from '../lib/http.mjs';
+import { requireUser } from '../lib/auth.mjs';
+import { readJson, requiredString, requiredId, cloudinaryUrl, newId, LIMITS } from '../lib/validate.mjs';
+import { getStore } from '../lib/store.mjs';
 
-export default async (req, context) => {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+export default route(async (req, context) => {
+  const user = await requireUser(req);
+  const body = await readJson(req);
 
-  try {
-    const user = await getUser(req);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const threadId = requiredId(context.params?.threadId ?? body.threadId, 'threadId');
 
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const threads = getStore('board-threads');
+  const thread  = await threads.get(threadId, { type: 'json' });
+  if (!thread) throw notFound('That thread no longer exists');
 
-    const { threadId, body: replyBody, mediaUrl } = body;
+  const reply = {
+    id:        newId(),
+    threadId,
+    body:      requiredString(body.body, 'Reply', LIMITS.reply),
+    mediaUrl:  cloudinaryUrl(body.mediaUrl),
+    author:    user.email,
+    createdAt: new Date().toISOString(),
+  };
 
-    if (!threadId || typeof threadId !== 'string') {
-      return new Response(JSON.stringify({ error: 'threadId is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  await getStore('board-replies').setJSON(`${threadId}/${reply.id}`, reply);
 
-    if (!replyBody || !replyBody.trim()) {
-      return new Response(JSON.stringify({ error: 'Reply body is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  // Denormalised badge count. board-get-threads reconciles it on read, because
+  // this increment is read-modify-write and can lose a concurrent update.
+  thread.replyCount = (thread.replyCount || 0) + 1;
+  await threads.setJSON(threadId, thread);
 
-    // Validate mediaUrl — only allow Cloudinary URLs (or empty)
-    const rawMedia = (mediaUrl || '').trim();
-    const safeMediaUrl = rawMedia.startsWith('https://res.cloudinary.com/') ? rawMedia : '';
+  return json(reply, 201);
+});
 
-    // Verify the thread exists
-    const threadStore = getStore('board-threads');
-    const thread = await threadStore.get(threadId, { type: 'json' });
-    if (!thread) {
-      return new Response(JSON.stringify({ error: 'Thread not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    const replyId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const reply = {
-      id: replyId,
-      threadId,
-      body: replyBody.trim(),
-      mediaUrl: safeMediaUrl,
-      author: user.email,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Store reply under a namespaced key: threadId/replyId
-    const replyStore = getStore('board-replies');
-    await replyStore.setJSON(`${threadId}/${replyId}`, reply);
-
-    // Increment reply count on the thread
-    thread.replyCount = (thread.replyCount || 0) + 1;
-    await threadStore.setJSON(threadId, thread);
-
-    return new Response(JSON.stringify(reply), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('board-create-reply error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'POST',
+  path: ['/api/v1/board/threads/:threadId/replies', '/api/board/replies/create'],
 };
-
-export const config = { path: '/api/board/replies/create' };

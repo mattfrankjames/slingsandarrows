@@ -1,84 +1,37 @@
-import { getStore } from '@netlify/blobs';
-import { getUser } from '../lib/auth.mjs';
+import { route, json, notFound } from '../lib/http.mjs';
+import { requireUser } from '../lib/auth.mjs';
+import { readJson, requiredString, requiredId, newId, LIMITS } from '../lib/validate.mjs';
+import { getStore } from '../lib/store.mjs';
 
-export default async (req, context) => {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+export default route(async (req, context) => {
+  const user = await requireUser(req);
+  const body = await readJson(req);
 
-  try {
-    const user = await getUser(req);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const postId = requiredId(context.params?.postId ?? body.postId, 'postId');
 
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const posts = getStore('posts');
+  const post  = await posts.get(postId, { type: 'json' });
+  if (!post) throw notFound('That post no longer exists');
 
-    const { postId, body: commentBody } = body;
+  const comment = {
+    id:        newId(),
+    postId,
+    body:      requiredString(body.body, 'Comment', LIMITS.comment),
+    author:    user.email,
+    createdAt: new Date().toISOString(),
+  };
 
-    if (!postId || typeof postId !== 'string') {
-      return new Response(JSON.stringify({ error: 'postId is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  await getStore('post-comments').setJSON(`${postId}/${comment.id}`, comment);
 
-    if (!commentBody || !commentBody.trim()) {
-      return new Response(JSON.stringify({ error: 'Comment body is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  // Denormalised count for the feed listing. Same read-modify-write caveat as
+  // likes — see post-likes-toggle.mjs.
+  post.commentCount = (post.commentCount || 0) + 1;
+  await posts.setJSON(postId, post);
 
-    // Verify the post exists
-    const postStore = getStore('posts');
-    const post = await postStore.get(postId, { type: 'json' });
-    if (!post) {
-      return new Response(JSON.stringify({ error: 'Post not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  return json(comment, 201);
+});
 
-    const commentId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const comment = {
-      id: commentId,
-      postId,
-      body: commentBody.trim().slice(0, 2000),
-      author: user.email,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Store comment under a namespaced key: postId/commentId
-    const commentStore = getStore('post-comments');
-    await commentStore.setJSON(`${postId}/${commentId}`, comment);
-
-    // Keep a running count on the post for cheap feed-list display
-    post.commentCount = (post.commentCount || 0) + 1;
-    await postStore.setJSON(postId, post);
-
-    return new Response(JSON.stringify(comment), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('post-comments-create error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'POST',
+  path: ['/api/v1/posts/:postId/comments', '/api/posts/comments/create'],
 };
-
-export const config = { path: '/api/posts/comments/create' };

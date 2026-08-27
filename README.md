@@ -4,7 +4,7 @@ The website for Slings & Arrows — a static site (Parcel + Tailwind CSS) with a
 
 ## Stack
 
-- **Frontend** — plain HTML/CSS/JS (ES modules), bundled with [Parcel 2](https://parceljs.org/). No framework.
+- **Frontend** — plain HTML/CSS/JS (ES modules), bundled with [Parcel 2](https://parceljs.org/). No framework. Shared browser-side modules live in `src/js/lib/`.
 - **Styling** — Tailwind utility output committed directly at `styles/tailwind.css`; page-specific styling lives in inline `<style>` blocks in each HTML file rather than a Tailwind build pipeline.
 - **Backend** — [Netlify Functions](https://docs.netlify.com/functions/overview/) (`netlify/functions/*.mjs`) backed by [Netlify Blobs](https://docs.netlify.com/blobs/overview/) for storage — no database. Shared server-side helpers live in `netlify/lib/`.
 - **Auth** — a custom sign-in modal (`src/js/auth-modal.js`) built on Netlify Identity's GoTrue API, with optional interop with the official Netlify Identity widget.
@@ -25,13 +25,48 @@ The website for Slings & Arrows — a static site (Parcel + Tailwind CSS) with a
 
 ## Backend (`netlify/functions/`)
 
-- `create-post` / `get-posts` / `delete-post` — the feed
-- `post-comments-create` / `post-comments-list` / `post-comments-delete` — feed comments
-- `post-likes-toggle` / `post-likes-mine` — feed likes
-- `board-create-thread` / `board-get-threads` / `board-delete-thread` / `board-create-reply` / `board-get-replies` / `board-delete-reply` — the message board
-- `gallery-add` / `gallery-list` / `gallery-delete` — the gallery
-- `rss-feed` / `rss-community` — RSS feeds, served at `/feed.xml` and `/community.xml`
-- `cloudinary-sign` — issues a signed Cloudinary upload signature to a signed-in user
+### Routes
+
+Endpoints live under `/api/v1`. Every function also answers on its original
+`/api/*` path, so a page served from a stale cache keeps working; those aliases
+can be dropped once no old bundles are in circulation.
+
+| Method | Route | Function |
+|---|---|---|
+| GET | `/api/v1/posts` | `get-posts` |
+| POST | `/api/v1/posts` | `create-post` |
+| DELETE | `/api/v1/posts/:id` | `delete-post` |
+| GET | `/api/v1/posts/:postId/comments` | `post-comments-list` |
+| POST | `/api/v1/posts/:postId/comments` | `post-comments-create` |
+| DELETE | `/api/v1/posts/:postId/comments/:commentId` | `post-comments-delete` |
+| POST | `/api/v1/posts/:postId/likes` | `post-likes-toggle` |
+| GET | `/api/v1/me/likes` | `post-likes-mine` |
+| GET | `/api/v1/board/threads` | `board-get-threads` |
+| POST | `/api/v1/board/threads` | `board-create-thread` |
+| DELETE | `/api/v1/board/threads/:id` | `board-delete-thread` |
+| GET | `/api/v1/board/threads/:threadId/replies` | `board-get-replies` |
+| POST | `/api/v1/board/threads/:threadId/replies` | `board-create-reply` |
+| DELETE | `/api/v1/board/threads/:threadId/replies/:replyId` | `board-delete-reply` |
+| GET | `/api/v1/gallery` | `gallery-list` |
+| POST | `/api/v1/gallery` | `gallery-add` |
+| DELETE | `/api/v1/gallery/:id` | `gallery-delete` |
+| POST | `/api/v1/uploads/signature` | `cloudinary-sign` |
+| GET | `/feed.xml`, `/community.xml` | `rss-feed`, `rss-community` |
+
+List endpoints accept optional `?limit=` and `?cursor=`. Without `limit` they
+return a bare array, as they always have. With one they return
+`{ items, nextCursor, total }` — the frontend does not send it yet.
+
+### Shared modules (`netlify/lib/`)
+
+- `auth.mjs` — who the caller is, and whether they may act. See below.
+- `http.mjs` — `json()`, `route()`, and the `HttpError` family. `route()` wraps
+  every handler: an `HttpError` becomes its status and message, anything else is
+  logged and answered with a generic 500 so internal detail never reaches a caller.
+- `validate.mjs` — body parsing, field limits, id and media-URL checks, `newId()`.
+- `store.mjs` — Blob access and `page()`, which sorts keys and reads only the
+  requested page instead of every record in the store.
+- `xml.mjs` — RSS escaping and response helper.
 
 ### Authorization
 
@@ -62,7 +97,7 @@ Set these in the Netlify dashboard (or a local `.env` for `netlify dev`):
 npm install
 npm start           # Parcel dev server for the static frontend
 npm run build       # production build to dist/
-npm run verify:auth # check the authorization rules in netlify/lib/auth.mjs
+npm run verify      # check the shared libraries (auth, http, validate, store)
 ```
 
 The frontend alone will run with `npm start`, but the `/api/*` endpoints are Netlify Functions and won't respond without the [Netlify CLI](https://docs.netlify.com/cli/get-started/) (`netlify dev`) and the environment variables above.

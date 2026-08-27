@@ -1,75 +1,28 @@
-import { getStore } from '@netlify/blobs';
-import { getUser } from '../lib/auth.mjs';
+import { route, json } from '../lib/http.mjs';
+import { requireUser } from '../lib/auth.mjs';
+import { readJson, requiredString, cloudinaryUrl, newId, LIMITS } from '../lib/validate.mjs';
+import { getStore } from '../lib/store.mjs';
 
-export default async (req, context) => {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+/** Start a board thread. Open to any signed-in user. */
+export default route(async req => {
+  const user = await requireUser(req);
+  const body = await readJson(req);
 
-  try {
-    const user = await getUser(req);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  const thread = {
+    id:         newId(),
+    title:      requiredString(body.title, 'Title', LIMITS.title),
+    body:       requiredString(body.body, 'Message', LIMITS.reply),
+    mediaUrl:   cloudinaryUrl(body.mediaUrl),
+    author:     user.email,
+    replyCount: 0,
+    createdAt:  new Date().toISOString(),
+  };
 
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  await getStore('board-threads').setJSON(thread.id, thread);
+  return json(thread, 201);
+});
 
-    const { title, body: threadBody, mediaUrl } = body;
-
-    if (!title || !title.trim()) {
-      return new Response(JSON.stringify({ error: 'Title is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!threadBody || !threadBody.trim()) {
-      return new Response(JSON.stringify({ error: 'Message body is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Validate mediaUrl — only allow Cloudinary URLs (or empty)
-    const rawMedia = (mediaUrl || '').trim();
-    const safeMediaUrl = rawMedia.startsWith('https://res.cloudinary.com/') ? rawMedia : '';
-
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const thread = {
-      id,
-      title: title.trim(),
-      body: threadBody.trim(),
-      mediaUrl: safeMediaUrl,
-      author: user.email,
-      replyCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    const store = getStore('board-threads');
-    await store.setJSON(id, thread);
-
-    return new Response(JSON.stringify(thread), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('board-create-thread error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+export const config = {
+  method: 'POST',
+  path: ['/api/v1/board/threads', '/api/board/threads/create'],
 };
-
-export const config = { path: '/api/board/threads/create' };

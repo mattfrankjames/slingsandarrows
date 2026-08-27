@@ -25,6 +25,8 @@
  * call — callers won't change.
  */
 
+import { unauthorized, forbidden } from './http.mjs';
+
 /** How long a successfully verified token is trusted without re-asking GoTrue. */
 const CACHE_TTL_MS = 60_000;
 
@@ -200,4 +202,41 @@ export function canModerate(user, ownerEmail) {
   if (!user?.email) return false;
   if (isAdmin(user)) return true;
   return user.email.toLowerCase() === (ownerEmail || '').toLowerCase();
+}
+
+// ── Throwing variants ────────────────────────────────────────────────────────
+// The predicates above answer questions; these enforce answers. Handlers were
+// all repeating the same shape — call, check for null, hand-build a 401 — so
+// the enforcement now lives here and the failure travels as an HttpError that
+// http.route() turns into a response.
+
+/**
+ * The verified user, or a 401.
+ * @param {Request} req
+ */
+export async function requireUser(req) {
+  const user = await getUser(req);
+  if (!user) throw unauthorized();
+  return user;
+}
+
+/**
+ * The verified user, or a 401/403 — for publishing posts and gallery items.
+ * @param {Request} req
+ */
+export async function requireAuthor(req) {
+  const user = await requireUser(req);
+  if (!isAuthor(user)) throw forbidden('Only band members can publish');
+  return user;
+}
+
+/**
+ * The verified user, or a 401/403 — for removing content owned by `ownerEmail`.
+ * @param {Request} req
+ * @param {string} ownerEmail
+ */
+export async function requireModerator(req, ownerEmail) {
+  const user = await requireUser(req);
+  if (!canModerate(user, ownerEmail)) throw forbidden('That is not yours to delete');
+  return user;
 }
