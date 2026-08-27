@@ -1,6 +1,6 @@
 // Shared post-card rendering — used by both the feed page (posts.js) and the
 // single-post permalink page (post-view.js), so the two stay in sync.
-import { authModal, ensureFreshSession } from './auth-modal.js';
+import { authModal } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 import { isLoggedIn } from './lib/session.js';
 import { api } from './lib/api.js';
@@ -192,8 +192,16 @@ export function renderPost(post, { pending = false, fullView = false } = {}) {
   const p = document.createElement('p');
   p.className = 'post-body';
   if (hasBreak && !fullView) {
+    // renderBodyHtml() escapes the whole body first and only then converts
+    // the composer's [text](url) syntax to anchors, so a post body cannot
+    // introduce any other markup.
+    // eslint-disable-next-line no-restricted-syntax
     p.innerHTML = renderBodyHtml(post.body.slice(0, breakIdx).trimEnd());
   } else {
+    // renderBodyHtml() escapes the whole body first and only then converts
+    // the composer's [text](url) syntax to anchors, so a post body cannot
+    // introduce any other markup.
+    // eslint-disable-next-line no-restricted-syntax
     p.innerHTML = renderBodyHtml(
       hasBreak
         ? post.body.split(READ_MORE_MARKER).join('').replace(/\n{3,}/g, '\n\n').trim()
@@ -270,6 +278,31 @@ export function renderPost(post, { pending = false, fullView = false } = {}) {
 }
 
 // ─── Like + comments-toggle row ────────────────────────────────────────────────
+/**
+ * Render the heart and count into a like button.
+ *
+ * Built from nodes rather than an innerHTML template because likeCount comes
+ * back from the server, and this was the only place in this file where a
+ * server value was spliced into markup.
+ *
+ * @param {HTMLElement} button
+ * @param {boolean} liked
+ * @param {number} count
+ */
+function paintLikeButton(button, liked, count) {
+  button.replaceChildren();
+
+  const heart = document.createElement('span');
+  heart.className = 'like-heart';
+  heart.textContent = liked ? '\u2665' : '\u2661';
+
+  const total = document.createElement('span');
+  total.className = 'like-count';
+  total.textContent = String(count);
+
+  button.append(heart, total);
+}
+
 function buildPostActions(post) {
   const actions = document.createElement('div');
   actions.className = 'post-actions';
@@ -280,7 +313,7 @@ function buildPostActions(post) {
   const liked = myLikedPostIds.has(post.id);
   if (liked) likeBtn.classList.add('liked');
   likeBtn.setAttribute('aria-label', liked ? 'Unlike this post' : 'Like this post');
-  likeBtn.innerHTML = `<span class="like-heart">${liked ? '♥' : '♡'}</span><span class="like-count">${post.likeCount || 0}</span>`;
+  paintLikeButton(likeBtn, liked, post.likeCount || 0);
 
   likeBtn.addEventListener('click', async () => {
     if (!isLoggedIn()) {
@@ -293,7 +326,7 @@ function buildPostActions(post) {
       if (nowLiked) myLikedPostIds.add(post.id); else myLikedPostIds.delete(post.id);
       likeBtn.classList.toggle('liked', nowLiked);
       likeBtn.setAttribute('aria-label', nowLiked ? 'Unlike this post' : 'Like this post');
-      likeBtn.innerHTML = `<span class="like-heart">${nowLiked ? '♥' : '♡'}</span><span class="like-count">${likeCount}</span>`;
+      paintLikeButton(likeBtn, nowLiked, likeCount);
     } catch (err) {
       console.error('[post-render] like error:', err);
       alert(`Could not update like: ${err.message}`);
@@ -349,7 +382,7 @@ function buildPostActions(post) {
   return actions;
 }
 
-function buildCommentsSection(post) {
+function buildCommentsSection() {
   const container = document.createElement('div');
   container.className = 'comments-container';
 

@@ -14,6 +14,14 @@
 
 import { GOTRUE_API_URL } from '../identity-widget.js';
 
+/**
+ * @typedef {object} StoredSession
+ * @property {string} access_token
+ * @property {string} [refresh_token]
+ * @property {number} [expires_at]
+ * @property {string} [email]
+ */
+
 const KEY = 'gotrue.user';
 
 /** Refresh this long before expiry, so a request can't land as the token dies. */
@@ -24,7 +32,7 @@ const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 // every access is guarded. A missing session reads as "signed out", which is
 // the correct degradation.
 
-/** @returns {{access_token: string, refresh_token?: string, expires_at?: number, email?: string} | null} */
+/** @returns {StoredSession | null} */
 export function readSession() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -56,7 +64,13 @@ export function clearSession() {
   }
 }
 
-/** True when the stored session has an access token that hasn't expired. */
+/**
+ * True when the stored session has an access token that hasn't expired.
+ * Written as a type predicate so callers narrow `session` to non-null.
+ *
+ * @param {StoredSession | null} session
+ * @returns {session is StoredSession}
+ */
 function isLive(session) {
   if (!session?.access_token) return false;
   return !session.expires_at || session.expires_at > Date.now();

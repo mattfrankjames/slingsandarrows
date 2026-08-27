@@ -97,8 +97,13 @@ Set these in the Netlify dashboard (or a local `.env` for `netlify dev`):
 npm install
 npm start           # Parcel dev server for the static frontend
 npm run build       # production build to dist/
-npm run verify      # check the shared libraries (auth, http, validate, store)
+npm run verify      # lint + typecheck + unit tests — run before pushing
 ```
+
+See [docs/testing.md](docs/testing.md) for the full picture: what runs in CI,
+why browser tests target a Deploy Preview rather than localhost, the ESLint
+rules that encode past regressions, and the one branch-protection setting that
+makes any of it actually gate a deploy.
 
 The frontend alone will run with `npm start`, but the `/api/*` endpoints are Netlify Functions and won't respond without the [Netlify CLI](https://docs.netlify.com/cli/get-started/) (`netlify dev`) and the environment variables above.
 

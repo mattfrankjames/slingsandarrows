@@ -978,6 +978,10 @@ function renderRecordings() {
     const url    = URL.createObjectURL(recording.blob);
     const sizeKB = (recording.blob.size / 1024).toFixed(1);
 
+    // Every value here is produced locally: a generated recording name,
+    // formatted numbers, and a blob: URL from this page's own
+    // MediaRecorder. Nothing round-trips a server.
+    // eslint-disable-next-line no-restricted-syntax
     card.innerHTML = `
       <div class="recording-info">
         <div class="recording-name">${recording.name}</div>
@@ -1119,8 +1123,9 @@ function maybeInitMixer() {
   });
 }
 
-// Patch initTabs to also call maybeInitMixer when the mixer tab activates
-const _origActivateTab = (() => {
+// Initialise the mixer the first time its tab becomes active. A
+// MutationObserver on the panel avoids re-implementing initTabs().
+(() => {
   // Re-implement tab activation so we can hook into it without duplicating
   // the full initTabs() logic. We add a MutationObserver on the mixer panel
   // instead — simpler and avoids tight coupling.

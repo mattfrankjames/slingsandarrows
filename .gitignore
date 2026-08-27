@@ -71,9 +71,20 @@ coverage/
 !src/js/*.js
 !src/sw.js
 
+# Hand-written type declarations are source, not build output. Without this
+# they match the `*.ts` rule above and silently never get committed — which
+# passes locally and fails in CI, where the file does not exist.
+!types/*.d.ts
+
 # Static site builds
 public/
 
 **/.DS_Store
 
 .parcel-cache/
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+.lighthouseci/

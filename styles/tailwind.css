@@ -278,6 +278,15 @@ header p {
     white-space: nowrap;
   }
 
+  /* The "//" between band names is decoration. It used to be joined between
+     the <li> elements as bare text, which put text nodes directly inside the
+     <ul> — invalid, and reported by screen readers as list content. */
+  .lineup li + li::before {
+    content: '//';
+    margin-inline-end: 1em;
+    opacity: 0.6;
+  }
+
   .show:not(:last-child) {
     border-block-end: 1px solid white;
     margin-block-end: 1rem;
