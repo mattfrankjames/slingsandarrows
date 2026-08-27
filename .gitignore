@@ -77,3 +77,9 @@ public/
 **/.DS_Store
 
 .parcel-cache/
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+.lighthouseci/

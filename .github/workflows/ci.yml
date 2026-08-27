@@ -1,0 +1,51 @@
+name: CI
+
+# Fast checks that need nothing deployed. These are the ones to require in
+# branch protection — see docs/testing.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Lint, types, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # Catches a build that only breaks in production mode — a bad import
+      # path, or a missing asset — before it reaches a deploy.
+      - name: Production build
+        run: npm run build
+
+      # Cloudinary credentials were inlined into public bundles once already
+      # (fixed in #87, reintroduced by #86, caught during #88's rebase). ESLint
+      # guards the source; this guards the output.
+      - name: No upload credentials in the built bundles
+        run: |
+          if grep -rl "upload_preset" dist --include="*.js" 2>/dev/null; then
+            echo "::error::An unsigned upload_preset reached the built bundles."
+            exit 1
+          fi
+          echo "No upload credentials in dist/"

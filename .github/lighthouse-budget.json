@@ -1,0 +1,20 @@
+[
+  {
+    "path": "/*",
+    "_comment": "Ceilings, not targets. Set a little above where the site sits today so a regression fails the build but ordinary variance does not. Tighten them as Phase 3 removes the 83 KB of inline CSS and the render-blocking scripts.",
+    "resourceSizes": [
+      { "resourceType": "script", "budget": 250 },
+      { "resourceType": "stylesheet", "budget": 120 },
+      { "resourceType": "document", "budget": 100 },
+      { "resourceType": "total", "budget": 1600 }
+    ],
+    "resourceCounts": [
+      { "resourceType": "third-party", "budget": 12 }
+    ],
+    "timings": [
+      { "metric": "largest-contentful-paint", "budget": 4000 },
+      { "metric": "cumulative-layout-shift", "budget": 250 },
+      { "metric": "total-blocking-time", "budget": 600 }
+    ]
+  }
+]

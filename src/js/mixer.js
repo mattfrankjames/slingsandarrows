@@ -94,9 +94,6 @@ let anySoloed = false;
 /** rAF handle for the VU meter animation loop. */
 let vuRafHandle = null;
 
-/** Whether the mixer graph has been wired up. */
-let graphReady = false;
-
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -114,8 +111,6 @@ export function initMixer(ctx, masterGain, moduleGains) {
   buildMixerGraph(moduleGains);
   buildMixerUI();
   startVuLoop();
-
-  graphReady = true;
 }
 
 // ─── Audio graph ──────────────────────────────────────────────────────────────
@@ -214,6 +209,9 @@ function buildMixerUI() {
     // Colour accent strip at the top
     card.style.setProperty('--track-color', def.color);
 
+    // Interpolates only TRACK_DEFS, a hardcoded module constant.
+    // No user or server input reaches this template.
+    // eslint-disable-next-line no-restricted-syntax
     card.innerHTML = `
       <div class="mixer-track-header">
         <span class="mixer-track-name">${def.label}</span>

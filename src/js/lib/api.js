@@ -91,8 +91,16 @@ async function request(path, { method = 'GET', body, auth = false, signal } = {}
 
 const q = encodeURIComponent;
 
+/**
+ * @typedef {object} PageOpts
+ * @property {number} [limit]
+ * @property {string} [cursor]
+ * @property {AbortSignal} [signal]
+ */
+
 export const api = {
   posts: {
+    /** @param {PageOpts} [opts] */
     list:   ({ limit, cursor, signal } = {}) =>
       request(`/api/v1/posts${pageQuery(limit, cursor)}`, { signal }),
     create: post => request('/api/v1/posts', { method: 'POST', body: post, auth: true }),
@@ -116,6 +124,7 @@ export const api = {
 
   board: {
     threads: {
+      /** @param {PageOpts} [opts] */
       list:   ({ limit, cursor } = {}) => request(`/api/v1/board/threads${pageQuery(limit, cursor)}`),
       create: thread => request('/api/v1/board/threads', { method: 'POST', body: thread, auth: true }),
       remove: id     => request(`/api/v1/board/threads/${q(id)}`, { method: 'DELETE', auth: true }),
@@ -130,6 +139,7 @@ export const api = {
   },
 
   gallery: {
+    /** @param {PageOpts} [opts] */
     list:   ({ limit, cursor } = {}) => request(`/api/v1/gallery${pageQuery(limit, cursor)}`),
     add:    item => request('/api/v1/gallery', { method: 'POST', body: item, auth: true }),
     remove: id   => request(`/api/v1/gallery/${q(id)}`, { method: 'DELETE', auth: true }),

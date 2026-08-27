@@ -1,0 +1,25 @@
+{
+  // Type checking without a build step: files stay .js/.mjs and run unmodified.
+  // Scoped to the shared libraries for now — they are the code everything else
+  // depends on, and they carry JSDoc already. Widen `include` as annotations
+  // spread outward; turning it on repo-wide today would produce a wall of
+  // errors nobody would read.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": ["types/**/*.d.ts", "netlify/lib/**/*.mjs", "src/js/lib/**/*.js"],
+  "exclude": ["node_modules", "dist", ".parcel-cache"]
+}
