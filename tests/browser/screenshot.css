@@ -14,9 +14,11 @@
   background-color: #0d0d0d !important;
 }
 
-/* Media is remote and content-dependent; the layout box is what matters. */
-img[src*="cloudinary"],
-video,
+/*
+ * Cloudinary media is served from a fixture (see fixtures.js), so images stay
+ * visible and their layout is covered. Only the Bandcamp embed is hidden: it is
+ * a third-party iframe whose contents we neither control nor need to diff.
+ */
 iframe {
   visibility: hidden !important;
 }

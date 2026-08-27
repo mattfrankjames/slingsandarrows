@@ -102,8 +102,17 @@ would read, which is the same as having it off.
 ## Visual baselines
 
 Screenshot diffs are the safety net for Phase 3, which rebuilds every page shell
-and moves ~83 KB of inline CSS. Baselines for all seven pages, desktop and
-mobile, are committed under `tests/browser/__screenshots__/`.
+and moves ~83 KB of inline CSS. Twenty-four baselines are committed under
+`tests/browser/__screenshots__/` — seven public pages plus five signed-in
+surfaces, each at desktop and mobile.
+
+The signed-in ones (`visual-authed.spec.js`) matter most: the composer, its
+link-insert panel, the feed's composer dialog, the gallery upload modal and the
+board's new-thread modal. Signed out, none of those render at all, so a
+baseline taken without a session captures a sign-in prompt and protects
+nothing. `signIn()` seeds the same localStorage record the sign-in modal
+writes; it is a fixture, not a credential, and every write it might attempt is
+stubbed.
 
 They are **not** part of the default run — an absent baseline would fail CI with
 a file it had just written — so run them deliberately:
@@ -124,6 +133,8 @@ something fails — it is far more likely to be a real change:
 - **Content** — the read endpoints are stubbed with fixtures
   (`tests/browser/fixtures.js`), so post cards, thread cards and gallery tiles
   render from fixed data. Without this a new post changes every baseline.
+- **Media** — Cloudinary requests are answered with a fixed SVG placeholder, so
+  aspect ratio, `object-fit` and the tile grid stay under test.
 - **Animation** — the glitch and static loops run indefinitely, so every frame
   differs. Handled by `reducedMotion: 'reduce'` plus `animations: 'disabled'`.
 - **Fonts** — Typekit faces land after first paint. Handled by awaiting
@@ -141,6 +152,9 @@ Both were made while setting these up:
   came out as a single pink rectangle — every post card hidden, so the refactor
   the baselines exist to protect could have broken all of them without a single
   test failing. A baseline that cannot fail is worse than no baseline.
+- **Hiding images rather than serving fixture bytes.** Same mistake, quieter:
+  the gallery baseline was two empty boxes. The tile frames were captured and
+  nothing inside them was.
 - **Omitting `{projectName}` from `snapshotPathTemplate`.** The desktop and
   mobile projects wrote to the same filenames and the second silently
   overwrote the first, leaving seven files for fourteen tests.
