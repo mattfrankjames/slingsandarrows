@@ -39,7 +39,6 @@
         height: 6px;
         border-radius: 3px;
         background: rgba(255, 255, 255, 0.1);
-        outline: none;
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;
@@ -220,7 +219,6 @@
         height: 6px;
         border-radius: 3px;
         background: rgba(255, 255, 255, 0.1);
-        outline: none;
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;
@@ -643,7 +641,6 @@
         height: 6px;
         border-radius: 3px;
         background: rgba(255, 255, 255, 0.1);
-        outline: none;
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;
@@ -1037,7 +1034,6 @@
         height: 6px;
         border-radius: 3px;
         background: rgba(255, 255, 255, 0.1);
-        outline: none;
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;

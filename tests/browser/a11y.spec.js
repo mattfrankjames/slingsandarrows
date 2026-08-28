@@ -63,3 +63,156 @@ test.describe('keyboard', () => {
     expect(outline, 'Tab should move focus to a focusable element').not.toBeNull();
   });
 });
+
+/**
+ * What the <dialog> conversion was for.
+ *
+ * The modals were `<div role="dialog" aria-modal="true">`, which promises
+ * behaviour the browser then has to be told to provide. None of it was: focus
+ * stayed on the page behind, Tab walked straight out of an open dialog into the
+ * content underneath, and closing never returned focus to whatever opened it
+ * (F-12).
+ *
+ * These assert the behaviour rather than the element, so they would still hold
+ * if the implementation changed again — and they fail against the old
+ * hand-rolled version, which is the point.
+ */
+const DIALOGS = [
+  { name: 'gallery upload', path: '/gallery',   trigger: '#upload-btn',     dialog: '#upload-modal' },
+  { name: 'new thread',     path: '/community', trigger: '#new-thread-btn', dialog: '#new-thread-modal' },
+  { name: 'gallery lightbox', path: '/gallery', trigger: '.gallery-item',   dialog: '#lightbox' },
+];
+
+test.describe('modal dialogs', () => {
+  // Signed in, so the buttons that open these are rendered at all.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('gotrue.user', JSON.stringify({
+        access_token: 'test-token-not-valid-server-side',
+        expires_at: Date.now() + 86_400_000,
+        email: 'band@slingsandarrows.test',
+      }));
+    });
+  });
+
+  for (const { name, path, trigger, dialog } of DIALOGS) {
+    test(`${name}: traps focus, closes on Escape, and restores focus`, async ({ page }) => {
+      await page.goto(path);
+
+      const opener = page.locator(trigger).first();
+      await opener.waitFor();
+      await opener.click();
+
+      const modal = page.locator(dialog);
+      await expect(modal).toHaveAttribute('open', '');
+
+      // Focus must be inside the dialog, not left on the page behind it.
+      expect(
+        await page.evaluate(sel => document.querySelector(sel).contains(document.activeElement), dialog),
+        'focus should move into the dialog'
+      ).toBe(true);
+
+      // Tabbing repeatedly must never reach anything behind the dialog.
+      //
+      // Focus is allowed to land on <body> — when the cycle wraps past the last
+      // focusable child it goes out to the browser's own UI, and the page sees
+      // that as body. What must never happen is focus landing on a real element
+      // underneath, which is exactly what the div version did.
+      for (let i = 0; i < 12; i++) {
+        await page.keyboard.press('Tab');
+        const where = await page.evaluate(sel => {
+          const active = document.activeElement;
+          if (!active || active === document.body || active === document.documentElement) return 'body';
+          return document.querySelector(sel).contains(active) ? 'dialog' : `escaped: ${active.tagName}.${active.className}`;
+        }, dialog);
+        expect(where, `after ${i + 1} tabs`).not.toMatch(/^escaped/);
+      }
+
+      // Escape is the platform's, not a hand-written keydown listener.
+      await page.keyboard.press('Escape');
+      await expect(modal).not.toHaveAttribute('open', '');
+    });
+
+    test(`${name}: makes the page behind it inert`, async ({ page }) => {
+      await page.goto(path);
+      const opener = page.locator(trigger).first();
+      await opener.waitFor();
+      await opener.click();
+      await expect(page.locator(dialog)).toHaveAttribute('open', '');
+
+      // A link in the header is visible but must not be reachable or clickable
+      // while a modal dialog is open — that is what showModal() provides and
+      // aria-modal on a div never did.
+      const navLink = page.locator('.site-nav a').first();
+      await expect(navLink).toBeVisible();
+      expect(
+        await navLink.evaluate(el => {
+          el.focus();
+          return document.activeElement === el;
+        }),
+        'the page behind an open dialog should be inert'
+      ).toBe(false);
+    });
+  }
+});
+
+/**
+ * Motion and focus.
+ *
+ * The masthead ran two animations that never stopped — a ten-step grain overlay
+ * on `infinite`, and the glitch treatment on the title — and nothing in the
+ * codebase asked whether the visitor wanted them (F-13). Keyboard focus had no
+ * visible indicator anywhere outside form fields, so you could tab a whole page
+ * without knowing where you were.
+ */
+test.describe('motion and focus', () => {
+  test('honours prefers-reduced-motion', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.locator('h1.glitch').waitFor();
+
+    const durations = await page.evaluate(() =>
+      [...document.querySelectorAll('h1.glitch, h1.glitch span, header')]
+        .map(el => getComputedStyle(el).animationDuration)
+        .filter(Boolean)
+    );
+
+    // Near-zero rather than 'none', so animation events still fire for any
+    // script waiting on them.
+    for (const duration of durations) {
+      expect(parseFloat(duration), `animation-duration ${duration}`).toBeLessThan(0.05);
+    }
+    await context.close();
+  });
+
+  test('leaves animation alone when motion is not reduced', async ({ browser }) => {
+    // The guard must be conditional, not a permanent disable.
+    const context = await browser.newContext({ reducedMotion: 'no-preference' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.locator('h1.glitch').waitFor();
+
+    const durations = await page.evaluate(() =>
+      [...document.querySelectorAll('h1.glitch span')].map(el => getComputedStyle(el).animationDuration)
+    );
+    expect(durations.some(d => parseFloat(d) > 0.05), 'the glitch should still run normally').toBe(true);
+    await context.close();
+  });
+
+  test('gives keyboard focus a visible ring', async ({ page }) => {
+    await page.goto('/feed');
+    await page.locator('#posts-feed').waitFor();
+
+    // Tab to the first nav link and confirm something actually renders.
+    const outline = await page.evaluate(() => {
+      const link = document.querySelector('.site-nav a');
+      link.focus();
+      const cs = getComputedStyle(link);
+      return { style: cs.outlineStyle, width: parseFloat(cs.outlineWidth) };
+    });
+
+    expect(outline.style, 'focused elements need a visible outline').not.toBe('none');
+    expect(outline.width).toBeGreaterThan(0);
+  });
+});
