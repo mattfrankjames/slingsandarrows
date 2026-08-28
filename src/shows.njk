@@ -1,0 +1,71 @@
+---
+title: "Slings & Arrows | Upcoming Shows"
+description: "Upcoming and past concert dates for Slings & Arrows. Check out our live shows."
+permalink: "/shows.html"
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+			<div class="shows" id="shows">
+				<h2 class="text-2xl font-bold mb-4">Upcoming Shows</h2>
+				<div id="upcoming-shows"></div>
+
+				<h2 class="text-2xl font-bold mt-8 mb-4">Past Shows</h2>
+				<div id="past-shows"></div>
+			</div>
+{% endblock %}
+
+{% block afterBody %}
+<script type="module">
+			import showsData from './site/data/shows.json';
+			import { initIdentityWidget } from './core/js/identity-widget.js';
+
+			if (document.readyState === 'complete') {
+				initIdentityWidget();
+			} else {
+				window.addEventListener('load', initIdentityWidget, { once: true });
+			}
+
+			function buildList(shows) {
+		const upcomingShows = shows.filter(show => show.status === "upcoming");
+		const pastShows = shows.filter(show => show.status === "past").reverse();
+
+			const upcomingHeading = document.querySelector('#shows h2:first-of-type');
+			if (upcomingShows.length === 0) {
+				upcomingHeading.style.display = 'none';
+			} else {
+				upcomingHeading.style.display = 'block';
+			}
+
+			function createShowList(shows, containerId) {
+			const container = document.getElementById(containerId);
+			const isUpcoming = containerId === "upcoming-shows";
+
+			shows.forEach((show) => {
+				const showDiv = document.createElement("div");
+				showDiv.classList.add("show", "mb-4", "p-4", "border", "border-white", "rounded");
+
+					const heading = isUpcoming && show.venueHref
+						? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
+						: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
+					const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
+					showDiv.innerHTML = `
+									${heading}
+									<h4 class="mb-0">With:</h4>
+									<ul class="lineup mb-1">
+											${show.lineup.map(artist => `<li>${artist}</li>`).join('')}
+									</ul>
+									${showDetails}
+							`;
+					container.appendChild(showDiv);
+				});
+		}
+
+		createShowList(upcomingShows, "upcoming-shows");
+		createShowList(pastShows, "past-shows");
+	}
+
+	buildList(showsData);
+</script>
+{% endblock %}

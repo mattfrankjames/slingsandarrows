@@ -1,57 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#7209b7">
-
-  <!-- iOS / Safari PWA meta tags -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="S&amp;A">
-
-  <title>Slings & Arrows | Studio</title>
-  <meta name="description" content="Interactive music studio with Web MIDI synthesizer, drum machine, and bass sequencer. Create and record music in your browser.">
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://slingsandarrows.band/studio">
-  <meta property="og:title" content="Slings & Arrows | Studio">
-  <meta property="og:description" content="Interactive music studio with Web MIDI synthesizer, drum machine, and bass sequencer.">
-  <meta property="og:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Slings & Arrows hero image">
-  <meta property="og:site_name" content="Slings & Arrows">
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://slingsandarrows.band/studio">
-  <meta name="twitter:title" content="Slings & Arrows | Studio">
-  <meta name="twitter:description" content="Interactive music studio with Web MIDI synthesizer, drum machine, and bass sequencer.">
-  <meta name="twitter:image" content="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1200/v1738006890/hero_paeruh">
-
-  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
-  <link rel="dns-prefetch" href="https://res.cloudinary.com">
-  <link rel="preload"
-    href="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh"
-    as="image"
-    fetchpriority="high"
-    imagesrcset="https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh 768w,
-                 https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh 1920w"
-    imagesizes="100vw">
-  <link rel="stylesheet" href="https://use.typekit.net/nwv0ezl.css">
-  <link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
-  <link href="../styles/tailwind.css" rel="stylesheet">
-  <!-- Favicon (SVG for the address bar) and Apple touch icon (PNG — iOS ignores SVG here) -->
-  <link rel="icon" type="image/svg+xml" href="./site/favicon.svg">
-  <link rel="apple-touch-icon" href="./site/images/icon-192.png">
-  <!-- Netlify Identity — loaded (and initialized, in the module script near
-       the end of body) on every page, not just /app, so email confirmation
-       and password-recovery links work no matter where they land. -->
-  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-  <style>
     /* ── Layout ──────────────────────────────────────────────────────────── */
     main {
       backdrop-filter: blur(50px);
@@ -145,7 +91,7 @@
       background: rgba(255, 255, 255, 0.07);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: rgba(255, 255, 255, 0.75);
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       padding: 0.5em 1.1em;
       cursor: pointer;
@@ -164,7 +110,7 @@
     .transport-hint {
       font-size: 0.78em;
       opacity: 0.5;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
     }
 
     @media (max-width: 480px) {
@@ -188,7 +134,7 @@
       border: none;
       border-block-end: 2px solid transparent;
       color: rgba(255, 255, 255, 0.5);
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.95rem;
       padding: 0.5em 1em;
       cursor: pointer;
@@ -224,7 +170,7 @@
     }
 
     .instrument-panel h3 {
-      font-family: "fatfrank", sans-serif;
+      font-family: var(--font-display);
       text-transform: uppercase;
       margin-block-end: 1em;
       font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
@@ -256,7 +202,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
       border-radius: 4px;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       cursor: pointer;
     }
@@ -453,7 +399,7 @@
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.3);
       color: white;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 1rem;
       width: 2em;
       height: 2em;
@@ -493,7 +439,7 @@
       background: rgba(168, 245, 168, 0.12);
       border: 1px solid rgba(168, 245, 168, 0.45);
       color: #a8f5a8;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 1rem;
       padding: 0.55em 1.5em;
       cursor: pointer;
@@ -530,7 +476,7 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: white;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.85rem;
       padding: 0.4em 1em;
       cursor: pointer;
@@ -655,7 +601,7 @@
       background: rgba(168, 245, 168, 0.12);
       border: 1px solid rgba(168, 245, 168, 0.45);
       color: #a8f5a8;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 1rem;
       padding: 0.55em 1.5em;
       cursor: pointer;
@@ -738,7 +684,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
       border-radius: 4px;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       cursor: pointer;
       min-width: 0;
@@ -759,7 +705,7 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(245, 168, 168, 0.35);
       color: #f5a8a8;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.85rem;
       padding: 0.4em 1em;
       cursor: pointer;
@@ -859,7 +805,7 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: rgba(255, 255, 255, 0.75);
       border-radius: 3px;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.68rem;
       cursor: pointer;
       text-align: center;
@@ -917,7 +863,7 @@
     }
 
     .mixer-panel h3 {
-      font-family: "fatfrank", sans-serif;
+      font-family: var(--font-display);
       text-transform: uppercase;
       margin-block-end: 1em;
       font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
@@ -988,7 +934,7 @@
       text-align: center;
       word-break: break-word;
       line-height: 1.3;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
     }
 
     .mixer-track-btns {
@@ -1001,7 +947,7 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: rgba(255, 255, 255, 0.65);
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.72rem;
       width: 1.8em;
       height: 1.8em;
@@ -1057,7 +1003,7 @@
     .mixer-label {
       font-size: 0.72em;
       opacity: 0.55;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
     }
 
     .mixer-fader-value,
@@ -1065,7 +1011,7 @@
       font-size: 0.72em;
       opacity: 0.6;
       font-variant-numeric: tabular-nums;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
     }
 
     /* Vertical range slider for the fader */
@@ -1140,7 +1086,7 @@
       background: rgba(245, 168, 168, 0.12);
       border: 1px solid rgba(245, 168, 168, 0.45);
       color: #f5a8a8;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       padding: 0.5em 1.25em;
       cursor: pointer;
@@ -1169,7 +1115,7 @@
     }
 
     .record-time {
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.85em;
       opacity: 0.7;
       min-width: 2.5em;
@@ -1191,7 +1137,7 @@
     }
 
     .recordings-container h3 {
-      font-family: "fatfrank", sans-serif;
+      font-family: var(--font-display);
       text-transform: uppercase;
       font-size: clamp(1.1rem, 1vw + 0.8rem, 1.5rem);
       margin-block-end: 1em;
@@ -1216,7 +1162,7 @@
     }
 
     .recording-name {
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.95em;
       margin-block-end: 0.3em;
       word-break: break-word;
@@ -1237,7 +1183,7 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: white;
-      font-family: "ballinger-mono", sans-serif;
+      font-family: var(--font-body);
       font-size: 0.85rem;
       padding: 0.4em 1em;
       cursor: pointer;
@@ -1264,398 +1210,3 @@
       max-width: 300px;
       height: 32px;
     }
-  </style>
-</head>
-<body>
-  <div class="wrapper min-h-screen">
-    <header class="p-4 text-white">
-      <h1 class="glitch">
-        <a href="/">
-          <span aria-hidden="true">Slings & Arrows</span>
-          Slings & Arrows
-          <span aria-hidden="true">Slings & Arrows</span>
-        </a>
-      </h1>
-      <nav class="site-nav" aria-label="Site navigation">
-        <a href="./feed.html">Feed</a>
-        <a href="./community.html">Community</a>
-        <a href="./gallery.html">Gallery</a>
-        <a href="./shows.html">Shows</a>
-        <a href="./studio.html">Studio</a>
-      </nav>
-    </header>
-
-    <main class="p-4" id="main-content">
-      <div class="instruments-container">
-
-        <h2>Instruments</h2>
-
-        <!-- ── Universal transport ───────────────────────────────────────── -->
-        <div class="universal-transport" id="universal-transport">
-
-          <!-- Row 1: BPM slider -->
-          <div class="universal-bpm">
-            <label for="universal-bpm">BPM</label>
-            <input type="range" id="universal-bpm" min="40" max="240" step="1" value="120"
-              aria-label="Global tempo in beats per minute">
-            <span id="universal-bpm-value">120</span>
-          </div>
-
-          <!-- Row 2: action buttons -->
-          <div class="transport-actions">
-            <button class="stop-all-btn" id="stop-all-btn" type="button"
-              aria-label="Stop drum machine and sequencers">
-              ■ Stop Sequencers
-            </button>
-            <button class="record-btn" id="record-btn" type="button"
-              aria-pressed="false" aria-label="Start recording (R)">
-              ● Record
-            </button>
-            <span class="record-time" id="record-time" hidden>0:00</span>
-            <span class="transport-hint">Start sequencers first to include them</span>
-          </div>
-
-        </div>
-
-        <!-- ── Tab navigation ────────────────────────────────────────────── -->
-        <div class="instrument-tabs" role="tablist" aria-label="Instrument selection">
-          <button class="tab-btn" id="tab-synth"
-            role="tab" aria-selected="true" aria-controls="panel-synth">
-            Synth
-          </button>
-          <button class="tab-btn" id="tab-drums"
-            role="tab" aria-selected="false" aria-controls="panel-drums">
-            Drum Machine
-          </button>
-          <button class="tab-btn" id="tab-bass"
-            role="tab" aria-selected="false" aria-controls="panel-bass">
-            Bass Sequencer
-          </button>
-          <button class="tab-btn" id="tab-mixer"
-            role="tab" aria-selected="false" aria-controls="panel-mixer">
-            Mixer
-          </button>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════════════════
-             SYNTH PANEL
-        ═══════════════════════════════════════════════════════════════════ -->
-        <div class="tab-panel tab-panel--active" id="panel-synth"
-          role="tabpanel" aria-labelledby="tab-synth">
-
-          <p class="intro-text">
-            Click the keys to play, or connect a MIDI controller. You can also use your
-            computer keyboard — <kbd>Z</kbd>–<kbd>M</kbd> for the white keys and
-            <kbd>S D</kbd> / <kbd>G H J</kbd> for the black keys.
-            Use <kbd>↑</kbd> / <kbd>↓</kbd> to shift octaves.
-          </p>
-
-          <div class="instrument-panel">
-            <h3>Synth</h3>
-
-            <!-- MIDI status -->
-            <div class="midi-status" id="midi-status" role="status" aria-live="polite">
-              <span class="midi-indicator" id="midi-indicator" aria-hidden="true"></span>
-              <span id="midi-text">No MIDI device connected</span>
-            </div>
-
-            <!-- Octave selector -->
-            <div class="octave-display">
-              <span>Octave</span>
-              <button class="octave-btn" id="octave-down" aria-label="Octave down">−</button>
-              <span id="octave-value">4</span>
-              <button class="octave-btn" id="octave-up" aria-label="Octave up">+</button>
-            </div>
-
-            <!-- On-screen keyboard -->
-            <div class="keyboard" id="keyboard" role="group" aria-label="Synthesizer keyboard"></div>
-
-            <!-- Synth controls -->
-            <div class="controls">
-              <div class="control-group">
-                <label for="waveform">Wave</label>
-                <select id="waveform" aria-label="Oscillator waveform">
-                  <option value="sine">Sine</option>
-                  <option value="square">Square</option>
-                  <option value="sawtooth">Sawtooth</option>
-                  <option value="triangle">Triangle</option>
-                </select>
-              </div>
-
-              <div class="control-group">
-                <label for="attack">Attack</label>
-                <input type="range" id="attack" min="0.001" max="2" step="0.001" value="0.01"
-                  aria-label="Attack time">
-                <span class="control-value" id="attack-value">10ms</span>
-              </div>
-
-              <div class="control-group">
-                <label for="decay">Decay</label>
-                <input type="range" id="decay" min="0.001" max="2" step="0.001" value="0.1"
-                  aria-label="Decay time">
-                <span class="control-value" id="decay-value">100ms</span>
-              </div>
-
-              <div class="control-group">
-                <label for="sustain">Sustain</label>
-                <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7"
-                  aria-label="Sustain level">
-                <span class="control-value" id="sustain-value">70%</span>
-              </div>
-
-              <div class="control-group">
-                <label for="release">Release</label>
-                <input type="range" id="release" min="0.001" max="4" step="0.001" value="0.5"
-                  aria-label="Release time">
-                <span class="control-value" id="release-value">500ms</span>
-              </div>
-
-              <div class="control-group">
-                <label for="volume">Volume</label>
-                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.3"
-                  aria-label="Master volume">
-                <span class="control-value" id="volume-value">30%</span>
-              </div>
-            </div>
-
-            <div class="info-text" aria-label="Keyboard shortcuts">
-              <strong>White keys:</strong> Z X C V B N M<br>
-              <strong>Black keys:</strong> S D &nbsp; G H J<br>
-              <strong>Octave:</strong> ↑ / ↓ arrow keys<br>
-              <strong>Record:</strong> R (toggle start/stop)<br>
-              <strong>MIDI:</strong> Connect a device to play automatically
-            </div>
-          </div>
-        </div><!-- /panel-synth -->
-
-        <!-- ══════════════════════════════════════════════════════════════════
-             DRUM MACHINE PANEL
-        ═══════════════════════════════════════════════════════════════════ -->
-        <div class="tab-panel" id="panel-drums"
-          role="tabpanel" aria-labelledby="tab-drums">
-
-          <p class="intro-text">
-            Toggle steps on/off for each drum voice. Hit Play to start the loop.
-            Try a preset to get going fast, or build your own pattern from scratch.
-          </p>
-
-          <div class="instrument-panel">
-            <h3>Drum Machine</h3>
-
-            <!-- Transport + Volume -->
-            <div class="drum-transport">
-              <button class="drum-play-btn" id="drum-play-btn"
-                aria-pressed="false" aria-label="Play or stop the drum machine">
-                ▶ Play
-              </button>
-
-              <div class="control-group">
-                <label for="drum-volume">Volume</label>
-                <input type="range" id="drum-volume" min="0" max="1" step="0.01" value="0.6"
-                  aria-label="Master volume">
-                <span class="control-value" id="drum-volume-value">60%</span>
-              </div>
-            </div>
-
-            <!-- Presets -->
-            <div class="drum-preset-row" role="group" aria-label="Pattern presets">
-              <button class="preset-btn" data-drum-preset="basic" type="button">Basic</button>
-              <button class="preset-btn" data-drum-preset="funk"  type="button">Funk</button>
-              <button class="drum-clear-btn" id="drum-clear-btn"  type="button">Clear</button>
-            </div>
-
-            <!-- Step grid (populated by JS) -->
-            <div id="drum-grid" role="group" aria-label="16-step drum grid"></div>
-
-            <p style="font-size:0.82em; opacity:0.5; line-height:1.6; margin-block-start:0.75em;">
-              Each column is one 16th note. Steps are grouped into 4 beats.
-              Beat numbers appear inside the first step of each group.
-            </p>
-          </div>
-        </div><!-- /panel-drums -->
-
-        <!-- ══════════════════════════════════════════════════════════════════
-             BASS SEQUENCER PANEL
-        ═══════════════════════════════════════════════════════════════════ -->
-        <div class="tab-panel" id="panel-bass"
-          role="tabpanel" aria-labelledby="tab-bass">
-
-          <p class="intro-text">
-            A 16-step bass line sequencer. Toggle steps on/off, pick a note for each step,
-            set your tempo and hit play. Try a preset to get started fast.
-          </p>
-
-          <div class="instrument-panel">
-            <h3>Bass Sequencer</h3>
-
-            <!-- Transport + tempo -->
-            <div class="seq-transport">
-              <button class="seq-play-btn" id="seq-play-btn"
-                aria-pressed="false" aria-label="Play or stop the sequencer">
-                ▶ Play
-              </button>
-
-              <div class="seq-control-row">
-                <label for="seq-note-len">Note</label>
-                <input type="range" id="seq-note-len" min="0.05" max="1" step="0.01" value="0.5"
-                  aria-label="Note length as fraction of step">
-                <span class="seq-control-value" id="seq-note-len-value">50%</span>
-              </div>
-
-              <div class="seq-control-row">
-                <label for="seq-waveform">Wave</label>
-                <select id="seq-waveform" aria-label="Oscillator waveform">
-                  <option value="sawtooth" selected>Sawtooth</option>
-                  <option value="sine">Sine</option>
-                  <option value="square">Square</option>
-                  <option value="triangle">Triangle</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Presets -->
-            <div class="seq-preset-row" role="group" aria-label="Pattern presets">
-              <button class="preset-btn" data-preset="classic" type="button">Classic</button>
-              <button class="preset-btn" data-preset="walking" type="button">Walking</button>
-              <button class="preset-btn" data-preset="funk"    type="button">Funk</button>
-              <button class="seq-clear-btn" id="seq-clear-btn" type="button">Clear</button>
-            </div>
-
-            <!-- Step grid (populated by JS) -->
-            <div id="seq-grid" role="group" aria-label="16-step sequencer grid"></div>
-
-            <!-- Volume -->
-            <div class="seq-control-row" style="margin-block-end: 0.5em;">
-              <label for="seq-volume">Volume</label>
-              <input type="range" id="seq-volume" min="0" max="1" step="0.01" value="0.5"
-                aria-label="Master volume">
-              <span class="seq-control-value" id="seq-volume-value">50%</span>
-            </div>
-
-            <!-- ADSR (collapsed by default) -->
-            <details class="seq-adsr-details">
-              <summary>Envelope (ADSR)</summary>
-              <div class="seq-adsr-grid">
-                <div class="seq-control-row">
-                  <label for="seq-attack">Attack</label>
-                  <input type="range" id="seq-attack" min="0.001" max="0.5" step="0.001" value="0.005"
-                    aria-label="Attack time">
-                  <span class="seq-control-value" id="seq-attack-value">5ms</span>
-                </div>
-                <div class="seq-control-row">
-                  <label for="seq-decay">Decay</label>
-                  <input type="range" id="seq-decay" min="0.001" max="1" step="0.001" value="0.08"
-                    aria-label="Decay time">
-                  <span class="seq-control-value" id="seq-decay-value">80ms</span>
-                </div>
-                <div class="seq-control-row">
-                  <label for="seq-sustain">Sustain</label>
-                  <input type="range" id="seq-sustain" min="0" max="1" step="0.01" value="0.5"
-                    aria-label="Sustain level">
-                  <span class="seq-control-value" id="seq-sustain-value">50%</span>
-                </div>
-                <div class="seq-control-row">
-                  <label for="seq-release">Release</label>
-                  <input type="range" id="seq-release" min="0.001" max="2" step="0.001" value="0.15"
-                    aria-label="Release time">
-                  <span class="seq-control-value" id="seq-release-value">150ms</span>
-                </div>
-              </div>
-            </details>
-
-            <p style="font-size:0.82em; opacity:0.5; line-height:1.6; margin-block-start:0.75em;">
-              <strong style="opacity:0.9;">Steps:</strong> each column is a 16th note.
-              Click a step to activate it, then choose its note from the dropdown below.
-              Steps are grouped into 4 beats (numbered 1–4 above the grid).
-            </p>
-          </div>
-        </div><!-- /panel-bass -->
-
-        <!-- ══════════════════════════════════════════════════════════════════
-             MIXER PANEL
-        ═══════════════════════════════════════════════════════════════════ -->
-        <div class="tab-panel" id="panel-mixer"
-          role="tabpanel" aria-labelledby="tab-mixer">
-
-          <p class="intro-text">
-            Adjust the level, pan, mute, and solo for each instrument. VU meters
-            show real-time signal levels. The Master channel controls the final
-            output level. Start the instruments on their own tabs first, then
-            come back here to mix.
-          </p>
-
-          <div class="instrument-panel mixer-panel">
-            <h3>Mixer</h3>
-            <div id="mixer-tracks" role="group" aria-label="Mixer channel strips">
-              <p style="opacity:0.55; font-size:0.9em; padding:1em 0;">
-                Loading mixer… (interact with any instrument first to unlock audio)
-              </p>
-            </div>
-          </div>
-
-        </div><!-- /panel-mixer -->
-
-      </div><!-- /.instruments-container -->
-
-      <!-- Recordings list (appears when recordings exist) -->
-      <div class="recordings-section" id="recordings-section" hidden>
-        <div class="recordings-container">
-          <h3>Recordings</h3>
-          <div id="recordings-list"></div>
-        </div>
-      </div>
-
-    </main>
-
-    <footer class="p-4 text-white text-center">
-      <p>&copy; <script>document.write(new Date().getFullYear())</script> Slings & Arrows</p>
-      <div class="social-icons flex justify-between gap-2">
-        <a href="mailto:mattjamesmedia@gmail.com" aria-label="email slings and arrows">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-envelope"
-            viewBox="0 0 16 16">
-            <path
-              d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z" />
-          </svg>
-        </a>
-        <a href="https://www.instagram.com/slings.andarrows/" target="_blank" rel="noopener noreferrer"
-          aria-label="Slings and arrows on Instagram">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-instagram"
-            viewBox="0 0 16 16">
-            <path
-              d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92m-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217m0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334" />
-          </svg>
-        </a>
-        <a href="https://www.youtube.com/channel/UCvM4IhlFf1W8jcAHgsTb9qQ" target="_blank" rel="noopener noreferrer"
-          aria-label="Slings and arrows on YouTube">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-youtube"
-            viewBox="0 0 16 16">
-            <path
-              d="M8.051 1.999h.089c.822.003 4.987.033 6.11.335a2.01 2.01 0 0 1 1.415 1.42c.101.38.172.883.22 1.402l.01.104.022.26.008.104c.065.914.073 1.77.074 1.957v.075c-.001.194-.01 1.108-.082 2.06l-.008.105-.009.104c-.05.572-.124 1.14-.235 1.558a2.01 2.01 0 0 1-1.415 1.42c-1.16.312-5.569.334-6.18.335h-.142c-.309 0-1.587-.006-2.927-.052l-.17-.006-.087-.004-.171-.007-.171-.007c-1.11-.049-2.167-.128-2.654-.26a2.01 2.01 0 0 1-1.415-1.419c-.111-.417-.185-.986-.235-1.558L.09 9.82l-.008-.104A31 31 0 0 1 0 7.68v-.123c.002-.215.01-.958.064-1.778l.007-.103.003-.052.008-.104.022-.26.01-.104c.048-.519.119-1.023.22-1.402a2.01 2.01 0 0 1 1.415-1.42c.487-.13 1.544-.21 2.654-.26l.17-.007.172-.006.086-.003.171-.007A100 100 0 0 1 7.858 2zM6.4 5.209v4.818l4.157-2.408z" />
-          </svg>
-        </a>
-        <a href="https://slingsarrows.bandcamp.com" aria-label="Slings & Arrows Bandcamp" target="_blank"
-          rel="noopener noreferrer">
-          <svg fill="currentColor" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 97.75 97.75"
-            xml:space="preserve">
-            <g>
-              <path d="M48.875,0C21.882,0,0,21.882,0,48.875S21.882,97.75,48.875,97.75S97.75,75.868,97.75,48.875S75.868,0,48.875,0z
-                M64.835,70.857H12.593l20.32-43.965h52.244L64.835,70.857z" />
-            </g>
-          </svg>
-        </a>
-      </div>
-    </footer>
-  </div>
-
-  <script type="module" src="./core/js/instruments.js"></script>
-  <script type="module">
-    import { initIdentityWidget } from './core/js/identity-widget.js';
-    if (document.readyState === 'complete') {
-      initIdentityWidget();
-    } else {
-      window.addEventListener('load', initIdentityWidget, { once: true });
-    }
-  </script>
-</body>
-</html>

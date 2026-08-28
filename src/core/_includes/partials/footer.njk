@@ -1,0 +1,9 @@
+{#
+  The year was written by `document.write(new Date().getFullYear())` in every
+  page — a synchronous document.write during parsing, to render a number known
+  at build time. Eleventy sets it instead.
+#}
+<footer class="p-4 text-white text-center">
+  <p>&copy; {{ buildYear }} {{ site.name }}</p>
+  {% include "partials/social-icons.njk" %}
+</footer>

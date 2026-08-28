@@ -3,8 +3,8 @@
 	"version": "1.0.0",
 	"description": "Slings & Arrows band website \u2014 Parcel/Tailwind static site with Netlify Functions backend.",
 	"scripts": {
-		"start": "parcel src/*.html",
-		"build": "parcel build src/*.html --dist-dir dist",
+		"start": "npm run build:pages && parcel .eleventy/*.html",
+		"build": "npm run build:pages && parcel build .eleventy/*.html --dist-dir dist",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write",
@@ -13,7 +13,8 @@
 		"test:watch": "vitest",
 		"test:browser": "playwright test",
 		"test:visual": "VISUAL=1 playwright test visual.spec.js visual-authed.spec.js",
-		"verify": "npm run lint && npm run typecheck && npm run test"
+		"verify": "npm run lint && npm run typecheck && npm run test",
+		"build:pages": "eleventy"
 	},
 	"dependencies": {
 		"@netlify/blobs": "^8.1.0"
@@ -22,6 +23,7 @@
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
+		"@11ty/eleventy": "^3.1.6",
 		"@axe-core/playwright": "^4.13.0",
 		"@eslint/js": "^9.39.5",
 		"@parcel/packager-raw-url": "^2.13.3",

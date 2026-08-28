@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="{{ site.locale }}">
+<head>
+  {% include "partials/head.njk" %}
+  {% if identityWidget %}
+  {#
+    The Netlify Identity widget. Loaded async everywhere — four of the eight
+    pages used to load it render-blocking in <head>, and they were the four
+    heaviest and most visited.
+
+    It has to be present on any page an email confirmation link might land on:
+    those links drop the user on the site with a #confirmation_token hash that
+    only the initialised widget exchanges for a session.
+  #}
+  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  {% endif %}
+  {% if pageStyles %}<style>{% include "page-styles/" + pageStyles + ".css" %}</style>{% endif %}
+</head>
+<body>
+  {#
+    Skip link. Every page already had id="main-content" — the target existed
+    and nothing ever linked to it, so keyboard and screen-reader users tabbed
+    the whole nav on every navigation (F-14).
+  #}
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="wrapper min-h-screen">
+    {% include "partials/header.njk" %}
+
+    <main class="p-4" id="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% include "partials/footer.njk" %}
+  </div>
+
+  {#
+    Dialogs and page scripts. These sit outside <main> because a modal is not
+    part of the page's main content, and because shows.html put its module
+    script after </body> entirely, which is not valid anywhere.
+  #}
+  {% block afterBody %}{% endblock %}
+</body>
+</html>

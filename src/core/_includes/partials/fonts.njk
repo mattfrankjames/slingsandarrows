@@ -1,0 +1,24 @@
+{#
+  Loading the site's typefaces. How they load is a site concern; what they are
+  called is a theme concern, and the two are kept apart so a band can bring
+  fonts from any provider without touching core.
+
+  Adobe kit ids are tied to one Creative Cloud subscription and are
+  domain-restricted, which is exactly why they live in site.json rather than
+  here.
+#}
+{% if site.fonts.provider == "adobe" %}
+  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+  {% for kitId in site.fonts.adobe.kitIds %}
+    {% if loop.first %}
+  <link rel="stylesheet" href="https://use.typekit.net/{{ kitId }}.css">
+    {% else %}
+  <link rel="stylesheet" href="https://use.typekit.net/{{ kitId }}.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://use.typekit.net/{{ kitId }}.css"></noscript>
+    {% endif %}
+  {% endfor %}
+{% elif site.fonts.provider == "google" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ site.fonts.google.query }}&display=swap">
+{% endif %}

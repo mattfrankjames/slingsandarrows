@@ -1,0 +1,67 @@
+---
+title: "Slings & Arrows | Post Composer"
+description: "Create and share posts with the Slings & Arrows community"
+permalink: "/app.html"
+pageStyles: app
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+      <div class="composer">
+
+        <div id="auth-bar" hidden class="auth-bar">
+          <span id="auth-bar-email" class="auth-bar-email"></span>
+          <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
+        </div>
+
+        <div id="auth-gate">
+          <p>Sign in to publish posts</p>
+          <button class="btn" id="login-btn">Sign In</button>
+        </div>
+
+        <div id="composer-panel" hidden>
+          <div class="user-bar">
+            <span class="user-email" id="user-email"></span>
+            <button class="btn btn-sm" id="logout-btn">Sign Out</button>
+          </div>
+          <h2>New Post</h2>
+          <form id="post-form">
+            <label for="post-title">Title (optional)</label>
+            <input type="text" id="post-title" name="title" placeholder="Leave blank to post without a title">
+            <label for="post-body">Body *</label>
+            <div class="composer-toolbar">
+              <button type="button" class="btn btn-sm" id="insert-link-btn">🔗 Insert Link</button>
+              <button type="button" class="btn btn-sm" id="insert-readmore-btn">✂ Insert Read More Break</button>
+            </div>
+            <p class="composer-hint">Everything above the break shows in the feed; readers click "Read more" to see the rest.</p>
+            <div id="link-insert-panel" hidden class="link-insert-panel">
+              <label for="link-text-input">Link text</label>
+              <input type="text" id="link-text-input" placeholder="e.g. Get tickets">
+              <label for="link-url-input">URL</label>
+              <input type="url" id="link-url-input" placeholder="https://…">
+              <div class="link-insert-actions">
+                <button type="button" class="btn btn-sm" id="link-insert-confirm">Insert</button>
+                <button type="button" class="btn btn-sm" id="link-insert-cancel">Cancel</button>
+              </div>
+              <p id="link-insert-status" class="link-insert-status"></p>
+            </div>
+            <textarea id="post-body" name="body" placeholder="What's happening with the band?" required></textarea>
+            <label for="post-image">Photo / Video / Audio (optional)</label>
+            <input type="file" id="post-image" name="image" accept="image/*,video/*,audio/*">
+            <div id="image-preview-wrap" hidden>
+              <div id="preview-media"></div>
+              <button type="button" id="remove-image-btn" aria-label="Remove media">✕</button>
+            </div>
+            <p id="upload-status" aria-live="polite"></p>
+            <button type="submit" class="btn" id="submit-btn">Publish Post</button>
+            <p id="status-msg" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+      </div>
+{% endblock %}
+
+{% block afterBody %}
+<script type="module" src="./core/js/app.js"></script>
+{% endblock %}

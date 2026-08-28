@@ -1,0 +1,30 @@
+---
+title: "Slings & Arrows | Midwestern Atmospheric Instrumentals"
+description: "Atmospheric, dark & dreamy instrumental music from the Midwest. Explore our latest releases, live shows, and interactive instruments."
+permalink: "/index.html"
+pageStyles: index
+identityWidget: true
+---
+{% extends "layouts/home.njk" %}
+
+{% block content %}
+<div class="iframe-container">
+                    <iframe style="border: 0; width: 100%; height: 120px;"
+                        src="https://bandcamp.com/EmbeddedPlayer/album=1704065415/size=large/bgcol=333333/linkcol=ffffff/tracklist=false/artwork=small/transparent=true/"
+                        loading="lazy"
+                        title="The Body Electric by Slings &amp; Arrows"
+                        seamless><a href="https://slingsarrows.bandcamp.com/album/the-body-electric">The Body Electric by Slings &amp;
+                            Arrows</a></iframe>
+                </div>
+{% endblock %}
+
+{% block afterBody %}
+<script type="module">
+        import { initIdentityWidget } from './core/js/identity-widget.js';
+        if (document.readyState === 'complete') {
+            initIdentityWidget();
+        } else {
+            window.addEventListener('load', initIdentityWidget, { once: true });
+        }
+    </script>
+{% endblock %}

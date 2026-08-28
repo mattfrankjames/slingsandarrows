@@ -1,0 +1,25 @@
+---
+title: "Slings & Arrows | Post"
+description: "A post from Slings & Arrows"
+permalink: "/post.html"
+pageStyles: post
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+      <div class="posts-container">
+        <div id="auth-bar" hidden class="auth-bar">
+          <span id="auth-bar-email" class="auth-bar-email"></span>
+          <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
+        </div>
+        <a href="/feed" class="back-link">← Back to Feed</a>
+        <div id="loading" role="status" aria-live="polite">Loading…</div>
+        <div id="error-state" hidden>Could not find this post.</div>
+        <div id="post-detail"></div>
+      </div>
+{% endblock %}
+
+{% block afterBody %}
+<script type="module" src="./core/js/post-view.js"></script>
+{% endblock %}

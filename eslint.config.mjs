@@ -8,7 +8,7 @@ import prettier from 'eslint-config-prettier';
  * broken at least once.
  */
 export default [
-  { ignores: ['dist/**', '.parcel-cache/**', 'node_modules/**', 'test-results/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', '.eleventy/**', '.parcel-cache/**', 'node_modules/**', 'test-results/**', 'playwright-report/**'] },
 
   js.configs.recommended,
 
