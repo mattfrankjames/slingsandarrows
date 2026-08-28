@@ -466,7 +466,19 @@
   }
 
   /* ── Hoisted out of the per-page styles ─────────────────────────────── */
-  /* Each of these was written out again in every page that used it. */
+  /*
+   * Each of these was written out again in every page that used it.
+   *
+   * .btn-sm is the one that was not merely duplicated but genuinely different:
+   * 0.85em on feed, app and post, 0.85rem on community and gallery. Those are
+   * not equivalent. `em` on font-size resolves against the *parent*, not
+   * against .btn's own 1rem — and every one of these buttons sits inside
+   * .auth-bar, which is itself 0.85em. So the same "Sign Out" button rendered
+   * at 11.56px on three pages and 13.6px on two.
+   *
+   * Settled on rem: a shared component should be the same size wherever it is
+   * used, rather than compounding with whatever it happens to sit inside.
+   */
   [hidden] {
   display: none !important;
   }
