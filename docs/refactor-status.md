@@ -59,6 +59,18 @@ service-worker importmap and the manifest transform.
 **Storage:** still Netlify Blobs. Six stores — `posts`, `post-comments`,
 `post-likes`, `board-threads`, `board-replies`, `gallery`.
 
+**The gate:** `main` is protected by the "Main Gate" ruleset — pull request
+required (zero approvals), no deletion, no force-push — and two checks are
+required to merge: `Lint, types, unit tests` and `Smoke, routing, API contract,
+accessibility`. CI genuinely blocks now; it did not until 2026-08-28.
+
+Two things it deliberately does not do. `Performance budget` is not required,
+so a Lighthouse regression reports without blocking. And
+`strict_required_status_checks_policy` is off, so a branch need not be up to
+date with `main` before merging — a pull request can be green against a stale
+base. Worth revisiting in Phase 4, where two branches touching migrations could
+each pass alone and conflict once both land.
+
 ---
 
 ## Decisions already made
@@ -186,6 +198,20 @@ block worker registration for this reason.
 `net::ERR_ABORTED`, reported success, and shipped stale files that were
 indistinguishable from a good capture.
 
+**Rulesets are invisible to the branch-protection API.** `main` was protected
+by a ruleset for a day while this file confidently recorded that it was not,
+because `repos/:owner/:repo/branches/main/protection` answers a literal
+`404 Branch not protected` whenever the protection comes from a ruleset rather
+than the older per-branch setting. Ask `repos/:owner/:repo/rules/branches/main`,
+which reports every rule actually in force and which ruleset supplied it.
+
+**A required check is matched by its name.** The context string in the ruleset
+has to equal the job's `name:` exactly — `Lint, types, unit tests`, not the
+workflow's name or the file's. A near-miss does not error anywhere; the ruleset
+waits for a check that will never report, or ignores one that does. Compare
+`rules/branches/main` against `gh pr checks` on a real pull request rather than
+trusting either alone.
+
 **This repo lives in iCloud Drive**, which periodically creates `foo 2.js`
 duplicates. Two have nearly reached CI. Sweep before committing:
 `find . -path ./node_modules -prune -o -name "* 2*" -print`
@@ -200,14 +226,6 @@ and commit — reviewing the images first.
 
 ## Known and deliberately unfixed
 
-- **`main` is protected, but no check is required.** The "Main Gate" ruleset
-  blocks deletion and force-pushes and requires a pull request (zero approvals).
-  It has no `required_status_checks` rule, so a red CI run does not block the
-  merge button — the gap the earlier note here described, though it described it
-  as protection being off entirely, which it is not. Note that rulesets do not
-  appear under the branch-protection API: `branches/main/protection` returns 404
-  on this repo while the ruleset is active. Check `rules/branches/main` instead.
-  Repository settings, not code.
 - Deleting a post leaves its comments and likes behind. Blobs has no cascade;
   Phase 4's foreign keys fix it.
 - Like and comment counts can drift under concurrency. Same fix.
