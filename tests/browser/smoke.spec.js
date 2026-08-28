@@ -74,3 +74,46 @@ test.describe('routing', () => {
     }
   });
 });
+
+/**
+ * The service worker backs offline support, the offline post queue's background
+ * sync, and the Cloudinary image cache. All of it fails silently when
+ * registration fails, so nothing else in this suite would notice.
+ *
+ * That is not hypothetical. Moving sw.js into a subdirectory made the build
+ * emit it at /core/sw.js, where a worker cannot claim scope '/' — lint, types
+ * and 101 unit tests all passed, and only reading the built importmap caught
+ * it.
+ *
+ * The split between registering and not registering is inherited, not
+ * intentional: registration lives in five feature modules, and the three pages
+ * that load none of them get no worker. Consolidating the page shells is the
+ * point at which that becomes one decision instead of five.
+ */
+test.describe('service worker', () => {
+  const REGISTERS = ['/feed', '/community', '/gallery', '/app'];
+
+  for (const path of REGISTERS) {
+    test(`${path} registers a worker scoped to the site root`, async ({ page }) => {
+      await page.goto(path);
+
+      const registration = await page.evaluate(() =>
+        Promise.race([
+          navigator.serviceWorker.ready.then(r => ({
+            scope: r.scope,
+            script: r.active?.scriptURL ?? r.installing?.scriptURL ?? null,
+          })),
+          new Promise(resolve => setTimeout(() => resolve(null), 10_000)),
+        ])
+      );
+
+      expect(registration, `no worker registered on ${path}`).not.toBeNull();
+
+      // Scope must be the origin root. A worker served from anywhere below it
+      // controls only that subtree, which is the failure this guards against.
+      const origin = new URL(page.url()).origin;
+      expect(registration.scope).toBe(`${origin}/`);
+      expect(registration.script).toBe(`${origin}/sw.js`);
+    });
+  }
+});

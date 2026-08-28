@@ -206,6 +206,20 @@ Both were made while setting these up:
   mobile projects wrote to the same filenames and the second silently
   overwrote the first, leaving seven files for fourteen tests.
 
+## Known inconsistencies, inherited not introduced
+
+Two things are uneven across pages today. Both are single decisions once the
+page shells are consolidated, and both are deliberately left alone until then:
+
+- **The service worker registers on `/feed`, `/community`, `/gallery` and
+  `/app` only.** Registration lives in five feature modules, so the three pages
+  that load none of them — `/`, `/shows`, `/studio` — get no worker, and a
+  visitor landing there has no offline support until they navigate. The smoke
+  suite asserts registration on the four that do, and pins the scope to the
+  origin root.
+- **The PWA manifest is linked from `app.html` alone**, so installability
+  depends on which page you happen to be on.
+
 ## What is not covered
 
 - **Signed-in journeys.** Posting, commenting, liking, uploading and deleting
