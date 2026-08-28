@@ -50,6 +50,19 @@ jobs:
           fi
           echo "No upload credentials in dist/"
 
+      # The Supabase secret key bypasses row level security entirely. Every
+      # policy in supabase/migrations is irrelevant to a caller holding one, so
+      # it reaching a browser bundle is not a leak of one resource — it is the
+      # whole database, readable and writable, to anyone who views source.
+      #
+      # A script rather than a grep, because the legacy format cannot be
+      # grepped for: it is a JWT claiming service_role, and base64 encodes the
+      # same claim three different ways depending on its byte offset. The first
+      # attempt here matched one of the three, passed its own probe, and would
+      # have shipped. See tests/unit/bundle-secrets.test.js.
+      - name: No Supabase secret in the built bundles
+        run: node scripts/check-bundle-secrets.mjs dist
+
       # A service worker can only control pages beneath its own URL. Moving the
       # source into a subdirectory once already pushed the build output to
       # /core/sw.js, where registering with { scope: '/' } throws — and offline
