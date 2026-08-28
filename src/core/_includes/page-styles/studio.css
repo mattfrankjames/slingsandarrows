@@ -299,6 +299,11 @@
         width: 2.5em;
         height: 4em;
         background: rgba(255, 255, 255, 0.1);
+        /* Buttons default to the UA's `buttontext`, which is black — so the
+           note labels were black on a dark keyboard. Unreadable, and invisible
+           to axe until the hero moved off .wrapper and left a solid colour it
+           could actually measure against. */
+        color: inherit;
         border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: 4px;
         cursor: pointer;
