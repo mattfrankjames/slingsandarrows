@@ -46,8 +46,8 @@
 	<noscript><link rel="stylesheet" href="https://use.typekit.net/bro0tvr.css"></noscript>
 	<link href="../styles/tailwind.css" rel="stylesheet">
 	<!-- Favicon (SVG for the address bar) and Apple touch icon (PNG — iOS ignores SVG here) -->
-	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
-	<link rel="apple-touch-icon" href="./images/icon-192.png">
+	<link rel="icon" type="image/svg+xml" href="./site/favicon.svg">
+	<link rel="apple-touch-icon" href="./site/images/icon-192.png">
 	<!-- Netlify Identity — loaded (and initialized, in the module script near
 	     the end of body) on every page, not just /app, so email confirmation
 	     and password-recovery links work no matter where they land. -->
@@ -125,8 +125,8 @@
 	</div>
 </body>
 <script type="module">
-			import showsData from './data/shows.json';
-			import { initIdentityWidget } from './js/identity-widget.js';
+			import showsData from './site/data/shows.json';
+			import { initIdentityWidget } from './core/js/identity-widget.js';
 
 			if (document.readyState === 'complete') {
 				initIdentityWidget();

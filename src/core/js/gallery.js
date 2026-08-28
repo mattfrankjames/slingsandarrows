@@ -153,7 +153,7 @@ async function refreshGallerySilently() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
-    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .register(new URL('../../sw.js', import.meta.url), { scope: '/' })
     .catch(err => console.warn('[gallery] SW registration failed:', err));
 }
 

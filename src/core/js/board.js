@@ -485,9 +485,12 @@ function renderReplyFormSection(container, threadId) {
   replyMediaInput.type = 'file';
   replyMediaInput.accept = 'image/*,video/*,audio/*';
   replyMediaInput.setAttribute('aria-label', 'Attach photo, video, or audio to reply');
+  // `font: inherit` rather than naming a family: the typeface is the site's
+  // choice, and a licensed Typekit name written into shared code both hardcodes
+  // this band's identity and would fail to load anywhere without that kit.
   replyMediaInput.style.cssText =
     'width:100%; background:transparent; border:1px dashed rgba(255,255,255,0.25); ' +
-    'color:white; font-family:"ballinger-mono",sans-serif; font-size:0.9rem; ' +
+    'color:white; font: inherit; font-size:0.9rem; ' +
     'padding:0.4em; border-radius:4px; cursor:pointer;';
 
   const replyMediaPreviewWrap = document.createElement('div');
@@ -897,7 +900,7 @@ async function refreshThreadsSilently() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
-    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .register(new URL('../../sw.js', import.meta.url), { scope: '/' })
     .catch(err => console.warn('[board] SW registration failed:', err));
 }
 

@@ -126,12 +126,35 @@ without a session captures a sign-in prompt and protects nothing. `signIn()` see
 writes; it is a fixture, not a credential, and every write it might attempt is
 stubbed.
 
-They are **not** part of the default run — an absent baseline would fail CI with
-a file it had just written — so run them deliberately:
+They run in CI on every pull request, alongside the rest of the browser suite.
+To run just them:
 
 ```bash
 BASE_URL=https://deploy-preview-99--slingsandarrows.netlify.app npm run test:visual
 ```
+
+### Baselines are per platform
+
+Text rasterises differently on macOS and on the Linux runners — enough that a
+set captured on a laptop fails in CI for reasons that have nothing to do with
+the change under review. Both sets are committed, under `darwin/` and `linux/`,
+and **CI's `linux/` set is the one that gates a merge**.
+
+To bootstrap a platform that has no baselines, let the browser job run once: a
+missing baseline is written by Playwright and still fails the test, and the job
+uploads the screenshot directory, so the red run produces exactly the files to
+commit.
+
+For an intentional visual change, run the **Update visual baselines** workflow,
+then download and commit what it produces:
+
+```bash
+gh workflow run update-baselines.yml -f preview_url=<a preview URL>
+gh run download <run-id> -n visual-baselines
+```
+
+Review the images before committing them. The CI job deliberately has no
+`--update-snapshots`: a suite that rewrites its own expectations cannot fail.
 
 Every diff should be either identical or an intentional, reviewed change. To
 accept a batch of intentional changes, re-run with `-- --update-snapshots` and
@@ -182,6 +205,20 @@ Both were made while setting these up:
 - **Omitting `{projectName}` from `snapshotPathTemplate`.** The desktop and
   mobile projects wrote to the same filenames and the second silently
   overwrote the first, leaving seven files for fourteen tests.
+
+## Known inconsistencies, inherited not introduced
+
+Two things are uneven across pages today. Both are single decisions once the
+page shells are consolidated, and both are deliberately left alone until then:
+
+- **The service worker registers on `/feed`, `/community`, `/gallery` and
+  `/app` only.** Registration lives in five feature modules, so the three pages
+  that load none of them — `/`, `/shows`, `/studio` — get no worker, and a
+  visitor landing there has no offline support until they navigate. The smoke
+  suite asserts registration on the four that do, and pins the scope to the
+  origin root.
+- **The PWA manifest is linked from `app.html` alone**, so installability
+  depends on which page you happen to be on.
 
 ## What is not covered
 

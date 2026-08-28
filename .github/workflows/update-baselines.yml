@@ -1,0 +1,47 @@
+name: Update visual baselines
+
+# Regenerates the Linux baselines that CI compares against, and uploads them to
+# download and commit. Run this when a change is *meant* to alter how a page
+# looks — after reviewing the diffs, not instead of reviewing them.
+#
+# Baselines cannot be captured on a laptop for CI's benefit: text rasterises
+# differently on macOS and on these runners, so a set produced locally fails
+# here for reasons unrelated to the change under review. Hence a workflow.
+#
+#   gh workflow run update-baselines.yml -f preview_url=<a deploy preview URL>
+#   gh run download <run-id> -n visual-baselines
+#   cp -R visual-baselines/linux tests/browser/__screenshots__/
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'URL to capture from (a Deploy Preview, or the live site)'
+        required: true
+        default: 'https://slingsandarrows.band'
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Capture
+        env:
+          BASE_URL: ${{ inputs.preview_url }}
+        run: |
+          npx playwright test --project=desktop --project=mobile \
+            visual.spec.js visual-authed.spec.js --update-snapshots || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: tests/browser/__screenshots__/
+          retention-days: 14

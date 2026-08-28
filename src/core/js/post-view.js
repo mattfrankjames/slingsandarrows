@@ -4,6 +4,16 @@ import { api } from './lib/api.js';
 
 const loading    = document.getElementById('loading');
 const errorState = document.getElementById('error-state');
+/**
+ * The site's own name, taken from the title the page was served with rather
+ * than written in here. post.html ships `<title>Slings &amp; Arrows | Post</title>`,
+ * so everything before the separator is the part worth keeping when the title
+ * becomes "<post title> — <site>".
+ *
+ * Captured at module load, before the title is rewritten.
+ */
+const SITE_TITLE = document.title.split('|')[0].trim() || document.title;
+
 const detail     = document.getElementById('post-detail');
 
 function getPostId() {
@@ -21,7 +31,7 @@ function getPostId() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
-    .register(new URL('../sw.js', import.meta.url), { scope: '/' })
+    .register(new URL('../../sw.js', import.meta.url), { scope: '/' })
     .catch(err => console.warn('[post-view] SW registration failed:', err));
 }
 
@@ -49,7 +59,7 @@ function registerServiceWorker() {
     }
 
     await loadMyLikes();
-    document.title = `${post.title ? post.title + ' — ' : ''}Slings & Arrows`;
+    document.title = post.title ? `${post.title} — ${SITE_TITLE}` : SITE_TITLE;
     detail.appendChild(renderPost(post, { fullView: true }));
   } catch (err) {
     console.warn('[post-view] load error:', err);
