@@ -60,16 +60,19 @@ service-worker importmap and the manifest transform.
 `post-likes`, `board-threads`, `board-replies`, `gallery`.
 
 **The gate:** `main` is protected by the "Main Gate" ruleset — pull request
-required (zero approvals), no deletion, no force-push — and two checks are
-required to merge: `Lint, types, unit tests` and `Smoke, routing, API contract,
-accessibility`. CI genuinely blocks now; it did not until 2026-08-28.
+required (zero approvals), no deletion, no force-push — and all three CI checks
+must pass to merge: `Lint, types, unit tests`, `Smoke, routing, API contract,
+accessibility`, and `Performance budget`. CI genuinely blocks now; it did not
+until 2026-08-28.
 
-Two things it deliberately does not do. `Performance budget` is not required,
-so a Lighthouse regression reports without blocking. And
-`strict_required_status_checks_policy` is off, so a branch need not be up to
-date with `main` before merging — a pull request can be green against a stale
-base. Worth revisiting in Phase 4, where two branches touching migrations could
-each pass alone and conflict once both land.
+One thing it still does not do: `strict_required_status_checks_policy` is off,
+so a branch need not be up to date with `main` before merging — a pull request
+can be green against a stale base. Worth revisiting in Phase 4, where two
+branches touching migrations could each pass alone and conflict once both land.
+
+Requiring `Performance budget` means the Lighthouse job now blocks. It depends
+on a Netlify build and on runner timing, so if it starts failing for reasons
+unrelated to a change, fix the flakiness rather than dropping the requirement.
 
 ---
 

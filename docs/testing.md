@@ -58,18 +58,21 @@ result. This is set up, as the **Main Gate** ruleset:
 
 - a pull request is required, with zero approvals
 - `main` cannot be deleted or force-pushed
-- two checks must pass: **`Lint, types, unit tests`** and **`Smoke, routing,
-  API contract, accessibility`**
+- all three CI checks must pass: **`Lint, types, unit tests`**, **`Smoke,
+  routing, API contract, accessibility`**, and **`Performance budget`**
 
-Two things it does not cover:
+One thing it does not cover:
 
-- **`Performance budget` is not required.** A Lighthouse regression reports and
-  does not block. It depends on a Netlify build and on runner timing, which is
-  a fair reason to keep it advisory.
 - **Branches need not be up to date with `main`.**
   `strict_required_status_checks_policy` is off, so a pull request can be green
   against a base that has since moved. Two branches can each pass alone and
   still break `main` together.
+
+`Performance budget` blocks a merge, which puts a Lighthouse run on the
+critical path. It depends on a Netlify build finishing and on runner timing, so
+it has more ways to fail than the other two. If it goes red for a reason that
+is not the change under review, the fix is to make the job more stable — not to
+drop it back out of the ruleset.
 
 Repository settings are yours to change; nothing in this repo can set them. To
 read what is actually in force — including after someone edits it in the UI:
