@@ -50,25 +50,43 @@ the hard way:
 
 Polling has neither problem, at the cost of a job that waits.
 
-## ⚠️ Branch protection is the actual gate
-
-**This needs one manual step, and without it none of the above stops anything.**
+## Branch protection is the actual gate
 
 Netlify deploys on every push to `main`. A suite that only runs on pull
-requests protects nothing if you can merge — or push — regardless of the result.
+requests protects nothing if you can merge — or push — regardless of the
+result. This is set up, as the **Main Gate** ruleset:
 
-In **Settings → Branches → Add branch ruleset** for `main`:
+- a pull request is required, with zero approvals
+- `main` cannot be deleted or force-pushed
+- two checks must pass: **`Lint, types, unit tests`** and **`Smoke, routing,
+  API contract, accessibility`**
 
-- Require a pull request before merging
-- Require status checks to pass → add **`Lint, types, unit tests`**
-- Require branches to be up to date before merging
+Two things it does not cover:
 
-Repository settings are yours to change; nothing in this repo can set them.
+- **`Performance budget` is not required.** A Lighthouse regression reports and
+  does not block. It depends on a Netlify build and on runner timing, which is
+  a fair reason to keep it advisory.
+- **Branches need not be up to date with `main`.**
+  `strict_required_status_checks_policy` is off, so a pull request can be green
+  against a base that has since moved. Two branches can each pass alone and
+  still break `main` together.
 
-Require **`Lint, types, unit tests`** — it is fast and needs nothing deployed.
-Adding the browser job as well is reasonable once it has run a few times; it
-depends on Netlify finishing a build, so it is slower and has one more thing
-that can be flaky.
+Repository settings are yours to change; nothing in this repo can set them. To
+read what is actually in force — including after someone edits it in the UI:
+
+```bash
+gh api repos/mattfrankjames/slingsandarrows/rules/branches/main
+```
+
+Not `branches/main/protection`. That endpoint only knows the older per-branch
+protection and answers `404 Branch not protected` while a ruleset is active and
+enforcing — which is how `refactor-status.md` spent a day recording that `main`
+was unprotected when it had been protected the whole time.
+
+A required check is matched by the job's `name:`, verbatim. A near-miss fails
+silently in whichever direction hurts — the ruleset waits on a check that never
+reports, or ignores the one that does — so compare the API output against
+`gh pr checks <n>` on a real pull request.
 
 ## The rules ESLint enforces
 
