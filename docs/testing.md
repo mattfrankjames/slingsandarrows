@@ -178,10 +178,11 @@ something fails — it is far more likely to be a real change:
   differs. Handled by `reducedMotion: 'reduce'` plus `animations: 'disabled'`.
 - **Fonts** — Typekit faces land after first paint. Handled by awaiting
   `document.fonts.ready` before capture.
-- **The hero photograph** — flattened to a flat colour by
-  `tests/browser/screenshot.css`. It is the background of `.wrapper` on every
-  page, so leaving it in made the baselines 6 MB while being the one thing least
-  likely to change. Contrast against the real background is axe's job.
+- **The hero photograph** — replaced, not removed, by
+  `tests/browser/screenshot.css`: a local SVG that scales under
+  `background-size: cover` exactly as a photograph does. Leaving the real image
+  in would tie every baseline to Cloudinary re-encoding; taking it out
+  altogether hides more than it saves (see below).
 
 ### Two mistakes worth not repeating
 
@@ -194,6 +195,13 @@ Both were made while setting these up:
 - **Hiding images rather than serving fixture bytes.** Same mistake, quieter:
   the gallery baseline was two empty boxes. The tile frames were captured and
   nothing inside them was.
+- **Removing the hero instead of replacing it.** With no image behind it,
+  `background-size: cover` has nothing to scale and `backdrop-filter` has
+  nothing to blur — so both became invisible to the diff. A regression where the
+  hero scaled 6.8x on the feed and 0.83x on the home page, and where two pages
+  were missing the frosting the others had, passed all 30 comparisons in
+  silence. A substitute has to exercise the same properties as the thing it
+  stands in for.
 - **Forgetting that a service worker is not interceptable.** `sw.js` serves
   Cloudinary media cache-first, and a service worker's own fetch does not pass
   through `page.route`. The result was a lightbox baseline containing
@@ -232,6 +240,25 @@ page shells are consolidated, and both are deliberately left alone until then:
   credentialed suite added later will not run on them. Split the workflow when
   that day comes: lint, types and unit tests for everyone, credentialed suites
   on branches you control.
+
+## Stylesheets
+
+```
+src/site/styles/theme.css      the band's palette, typefaces and imagery
+src/core/styles/index.css      layer order, then the imports below
+src/core/styles/base.css       element defaults and the page frame
+src/core/styles/components.css buttons, modals, forms, the auth bar
+src/core/_includes/page-styles/*.css   per page, inlined into its <style>
+```
+
+`@layer tokens, base, components, page` fixes precedence once, so a component
+never has to out-specify a base rule to win.
+
+**Everything must be in a layer, including the per-page CSS.** Unlayered rules
+beat every layer regardless of specificity, so a half-extracted component fails
+in a way that looks like nothing at all: hoisting `.modal.active { display: flex }`
+into a layer while `.modal { display: none }` stayed unlayered on the page meant
+the modals silently stopped opening.
 
 ## Formatting
 

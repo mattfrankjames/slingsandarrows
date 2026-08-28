@@ -1,0 +1,54 @@
+@layer tokens {
+  /*
+   * Everything about how this band's site looks, in one place.
+   *
+   * Nothing in src/core names a colour, a typeface or an image — it refers to
+   * these. Another band replaces this file and gets their own site; that is the
+   * whole point of the core/site split, expressed in CSS.
+   */
+  :root {
+    /* ── Type ──────────────────────────────────────────────────────────── */
+    /* Commercial faces licensed to this account through Adobe Fonts. The
+       fallbacks matter: without the kit, the site still reads. */
+    --font-display: "fatfrank", system-ui, sans-serif;
+    --font-body: "ballinger-mono", ui-monospace, monospace;
+
+    /* ── Colour ────────────────────────────────────────────────────────── */
+    --color-page: #0d0d0d;
+    --color-text: white;
+    --color-accent: #7209b7;
+
+    /* Translucent whites, used for borders, fills and hover states against the
+       dark ground. Named by weight so the ramp is visible rather than a set of
+       rgba() literals scattered through the components. */
+    --tint-1: rgba(255, 255, 255, 0.08);
+    --tint-2: rgba(255, 255, 255, 0.12);
+    --tint-3: rgba(255, 255, 255, 0.15);
+    --tint-4: rgba(255, 255, 255, 0.22);
+    --tint-5: rgba(255, 255, 255, 0.25);
+    --tint-6: rgba(255, 255, 255, 0.45);
+
+    --color-surface: rgba(0, 0, 0, 0.5);
+    --color-surface-strong: rgba(20, 20, 20, 0.97);
+
+    /* Feedback. The rose is this band's, used for destructive actions and for
+       the like state. */
+    --color-danger: #f5a8a8;
+    --color-like: #f5a8c8;
+    --color-success: #a8f5c8;
+
+    /* ── Shape ─────────────────────────────────────────────────────────── */
+    --radius: 4px;
+    --radius-lg: 8px;
+
+    /* ── The hero photograph ───────────────────────────────────────────── */
+    /* Background of .wrapper on every page. Site-specific: it is this band's
+       image, on this band's Cloudinary account. */
+    --hero-narrow: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh");
+    --hero-wide: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh");
+    --hero-scrim: linear-gradient(rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%);
+
+    /* The grain overlay behind the masthead. */
+    --texture-static: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_512/v1738007110/static-bg_aamn1d");
+  }
+}

@@ -117,3 +117,131 @@ test.describe('service worker', () => {
     });
   }
 });
+
+/**
+ * The hero photograph must render the same way on every page.
+ *
+ * This is the kind of property a screenshot is bad at. The baselines could not
+ * see it at all — `screenshot.css` replaces the remote hero to keep the images
+ * off Cloudinary, and with nothing behind it `background-size: cover` has
+ * nothing to scale and `backdrop-filter` has nothing to blur. A regression
+ * where the feed enlarged the hero 6.8x while the home page shrank it to 0.83x,
+ * and where two pages were missing the frosting the rest had, passed all 30
+ * comparisons in silence.
+ *
+ * Comparing pages to each other, rather than to a picture, states the invariant
+ * directly and does not need a baseline at all.
+ */
+test.describe('hero background', () => {
+  const PAGES_WITH_FROSTING = ['/feed', '/community', '/gallery', '/shows', '/studio', '/app', '/post'];
+
+  async function heroOf(page, path) {
+    await page.goto(path);
+    await page.waitForLoadState('domcontentloaded');
+    return page.evaluate(() => {
+      const wrapper = document.querySelector('.wrapper');
+      const backdrop = getComputedStyle(wrapper, '::before');
+      return {
+        // Fixed to the viewport, so the image never scales with page length.
+        position: backdrop.position,
+        size: backdrop.backgroundSize,
+        image: backdrop.backgroundImage.replace(/w_\d+/g, 'w_N'),
+        blur: getComputedStyle(document.querySelector('main')).backdropFilter,
+        pageHeight: Math.round(wrapper.getBoundingClientRect().height),
+      };
+    });
+  }
+
+  test('is sized by the viewport, not by page length', async ({ page }) => {
+    const feed = await heroOf(page, '/feed');
+    const home = await heroOf(page, '/');
+
+    // The feed is many times taller than the home page. If the backdrop were
+    // sized by the element rather than the viewport, `cover` would scale the
+    // image by that ratio.
+    expect(feed.pageHeight).toBeGreaterThan(home.pageHeight * 1.5);
+    expect(feed.position, 'the hero backdrop must be viewport-fixed').toBe('fixed');
+    expect(home.position).toBe('fixed');
+    expect(feed.size).toBe(home.size);
+    expect(feed.image).toBe(home.image);
+  });
+
+  test('is identical on every page', async ({ page }) => {
+    const reference = await heroOf(page, '/feed');
+
+    for (const path of ['/', '/community', '/gallery', '/shows', '/studio', '/app', '/post']) {
+      const hero = await heroOf(page, path);
+      expect(hero.image, `hero image on ${path}`).toBe(reference.image);
+      expect(hero.size, `background-size on ${path}`).toBe(reference.size);
+      expect(hero.position, `backdrop position on ${path}`).toBe(reference.position);
+    }
+  });
+
+  /**
+   * Measures the frosting rather than the declaration.
+   *
+   * Asserting `backdrop-filter` is set catches a missing rule, but not a rule
+   * that is present and does nothing — an ancestor breaking the backdrop root,
+   * or a `main` that no longer spans the area behind the content, would both
+   * leave the property in place and the page unfrosted.
+   *
+   * Blurring flattens local contrast, so the average difference between
+   * neighbouring pixels reads directly on whether it happened. Sampled from the
+   * outer 60px of a 1400px viewport, which is outside every content container,
+   * so it sees only backdrop.
+   */
+  test('actually blurs the photograph, not just declares it', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 800 });
+
+    const sharpnessAt = async path => {
+      await page.goto(path);
+      await page.waitForLoadState('networkidle').catch(() => {});
+      const shot = await page.screenshot({ clip: { x: 4, y: 320, width: 60, height: 300 } });
+      return page.evaluate(async base64 => {
+        const img = new Image();
+        img.src = 'data:image/png;base64,' + base64;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let total = 0, count = 0;
+        for (let y = 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < canvas.width - 1; x++) {
+            const a = (y * canvas.width + x) * 4;
+            const b = (y * canvas.width + x + 1) * 4;
+            total += Math.abs(px[a] - px[b]) + Math.abs(px[a + 1] - px[b + 1]) + Math.abs(px[a + 2] - px[b + 2]);
+            count++;
+          }
+        }
+        return total / count;
+      }, shot.toString('base64'));
+    };
+
+    // The home page shows the photograph unfrosted, so it is the control: a
+    // frosted page must come out markedly flatter than it.
+    const unfrosted = await sharpnessAt('/');
+    expect(unfrosted, 'the home page should show a sharp photograph').toBeGreaterThan(2);
+
+    for (const path of PAGES_WITH_FROSTING) {
+      const frosted = await sharpnessAt(path);
+      expect(frosted, `${path} should be visibly frosted, not merely declared so`)
+        .toBeLessThan(unfrosted / 4);
+    }
+  });
+
+  // Every page frosts the photograph behind its content except the home page,
+  // where the photograph is the point. This was declared in five of seven page
+  // stylesheets and simply missing from two.
+  test('is frosted behind the content on every page but home', async ({ page }) => {
+    for (const path of PAGES_WITH_FROSTING) {
+      const hero = await heroOf(page, path);
+      expect(hero.blur, `backdrop-filter on ${path}`).toMatch(/blur/);
+    }
+
+    const home = await heroOf(page, '/');
+    expect(home.blur, 'the home page deliberately shows the photograph unfrosted').toBe('none');
+  });
+});

@@ -1,0 +1,386 @@
+/*
+ * Element defaults and the page frame: typography, the wrapper, the masthead
+ * and its glitch treatment, navigation, footer.
+ *
+ * Colours and typefaces come from the site's theme tokens — nothing here names
+ * one directly.
+ */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    min-height: 100svh;
+    color: white;
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: -.1ch;
+    background-color: color(srgb 0 0.1255 0.3099);
+  }
+
+  *,
+  *:before,
+  *:after {
+    box-sizing: inherit;
+    margin-block-start: 0;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  a {
+    color: inherit;
+  }
+  .wrapper {
+    background-color: var(--color-page);
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    /* Establishes the stacking context the fixed backdrop below sits behind. */
+    position: relative;
+    isolation: isolate;
+  }
+
+  /*
+   * The hero photograph, sized to the viewport rather than to the page.
+   *
+   * It used to be a background on .wrapper itself with background-size: cover.
+   * .wrapper grows to the full height of the document, so `cover` scaled the
+   * image to whatever the content happened to be — the feed, at 7321px, blew a
+   * 1080px-tall image up 6.8x, while the home page rendered it at 0.83x. Every
+   * page showed a visibly different, and on long pages a visibly degraded,
+   * version of the same photograph.
+   *
+   * A fixed pseudo-element is sized by the viewport instead, so the image is
+   * identical everywhere and never scaled beyond its own resolution.
+   */
+  .wrapper::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--hero-scrim), var(--hero-narrow);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  @media (min-width: 769px) {
+    .wrapper::before {
+      background-image: var(--hero-scrim), var(--hero-wide);
+    }
+  }
+
+  main {
+    display: grid;
+    place-items: center;
+    margin-block: auto;
+  }
+
+  /* Make main span full height between header and footer on all pages except home */
+  .wrapper main:not(.home) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding-block: 2rem;
+
+    /*
+     * Frosting over the photograph. This was declared in five of the seven
+     * pages' own stylesheets and simply absent from shows and app, so those two
+     * showed the hero at full contrast while their neighbours showed it
+     * blurred. It is one rule now, and the home page is still exempt — there
+     * the photograph is the point.
+     */
+    backdrop-filter: blur(50px);
+  }
+
+  footer {
+    margin-top: auto;
+    background: color(display-p3 0 0 0 / 0.9);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem 1rem;
+    p {
+      margin-bottom: 0;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+
+  .social-icons {
+    display: flex;
+    gap: 1em;
+  }
+
+  .social-icons svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 0;
+    font-family: var(--font-display);
+      letter-spacing: initial;
+    font-style: normal;
+  }
+  h1,
+  h2 {
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: clamp(2rem, 1.5vw + 1rem, 4rem);
+    margin-block-end: 0.5em;
+  }
+  h4 {
+    margin-block-end: 0.5em;
+  }
+  @keyframes static {
+    0% {
+      background-position: 0 0;
+    }
+
+    100% {
+      background-position: 100% 100%;
+    }
+  }
+
+  h1 {
+    font-size: clamp(4rem, 2vw + 1rem, 7rem);
+    line-height: 1;
+    margin-block-end: 0;
+    /* position: relative;
+  	color: transparent;
+  	background: url('../images/static-bg.jpeg') repeat;
+  	-webkit-background-clip: text;
+  	background-clip: text;
+  	background-size: cover;
+  	background-position: 0 0;
+  		*/
+    animation: static 1s steps(10) infinite;
+    margin-block: 1.5em 1rem;
+  }
+
+  header {
+    background: color(display-p3 0 0 0 / 0.9);
+    min-height: 1rem;
+    padding: 1rem 0.5rem;
+      text-align: center;
+  text-wrap: balance;
+      a {
+        color: inherit
+      }
+  }
+
+  .glitch {
+    font-size: 4rem;
+    font-weight: bold;
+    position: relative;
+    position: relative;
+    color: transparent;
+    background: var(--texture-static) repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-size: cover;
+    background-position: 0 0;
+    text-shadow: 0.05em 0 0 color(display-p3 0.704 0.735 0.8), -0.03em -0.04em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  		0.025em 0.04em 0 #2e2d34;
+    animation: 725ms glitch 2s 5;
+    a {
+        text-decoration: none;
+      }
+  }
+  header .glitch {
+    width: fit-content;
+    margin: 0 auto;
+  }
+
+  main {
+    padding-block-start: 1em;
+  }
+  @media(min-width: 640px) {
+    .glitch {
+      font-size: 6rem;
+    }
+
+    .text-emphasis {
+      font-size: 2rem;
+    }
+  }
+
+  @media(min-width: 768px) {
+    .glitch {
+      font-size: 6rem;
+    }
+  }
+
+  .glitch span {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .glitch span:first-child {
+    animation: 600ms glitch 1s 5;
+    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+    transform: translate(-0.04em, -0.03em);
+    opacity: 0.75;
+  }
+
+  .glitch span:last-child {
+    animation: 475ms glitch 1s 5;
+    clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+    transform: translate(0.04em, 0.03em);
+    opacity: 0.75;
+  }
+
+  @keyframes glitch {
+    0% {
+      text-shadow: 0.04em 0 0 color(display-p3 0.704 0.735 0.8), -0.02em -0.03em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			0.015em 0.03em 0 #2e2d34;
+    }
+
+    15% {
+      text-shadow: 0.04em 0 0 color(display-p3 0.704 0.735 0.8), -0.02em -0.03em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			0.015em 0.03em 0 #2e2d34;
+    }
+
+    16% {
+      text-shadow: -0.04em -0.015em 0 color(display-p3 0.704 0.735 0.8), 0.015em 0.025em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			-0.04em -0.04em 0 #2e2d34;
+    }
+
+    49% {
+      text-shadow: -0.04em -0.015em 0 color(display-p3 0.704 0.735 0.8), 0.015em 0.025em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			-0.04em -0.04em 0 #2e2d34;
+    }
+
+    50% {
+      text-shadow: 0.04em 0.025em 0 color(display-p3 0.704 0.735 0.8), 0.02em 0 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			0 -0.03em 0 #2e2d34;
+    }
+
+    99% {
+      text-shadow: 0.04em 0.025em 0 color(display-p3 0.704 0.735 0.8), 0.02em 0 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			0 -0.03em 0 #2e2d34;
+    }
+
+    100% {
+      text-shadow: -0.04em 0 0 color(display-p3 0.704 0.735 0.8), -0.015em -0.03em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+  			-0.03em -0.015em 0 #2e2d34;
+    }
+  }
+  header p {
+    margin-block-end: 0;
+  }
+  .iframe-container {
+    width: 95%;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+    .shows {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto;
+      background: rgba(0, 0, 0, .5);
+      padding: 1em 4em;
+    }
+
+    .lineup {
+      display: flex;
+      padding: 0;
+      justify-content: flex-start;
+      list-style: none;
+      gap: 0.5em 1em;
+      flex-wrap: wrap;
+      margin-block-end: .25em;
+    }
+
+    .lineup li {
+      white-space: nowrap;
+    }
+
+    /* The "//" between band names is decoration. It used to be joined between
+       the <li> elements as bare text, which put text nodes directly inside the
+       <ul> — invalid, and reported by screen readers as list content. */
+    .lineup li + li::before {
+      content: '//';
+      margin-inline-end: 1em;
+      opacity: 0.6;
+    }
+
+    .show:not(:last-child) {
+      border-block-end: 1px solid white;
+      margin-block-end: 1rem;
+      padding-block-end: 1rem;
+  }
+  #upcoming-shows {
+    margin-block-end: 1em;
+    .show {
+        margin-block-end: 1em;
+      }
+  }
+
+  #upcoming-shows::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: var(--texture-static) repeat;
+  }
+  .subtext {
+    font-size: .9em;
+
+    span {
+      font-weight: bold;
+    }
+  }
+
+  /* ── Site nav ────────────────────────────────────────────────────────────── */
+  .site-nav {
+    display: flex;
+    gap: 1.25em;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-block-start: 0.5em;
+  }
+
+  .site-nav a {
+    position: relative;
+    text-decoration: none;
+    padding-top: 0.5em;
+    transition: color 0.2s;
+  }
+
+  .site-nav a::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(168, 245, 168, 0.6);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .site-nav a:hover::before {
+    opacity: 1;
+  }
+
+  .site-nav a:hover {
+    color: #a8f5a8;
+  }
+
+  /* ── Auth Modal ──────────────────────────────────────────────────────────── */
+}
