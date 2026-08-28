@@ -145,6 +145,10 @@ test.describe('hero background', () => {
         // Fixed to the viewport, so the image never scales with page length.
         position: backdrop.position,
         size: backdrop.backgroundSize,
+        // The crop, not just the scale. Centring the overflow pushed the band
+        // out of frame on the home page while every cross-page assertion here
+        // still passed, because none of them looked at where the image sat.
+        crop: backdrop.backgroundPosition,
         image: backdrop.backgroundImage.replace(/w_\d+/g, 'w_N'),
         blur: getComputedStyle(document.querySelector('main')).backdropFilter,
         pageHeight: Math.round(wrapper.getBoundingClientRect().height),
@@ -174,6 +178,7 @@ test.describe('hero background', () => {
       expect(hero.image, `hero image on ${path}`).toBe(reference.image);
       expect(hero.size, `background-size on ${path}`).toBe(reference.size);
       expect(hero.position, `backdrop position on ${path}`).toBe(reference.position);
+      expect(hero.crop, `background-position on ${path}`).toBe(reference.crop);
     }
   });
 

@@ -133,6 +133,41 @@ test.describe('modal dialogs', () => {
       await expect(modal).not.toHaveAttribute('open', '');
     });
 
+    /*
+     * Black-on-black. The UA stylesheet puts `color: CanvasText` on the dialog
+     * element itself, which beats the white inherited from body no matter how
+     * dark the page is, so every dialog rendered its heading and body text in
+     * black on its own near-black surface. Only the post composer escaped, by
+     * happening to declare its own colour.
+     *
+     * The focus-trap tests above passed throughout — they assert behaviour, and
+     * the behaviour was fine. So did axe, which only ever saw these dialogs
+     * closed. Nothing looked at the text until someone opened one.
+     */
+    test(`${name}: renders legible text on its dark surface`, async ({ page }) => {
+      await page.goto(path);
+      const opener = page.locator(trigger).first();
+      await opener.waitFor();
+      await opener.click();
+      await expect(page.locator(dialog)).toHaveAttribute('open', '');
+
+      const luminance = await page.evaluate(sel => {
+        const [r, g, b] = getComputedStyle(document.querySelector(sel))
+          .color.match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number);
+        const lin = c => {
+          const v = c / 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      }, dialog);
+
+      // Every surface on this site is dark, so the text on it must be light.
+      // CanvasText is 0; white is 1.
+      expect(luminance, 'dialog text should be light, not the UA default').toBeGreaterThan(0.5);
+    });
+
     test(`${name}: makes the page behind it inert`, async ({ page }) => {
       await page.goto(path);
       const opener = page.locator(trigger).first();

@@ -34,6 +34,21 @@
   a {
     color: inherit;
   }
+
+  /*
+   * The UA stylesheet sets `color: CanvasText` on dialog — black, and a
+   * declaration on the element itself, so it beats the white that would
+   * otherwise inherit from body. Every native dialog rendered black text on
+   * its own near-black surface: the sign-in modal, the new-thread modal, the
+   * gallery upload modal and the lightbox. Only the post composer escaped it,
+   * by happening to set its own colour.
+   *
+   * Set here rather than on each dialog so the next one added is not the fifth
+   * time this is discovered.
+   */
+  dialog {
+    color: var(--color-text);
+  }
   .wrapper {
     background-color: var(--color-page);
     min-height: 100svh;
@@ -64,7 +79,15 @@
     z-index: -1;
     background-image: var(--hero-scrim), var(--hero-narrow);
     background-size: cover;
-    background-position: center;
+    /*
+     * Anchored top-left, as it was before the pseudo-element. `center` looks
+     * like the safer default and is not: the photograph is 1920x1455 against a
+     * 16:9 viewport, so `cover` always overflows, and centring the overflow
+     * pushes the band out of frame — on a phone it crops to the middle of the
+     * mural with the players off both edges. The composition is weighted to the
+     * top-left and wants to stay there.
+     */
+    background-position: 0 0;
     background-repeat: no-repeat;
   }
 
