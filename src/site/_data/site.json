@@ -55,10 +55,7 @@
     "_comment": "Adobe kit ids are tied to this account's Creative Cloud subscription and are domain-restricted, so they belong to the site rather than the kit. The template ships open-licensed defaults instead.",
     "provider": "adobe",
     "adobe": {
-      "kitIds": [
-        "nwv0ezl",
-        "bro0tvr"
-      ]
+      "kitIds": ["bro0tvr"]
     }
   },
   "media": {
