@@ -127,6 +127,56 @@ needs: no transactions, no unique constraints, no atomic counters.
   preview branch per PR, which continuously proves the bootstrap path the
   template will depend on.
 
+### What Phase 4 will not fix
+
+Measured on the live site before starting, because the assumption was that
+Postgres would take the loading states with it. It will not.
+
+A cold visit to `/gallery`: `DOMContentLoaded` at 550ms, the request for
+`/api/v1/gallery` *starting* at 549ms and taking 1102ms, content on screen at
+1651ms. Three costs, and this phase only touches the smallest:
+
+| Cost | Measured | Phase 4 |
+|---|---|---|
+| Nothing fetched until the JS module graph runs | ~550ms | no effect |
+| Netlify function cold start | ~1000ms | likely worse |
+| The query itself | ~50ms warm | this is the part it fixes |
+
+`board/threads` took 1053ms on its first call and 2ms on the next; `posts` and
+`gallery` answer in ~52ms once warm, with 12 and 31 items. So the reader is
+waiting on a function booting, not on Blobs enumerating keys. Opening a
+Postgres connection during that boot adds to it rather than removing it — worth
+watching once the first endpoint is cut over, and an argument for a pooler.
+
+Two related things found in the same pass:
+
+- **The service worker cache cannot help a first visit.** It is not yet
+  controlling the page, so that load always pays full price, and the cache is
+  keyed per URL — a warm `/feed` does nothing for `/gallery`. This is what
+  "loading states as if nothing is cached" actually is.
+- **`netlify.toml` and the functions disagree about edge caching.** The config
+  sets `/api/*` to `no-cache, no-store, must-revalidate` and comments that API
+  responses are never cached at the edge. The functions override it through
+  `cacheFor()`, and a live response carries `public,max-age=60` with
+  `cache-status: "Netlify Edge"; hit`. Not a leak — every user-specific
+  endpoint (`post-likes-mine`, `cloudinary-sign`, `post-likes-toggle`) uses
+  `noStore`, so Phase 0's fix holds — but the config's stated intent is not what
+  happens, and the header block should say what it means.
+
+### Phase 4.5 — first paint without a loading state
+
+Agreed to follow this phase rather than join it, so the migration stays
+reviewable on its own.
+
+Render the first screen into the HTML at build time. Eleventy already builds
+these pages; having `feed.njk` and `gallery.njk` emit the first N items
+server-side means first paint has content and the client only revalidates.
+That removes the loading state on cold *and* warm visits, and it is the only
+one of the three costs above that can be removed rather than reduced.
+
+It works against Blobs or Postgres. Doing it after the migration means the
+build step gets written once, against the data source it will keep.
+
 ### Where the seams already are
 
 - `netlify/lib/store.mjs` is the only file importing `@netlify/blobs` (ESLint
