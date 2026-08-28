@@ -200,9 +200,14 @@ and commit — reviewing the images first.
 
 ## Known and deliberately unfixed
 
-- **Branch protection on `main` is still not enabled.** Netlify deploys on every
-  push, so CI gates nothing until the `Lint, types, unit tests` check is
-  required. Repository settings, not code.
+- **`main` is protected, but no check is required.** The "Main Gate" ruleset
+  blocks deletion and force-pushes and requires a pull request (zero approvals).
+  It has no `required_status_checks` rule, so a red CI run does not block the
+  merge button — the gap the earlier note here described, though it described it
+  as protection being off entirely, which it is not. Note that rulesets do not
+  appear under the branch-protection API: `branches/main/protection` returns 404
+  on this repo while the ruleset is active. Check `rules/branches/main` instead.
+  Repository settings, not code.
 - Deleting a post leaves its comments and likes behind. Blobs has no cascade;
   Phase 4's foreign keys fix it.
 - Like and comment counts can drift under concurrency. Same fix.
