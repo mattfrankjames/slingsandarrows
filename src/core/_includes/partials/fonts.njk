@@ -6,6 +6,19 @@
   Adobe kit ids are tied to one Creative Cloud subscription and are
   domain-restricted, which is exactly why they live in site.json rather than
   here.
+
+  Order matters, and not obviously: the first kit is loaded render-blocking and
+  every other one is deferred behind media="print". So the kit holding the
+  faces the page actually renders has to be first, or the text waits on a
+  stylesheet that was deliberately taken off the critical path.
+
+  This site had it backwards for a while. The blocking kit declared
+  ballinger-mono at font-display:auto plus two families nothing referenced,
+  while the deferred one declared both real faces at font-display:swap — so the
+  swap never applied to first paint and fatfrank, which is every heading,
+  arrived late. Check what a kit actually contains before adding a second one:
+
+      curl -s https://use.typekit.net/<kitId>.css -H 'Referer: <your domain>'
 #}
 {% if site.fonts.provider == "adobe" %}
   <link rel="preconnect" href="https://use.typekit.net" crossorigin>
