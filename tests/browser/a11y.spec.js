@@ -200,19 +200,31 @@ test.describe('motion and focus', () => {
     await context.close();
   });
 
+  // Tabbed to, not focus()'d: :focus-visible deliberately does not match
+  // programmatic focus, so calling el.focus() measures :focus only and reports
+  // no ring even when one is working. That cost me a wrong diagnosis.
   test('gives keyboard focus a visible ring', async ({ page }) => {
-    await page.goto('/feed');
-    await page.locator('#posts-feed').waitFor();
+    await page.goto('/studio');
+    await page.locator('#universal-bpm').waitFor();
+    await page.locator('body').click({ position: { x: 5, y: 5 } });
 
-    // Tab to the first nav link and confirm something actually renders.
-    const outline = await page.evaluate(() => {
-      const link = document.querySelector('.site-nav a');
-      link.focus();
-      const cs = getComputedStyle(link);
-      return { style: cs.outlineStyle, width: parseFloat(cs.outlineWidth) };
+    // The BPM slider is a custom-styled range, the control most likely to have
+    // had its focus ring removed for cosmetic reasons — and it had.
+    let reached = false;
+    for (let i = 0; i < 40 && !reached; i++) {
+      await page.keyboard.press('Tab');
+      reached = await page.evaluate(() => document.activeElement?.id === 'universal-bpm');
+    }
+    expect(reached, 'the BPM slider should be reachable by keyboard').toBe(true);
+
+    const ring = await page.evaluate(() => {
+      const el = document.getElementById('universal-bpm');
+      const cs = getComputedStyle(el);
+      return { matches: el.matches(':focus-visible'), style: cs.outlineStyle, width: parseFloat(cs.outlineWidth) };
     });
 
-    expect(outline.style, 'focused elements need a visible outline').not.toBe('none');
-    expect(outline.width).toBeGreaterThan(0);
+    expect(ring.matches, 'keyboard focus should match :focus-visible').toBe(true);
+    expect(ring.style, 'a keyboard-focused control needs a visible outline').not.toBe('none');
+    expect(ring.width).toBeGreaterThan(0);
   });
 });
