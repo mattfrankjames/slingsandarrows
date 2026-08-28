@@ -35,17 +35,41 @@
     color: inherit;
   }
   .wrapper {
-    background-color: #0d0d0d;
-    background-image: var(--hero-scrim), var(--hero-narrow);
-    background-size: cover;
-    background-position: 0 0;
+    background-color: var(--color-page);
     min-height: 100svh;
     display: flex;
     flex-direction: column;
+    /* Establishes the stacking context the fixed backdrop below sits behind. */
+    position: relative;
+    isolation: isolate;
+  }
+
+  /*
+   * The hero photograph, sized to the viewport rather than to the page.
+   *
+   * It used to be a background on .wrapper itself with background-size: cover.
+   * .wrapper grows to the full height of the document, so `cover` scaled the
+   * image to whatever the content happened to be — the feed, at 7321px, blew a
+   * 1080px-tall image up 6.8x, while the home page rendered it at 0.83x. Every
+   * page showed a visibly different, and on long pages a visibly degraded,
+   * version of the same photograph.
+   *
+   * A fixed pseudo-element is sized by the viewport instead, so the image is
+   * identical everywhere and never scaled beyond its own resolution.
+   */
+  .wrapper::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--hero-scrim), var(--hero-narrow);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   @media (min-width: 769px) {
-    .wrapper {
+    .wrapper::before {
       background-image: var(--hero-scrim), var(--hero-wide);
     }
   }
@@ -62,6 +86,15 @@
     display: flex;
     flex-direction: column;
     padding-block: 2rem;
+
+    /*
+     * Frosting over the photograph. This was declared in five of the seven
+     * pages' own stylesheets and simply absent from shows and app, so those two
+     * showed the hero at full contrast while their neighbours showed it
+     * blurred. It is one rule now, and the home page is still exempt — there
+     * the photograph is the point.
+     */
+    backdrop-filter: blur(50px);
   }
 
   footer {

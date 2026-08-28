@@ -1,7 +1,4 @@
 @layer page {
-      main {
-        backdrop-filter: blur(50px);
-      }
       .posts-container {
         width: 95%;
         max-width: 700px;

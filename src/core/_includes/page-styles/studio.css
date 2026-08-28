@@ -1,8 +1,5 @@
 @layer page {
       /* ── Layout ──────────────────────────────────────────────────────────── */
-      main {
-        backdrop-filter: blur(50px);
-      }
 
       .instruments-container {
         width: 95%;

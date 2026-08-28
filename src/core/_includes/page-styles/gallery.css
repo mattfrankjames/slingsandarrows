@@ -1,6 +1,5 @@
 @layer page {
       main {
-        backdrop-filter: blur(50px);
         align-items: flex-start;
       }
 
