@@ -287,10 +287,6 @@
     max-width: 700px;
     margin: 0 auto;
   }
-  #concerts main {
-    backdrop-filter: blur(50px);
-    background-position: center;
-    }
 
     .shows {
       width: 95%;
