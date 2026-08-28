@@ -1,24 +1,28 @@
 /*
  * Injected only while a screenshot is captured (see visual.spec.js).
  *
- * The hero photograph is the background of .wrapper on every page. Left in, it
- * dominates each PNG — the baselines were 6 MB — while being the one thing
- * Phase 3 is least likely to break. Flattening it to the underlying colour
- * keeps the diffs about layout, spacing and typography, which is what actually
- * moves when the page shells are rebuilt.
+ * The hero photograph is remote and would make every baseline depend on
+ * Cloudinary re-encoding. The first version of this file therefore removed it
+ * outright — and that turned out to hide an entire class of bug.
  *
- * Contrast against the real background is checked by axe, not here.
+ * With no image behind it, `background-size: cover` has nothing to scale and
+ * `backdrop-filter` has nothing to blur, so both become invisible to the diff.
+ * A regression where the hero scaled 6.8x on the feed and not at all on the
+ * home page, and where two pages were missing the frosting the others had,
+ * passed 30 screenshot comparisons without a murmur.
+ *
+ * So the image is replaced rather than removed: a local SVG that scales under
+ * `cover` exactly as a photograph does, and has enough structure that blurring
+ * it looks obviously different from not blurring it. Deterministic, no network,
+ * and the two properties are back under test.
  */
-.wrapper {
-  background-image: none !important;
-  background-color: #0d0d0d !important;
+:root {
+  --hero-narrow: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 108" preserveAspectRatio="none"><rect width="192" height="108" fill="%23101a2e"/><path d="M0 108 L48 54 L84 78 L120 42 L192 96 L192 108 Z" fill="%232b3d63"/><circle cx="150" cy="26" r="14" fill="%233d5285"/><g fill="%231b2740"><rect x="0" y="0" width="96" height="12"/><rect x="96" y="24" width="96" height="12"/></g></svg>');
+  --hero-wide: var(--hero-narrow);
+  --texture-static: none;
 }
 
-/*
- * Cloudinary media is served from a fixture (see fixtures.js), so images stay
- * visible and their layout is covered. Only the Bandcamp embed is hidden: it is
- * a third-party iframe whose contents we neither control nor need to diff.
- */
+/* Third-party embed: not ours, not diffable. */
 iframe {
   visibility: hidden !important;
 }
