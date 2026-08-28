@@ -1,0 +1,24 @@
+/*
+ * The site's stylesheet.
+ *
+ * Replaces styles/tailwind.css, which had not been Tailwind since someone
+ * commented out the three @tailwind directives at the top — it was 823 lines of
+ * hand-written CSS wearing a misleading name, which is exactly the sort of
+ * thing that survives because nobody wants to be the one to check.
+ *
+ * The order below is the whole point of using layers: it fixes precedence once,
+ * here, so a component never has to out-specify a base rule to win. Later
+ * layers beat earlier ones no matter how specific the selectors are.
+ *
+ * Per-page CSS stays inlined in each page's <style> and deliberately stays
+ * *unlayered*, which puts it above every layer — page-specific rules should win
+ * without needing !important or a longer selector.
+ */
+@layer tokens, base, components;
+
+/* The band's own palette, typefaces and imagery. The only file in this chain
+   that names anything specific to Slings & Arrows. */
+@import url("../../site/styles/theme.css");
+
+@import url("./base.css");
+@import url("./components.css");

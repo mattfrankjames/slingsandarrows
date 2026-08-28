@@ -55,11 +55,6 @@
       display: block;
       margin-block-end: 1em;
     }
-    #loading, #empty-state, #error-state {
-      text-align: center;
-      padding: 3em 0;
-      opacity: 0.6;
-    }
     .post-card--pending {
       opacity: 0.55;
     }
@@ -254,38 +249,6 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 4px;
       text-align: center;
-    }
-    [hidden] { display: none !important; }
-    .btn {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.45);
-      color: white;
-      font-family: var(--font-body);
-      font-size: 1rem;
-      padding: 0.6em 1.5em;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background 0.2s;
-      letter-spacing: -0.05ch;
-    }
-    .btn:hover {
-      background: rgba(255, 255, 255, 0.22);
-    }
-    .btn-sm {
-      font-size: 0.85em;
-      padding: 0.4em 1em;
-    }
-    .auth-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.75em;
-      margin-block-end: 1.25em;
-      padding-block-end: 0.75em;
-      border-block-end: 1px solid rgba(255, 255, 255, 0.15);
-      font-size: 0.85em;
-    }
-    .auth-bar-email {
-      opacity: 0.6;
     }
     .page-heading {
       display: flex;

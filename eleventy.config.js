@@ -14,6 +14,7 @@
 export default function (eleventyConfig) {
   // Copied through untouched for Parcel to pick up and hash.
   eleventyConfig.addPassthroughCopy({ 'src/core/js': 'core/js' });
+  eleventyConfig.addPassthroughCopy({ 'src/core/styles': 'core/styles' });
   eleventyConfig.addPassthroughCopy({ 'src/site': 'site' });
   eleventyConfig.addPassthroughCopy({ 'src/sw.js': 'sw.js' });
 
