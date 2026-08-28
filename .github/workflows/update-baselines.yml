@@ -33,14 +33,36 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
 
+      # Without this the job races a deploy that is still building. It did:
+      # every page failed with net::ERR_ABORTED, `|| true` swallowed it, and the
+      # artifact shipped the repository's own checked-out baselines — stale
+      # files that looked exactly like a successful capture.
+      - name: Wait for the target to answer
+        run: |
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$TARGET" || echo 000)
+            if [ "$status" = "200" ]; then echo "Ready after ~$((attempt * 10))s"; exit 0; fi
+            echo "  attempt $attempt: HTTP $status"
+            sleep 10
+          done
+          echo "::error::$TARGET never became reachable"
+          exit 1
+        env:
+          TARGET: ${{ inputs.preview_url }}
+
+      # No `|| true`. --update-snapshots passes when it writes a snapshot, so
+      # anything that fails here is a real problem and should be visible.
       - name: Capture
         env:
           BASE_URL: ${{ inputs.preview_url }}
         run: |
           npx playwright test --project=desktop --project=mobile \
-            visual.spec.js visual-authed.spec.js --update-snapshots || true
+            visual.spec.js visual-authed.spec.js --update-snapshots
 
+      # Uploaded even on failure, so a partial capture can still be inspected —
+      # but the job goes red, which is the part that was missing.
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: visual-baselines
           path: tests/browser/__screenshots__/
