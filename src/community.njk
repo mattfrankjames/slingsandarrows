@@ -52,8 +52,7 @@ identityWidget: true
 
 {% block afterBody %}
 <!-- ── New Thread Modal ────────────────────────────────────────────────── -->
-  <div class="modal" id="new-thread-modal" role="dialog"
-    aria-modal="true" aria-labelledby="modal-title">
+  <dialog class="modal" id="new-thread-modal" aria-labelledby="modal-title">
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modal-title">Start a New Thread</h3>
@@ -110,7 +109,7 @@ identityWidget: true
       </form>
 
     </div>
-  </div>
+  </dialog>
 
   <script type="module" src="./core/js/board.js"></script>
   <script>

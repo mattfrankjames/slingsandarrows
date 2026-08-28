@@ -149,19 +149,24 @@
 
       /* ── Lightbox ──────────────────────────────────────────────────────────── */
       .lightbox {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
+        border: 0;
         padding: 1em;
+        max-width: 100vw;
+        max-height: 100vh;
+        width: 100%;
+        height: 100%;
+        background: transparent;
       }
 
-      .lightbox.active {
+      .lightbox[open] {
         display: flex;
+        align-items: center;
+        justify-content: center;
         animation: fadeIn 0.2s ease-out;
+      }
+
+      .lightbox::backdrop {
+        background: rgba(0, 0, 0, 0.95);
       }
 
       @keyframes fadeIn {

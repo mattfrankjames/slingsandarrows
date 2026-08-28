@@ -24,8 +24,7 @@ export class AuthModal {
 
   setupDOM() {
     const html = `
-      <div class="auth-modal" id="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-title">
-        <div class="auth-modal-overlay"></div>
+      <dialog class="auth-modal" id="auth-modal" aria-labelledby="auth-title">
         <div class="auth-modal-content">
           <div class="auth-modal-header">
             <h2 id="auth-title">Sign In</h2>
@@ -99,15 +98,13 @@ export class AuthModal {
             We'll send a confirmation email. Check your inbox to verify your account.
           </p>
         </div>
-      </div>
+      </dialog>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
   }
 
   attachListeners() {
-    const modal     = document.getElementById('auth-modal');
-    const overlay   = modal.querySelector('.auth-modal-overlay');
     const tabBtns   = document.querySelectorAll('.auth-tab-btn');
     const form      = document.getElementById('auth-form');
     const closeBtn  = document.getElementById('auth-close');
@@ -142,17 +139,8 @@ export class AuthModal {
       this.close();
     });
 
-    // Close on overlay click
-    overlay.addEventListener('click', () => {
-      this.close();
-    });
 
     // Close on Escape key
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !document.getElementById('auth-modal').hidden) {
-        this.close();
-      }
-    });
 
     // Forgot password
     forgotBtn.addEventListener('click', e => {
@@ -375,15 +363,18 @@ export class AuthModal {
 
   open(initialMode = 'login') {
     this.switchMode(initialMode);
-    document.getElementById('auth-modal').hidden = false;
-    // Focus the email input after the modal is visible
-    setTimeout(() => {
-      document.getElementById('auth-email').focus();
-    }, 100);
+    /** @type {HTMLDialogElement} */
+    const dialog = document.getElementById('auth-modal');
+    if (!dialog.open) dialog.showModal();
+    // showModal() focuses the first focusable child, which is the close
+    // button; the email field is where someone actually wants to start.
+    document.getElementById('auth-email').focus();
   }
 
   close() {
-    document.getElementById('auth-modal').hidden = true;
+    /** @type {HTMLDialogElement} */
+    const dialog = document.getElementById('auth-modal');
+    if (dialog.open) dialog.close();
     document.getElementById('auth-form').reset();
     this.clearError();
     this.clearSuccess();

@@ -383,4 +383,48 @@
   }
 
   /* ── Auth Modal ──────────────────────────────────────────────────────────── */
+
+  /* ── Reduced motion ─────────────────────────────────────────────────────── */
+  /*
+   * Two animations here never stop: the grain overlay behind the masthead runs
+   * `static 1s steps(10) infinite`, and the glitch treatment on the title runs
+   * on load. For a visitor with vestibular sensitivity the header simply never
+   * settles, and nothing in the codebase asked whether they wanted that (F-13).
+   *
+   * The blanket rule catches everything — including the two studio animations
+   * and the lightbox fade — rather than listing them and missing the next one.
+   * Durations are near-zero rather than `none` so animation events still fire
+   * and any JavaScript waiting on animationend is not left hanging.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ── Focus ──────────────────────────────────────────────────────────────── */
+  /*
+   * A visible focus ring on everything interactive. Several components set
+   * their own :focus styling on inputs, but buttons, links, the nav and the
+   * gallery tiles had nothing, so keyboard focus was invisible on most of the
+   * site — you could tab through a page with no idea where you were.
+   *
+   * :focus-visible rather than :focus, so a mouse click does not leave a ring
+   * behind on a button that was just pressed.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* The UA default ring is removed only where ours has replaced it. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }

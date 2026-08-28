@@ -322,30 +322,32 @@ function initLightbox() {
     if (e.target === lightbox) closeLightbox();
   });
 
-  // Keyboard navigation
+  // Arrow keys page through the gallery. Escape is the browser's job now that
+  // this is a <dialog> — it fires 'close', handled below.
   document.addEventListener('keydown', e => {
-    if (!lightbox.classList.contains('active')) return;
-    if (e.key === 'Escape')      closeLightbox();
+    if (!lightbox.open) return;
     if (e.key === 'ArrowLeft')   navigateLightbox(-1);
     if (e.key === 'ArrowRight')  navigateLightbox(1);
+  });
+
+  // Runs however the dialog was dismissed: the close button, a backdrop click,
+  // or Escape.
+  lightbox.addEventListener('close', () => {
+    document.body.style.overflow = '';
+    lightboxWrap.querySelector('video')?.pause();
   });
 }
 
 function openLightbox(idx) {
   lightboxIndex = idx;
   renderLightboxItem();
-  lightbox.classList.add('active');
+  lightbox.showModal();
   document.body.style.overflow = 'hidden';
   lightboxClose.focus();
 }
 
 function closeLightbox() {
-  lightbox.classList.remove('active');
-  document.body.style.overflow = '';
-
-  // Stop any playing video
-  const video = lightboxWrap.querySelector('video');
-  if (video) video.pause();
+  if (lightbox.open) lightbox.close();
 }
 
 function navigateLightbox(delta) {
@@ -408,7 +410,7 @@ function initUploadModal() {
 
   // Keyboard close
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && uploadModal?.classList.contains('active')) {
+    if (e.key === 'Escape' && uploadModal?.open) {
       closeUploadModal();
     }
   });
@@ -484,12 +486,12 @@ function initUploadModal() {
 }
 
 function openUploadModal() {
-  uploadModal?.classList.add('active');
+  uploadModal?.showModal();
   document.body.style.overflow = 'hidden';
 }
 
 function closeUploadModal() {
-  uploadModal?.classList.remove('active');
+  if (uploadModal?.open) uploadModal.close();
   document.body.style.overflow = '';
   resetUploadForm();
 }

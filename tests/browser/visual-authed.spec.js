@@ -138,7 +138,7 @@ test.describe('lightboxes', () => {
     await page.goto('/feed');
 
     await page.locator('img.post-image').first().click();
-    await expect(page.locator('.sa-lightbox')).toHaveClass(/active/);
+    await expect(page.locator('.sa-lightbox')).toHaveAttribute('open', '');
     await page.evaluate(() => document.fonts.ready);
 
     await expect(page).toHaveScreenshot('feed-lightbox.png', shot);

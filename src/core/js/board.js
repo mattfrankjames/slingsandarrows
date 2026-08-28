@@ -213,12 +213,12 @@ function updateModalAuth() {
 // ─── Modal open/close ─────────────────────────────────────────────────────────
 function openModal() {
   updateModalAuth();
-  modal.classList.add('active');
+  modal.showModal();
   modal.querySelector('input, textarea')?.focus();
 }
 
 function closeModal() {
-  modal.classList.remove('active');
+  if (modal.open) modal.close();
   threadForm.reset();
   formStatus.textContent = '';
   // Reset media state
@@ -234,9 +234,9 @@ modalCancel.addEventListener('click', closeModal);
 modal.addEventListener('click', e => {
   if (e.target === modal) closeModal();
 });
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
-});
+// Escape is handled by <dialog>; 'cancel' fires first, so the form reset in
+// closeModal() still runs however the dialog is dismissed.
+modal.addEventListener('cancel', () => closeModal());
 
 // Open the custom auth modal when the "Sign In / Create Account" button is clicked
 loginBtnBoard.addEventListener('click', () => {
