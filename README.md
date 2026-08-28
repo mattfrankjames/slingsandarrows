@@ -5,7 +5,7 @@ The website for Slings & Arrows — a static site (Parcel + Tailwind CSS) with a
 ## Stack
 
 - **Frontend** — plain HTML/CSS/JS (ES modules), bundled with [Parcel 2](https://parceljs.org/). No framework. Shared browser-side modules live in `src/js/lib/`.
-- **Styling** — Tailwind utility output committed directly at `styles/tailwind.css`; page-specific styling lives in inline `<style>` blocks in each HTML file rather than a Tailwind build pipeline.
+- **Styling** — hand-written CSS in cascade layers (`@layer tokens, base, components, page`). The band's palette, typefaces and imagery are tokens in `src/site/styles/theme.css`; everything in `src/core` refers to those and names none of them. Per-page CSS is inlined into each page's `<style>`. *(There is no Tailwind here and never was — `styles/tailwind.css` had its `@tailwind` directives commented out and was 823 lines of hand-written CSS under a misleading name.)*
 - **Backend** — [Netlify Functions](https://docs.netlify.com/functions/overview/) (`netlify/functions/*.mjs`) backed by [Netlify Blobs](https://docs.netlify.com/blobs/overview/) for storage — no database. Shared server-side helpers live in `netlify/lib/`.
 - **Auth** — a custom sign-in modal (`src/js/auth-modal.js`) built on Netlify Identity's GoTrue API, with optional interop with the official Netlify Identity widget.
 - **Media** — user-uploaded images, video, and audio go to [Cloudinary](https://cloudinary.com/) via a *signed* upload. The browser holds no upload credential: `netlify/functions/cloudinary-sign.mjs` checks the caller is signed in and returns a one-shot signature, and `src/js/lib/media.js` uses it.

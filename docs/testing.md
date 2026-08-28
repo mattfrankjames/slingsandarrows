@@ -233,6 +233,25 @@ page shells are consolidated, and both are deliberately left alone until then:
   that day comes: lint, types and unit tests for everyone, credentialed suites
   on branches you control.
 
+## Stylesheets
+
+```
+src/site/styles/theme.css      the band's palette, typefaces and imagery
+src/core/styles/index.css      layer order, then the imports below
+src/core/styles/base.css       element defaults and the page frame
+src/core/styles/components.css buttons, modals, forms, the auth bar
+src/core/_includes/page-styles/*.css   per page, inlined into its <style>
+```
+
+`@layer tokens, base, components, page` fixes precedence once, so a component
+never has to out-specify a base rule to win.
+
+**Everything must be in a layer, including the per-page CSS.** Unlayered rules
+beat every layer regardless of specificity, so a half-extracted component fails
+in a way that looks like nothing at all: hoisting `.modal.active { display: flex }`
+into a layer while `.modal { display: none }` stayed unlayered on the page meant
+the modals silently stopped opening.
+
 ## Formatting
 
 Prettier is available (`npm run format <path>`) but **not enforced**. Running it
