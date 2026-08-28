@@ -163,6 +163,31 @@ Two related things found in the same pass:
   `noStore`, so Phase 0's fix holds — but the config's stated intent is not what
   happens, and the header block should say what it means.
 
+### Verification status — read before trusting any of this
+
+`supabase/migrations/` **has never been executed.** There is no Postgres,
+Docker or Supabase CLI on the development machine, so the schema has been
+parsed and not run.
+
+Parsed means parsed: `libpg-query` is Postgres's own parser, so the syntax is
+real, but it resolves nothing. It would accept a reference to a table that does
+not exist, a policy that locks everyone out, or a trigger that fires on the
+wrong event. Three bugs found by reading rather than by tooling — recursive
+RLS through `has_role`, `''::json` on an empty claim, a null email breaking
+sign-up — are the kind the parser cannot see, and are evidence there may be
+more.
+
+Nothing else in Phase 4 should be built on top of it until it has run once.
+That needs a Supabase project, which needs an account and credentials:
+
+1. A Supabase project, and its connection string in Netlify's environment.
+2. The migration applied to it once, from zero, so the bootstrap path is proven
+   rather than assumed.
+3. The CI job the plan already calls for, running migrations against a preview
+   branch per pull request, which is what keeps step 2 true.
+
+Until then the schema is a proposal.
+
 ### Phase 4.5 — first paint without a loading state
 
 Agreed to follow this phase rather than join it, so the migration stays
