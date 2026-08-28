@@ -114,7 +114,7 @@ test.describe('lightboxes', () => {
     await page.goto('/gallery');
 
     await page.locator('.gallery-item').first().click();
-    await expect(page.locator('#lightbox')).toHaveClass(/active/);
+    await expect(page.locator('#lightbox')).toHaveAttribute('open', '');
     // The counter proves the gallery's own viewer opened, not the shared one.
     await expect(page.locator('#lightbox-counter')).not.toBeEmpty();
     await page.evaluate(() => document.fonts.ready);
@@ -125,7 +125,7 @@ test.describe('lightboxes', () => {
   test('the gallery lightbox after paging to the next item', async ({ page }) => {
     await page.goto('/gallery');
     await page.locator('.gallery-item').first().click();
-    await expect(page.locator('#lightbox')).toHaveClass(/active/);
+    await expect(page.locator('#lightbox')).toHaveAttribute('open', '');
 
     await page.locator('#lightbox-next').click();
     await expect(page.locator('#lightbox-counter')).toContainText('2');
