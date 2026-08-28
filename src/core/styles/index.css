@@ -10,11 +10,17 @@
  * here, so a component never has to out-specify a base rule to win. Later
  * layers beat earlier ones no matter how specific the selectors are.
  *
- * Per-page CSS stays inlined in each page's <style> and deliberately stays
- * *unlayered*, which puts it above every layer — page-specific rules should win
- * without needing !important or a longer selector.
+ * Per-page CSS stays inlined in each page's <style>, wrapped in @layer page —
+ * declared last here, so it wins without needing !important or a longer
+ * selector.
+ *
+ * It has to be layered rather than left bare. Unlayered rules beat every layer
+ * regardless of specificity, so a half-extracted component breaks in a way that
+ * looks like nothing: hoisting `.modal.active { display: flex }` into a layer
+ * while `.modal { display: none }` stayed unlayered on the page meant the
+ * modals could never open again.
  */
-@layer tokens, base, components;
+@layer tokens, base, components, page;
 
 /* The band's own palette, typefaces and imagery. The only file in this chain
    that names anything specific to Slings & Arrows. */

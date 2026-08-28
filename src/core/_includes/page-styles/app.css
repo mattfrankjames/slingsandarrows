@@ -1,25 +1,27 @@
-    .composer {
-      width: 95%;
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    #auth-gate {
-      text-align: center;
-      padding: 3em 1em;
-    }
-    #auth-gate p {
-      margin-block-end: 1em;
-      opacity: 0.7;
-    }
-    .user-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-block-end: 1.5em;
-      padding-block-end: 0.75em;
-      border-block-end: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .user-email {
-      font-size: 0.85em;
-      opacity: 0.6;
-    }
+@layer page {
+      .composer {
+        width: 95%;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      #auth-gate {
+        text-align: center;
+        padding: 3em 1em;
+      }
+      #auth-gate p {
+        margin-block-end: 1em;
+        opacity: 0.7;
+      }
+      .user-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-block-end: 1.5em;
+        padding-block-end: 0.75em;
+        border-block-end: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .user-email {
+        font-size: 0.85em;
+        opacity: 0.6;
+      }
+}
