@@ -91,3 +91,10 @@ blob-report/
 
 # Eleventy's intermediate output; Parcel builds dist/ from it
 .eleventy/
+
+# Visual baselines captured on a laptop. Only the runners' linux/ set is
+# committed and only that set gates a merge; snapshotPathTemplate keys on
+# {platform}, so a local run writes its own directory rather than overwriting
+# CI's. Those files are captured against whatever preview was handy and are
+# throwaway — ignored so a green local run cannot be mistaken for CI agreeing.
+tests/browser/__screenshots__/darwin/

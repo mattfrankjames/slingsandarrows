@@ -133,12 +133,18 @@ To run just them:
 BASE_URL=https://deploy-preview-99--slingsandarrows.netlify.app npm run test:visual
 ```
 
-### Baselines are per platform
+### Baselines are captured on the runners, not on a laptop
 
 Text rasterises differently on macOS and on the Linux runners — enough that a
 set captured on a laptop fails in CI for reasons that have nothing to do with
-the change under review. Both sets are committed, under `darwin/` and `linux/`,
-and **CI's `linux/` set is the one that gates a merge**.
+the change under review. Only **`linux/`** is committed, and it is the set that
+gates a merge.
+
+`snapshotPathTemplate` still keys on `{platform}`, so running the visual specs
+on a Mac writes a `darwin/` set rather than overwriting CI's. Those files are
+throwaway: they are captured against whatever preview you pointed at, they gate
+nothing, and they should not be committed. Delete them, or ignore them — but do
+not treat a local green as CI having agreed.
 
 To bootstrap a platform that has no baselines, let the browser job run once: a
 missing baseline is written by Playwright and still fails the test, and the job
@@ -156,14 +162,23 @@ gh run download <run-id> -n visual-baselines
 Review the images before committing them. The CI job deliberately has no
 `--update-snapshots`: a suite that rewrites its own expectations cannot fail.
 
+The update workflow passes `--update-snapshots=all`, not the bare flag. The
+default mode is `changed`, which rewrites only baselines whose comparison
+already failed — so a change under `maxDiffPixelRatio` updates nothing and the
+job still reports success.
+
 Every diff should be either identical or an intentional, reviewed change. To
-accept a batch of intentional changes, re-run with `-- --update-snapshots` and
-**look at the resulting images in the diff** before committing them.
+accept a batch of intentional changes, re-run with `-- --update-snapshots=all`
+and **look at the resulting images in the diff** before committing them. The
+`=all` matters for the same reason it does in the workflow: the default mode
+leaves anything under the threshold untouched and still exits green.
 
 ### Why they are stable
 
-Four sources of false positives are handled. Resist lowering the threshold when
-something fails — it is far more likely to be a real change:
+Four sources of false positives are handled. Resist *raising* the threshold when
+something fails — a failure is far more likely to be a real change, and the
+number has already been too generous once: at 0.02 it absorbed the entire page
+background changing. It is 0.005.
 
 - **Content** — the read endpoints are stubbed with fixtures
   (`tests/browser/fixtures.js`), so post cards, thread cards and gallery tiles

@@ -100,6 +100,10 @@ npm run build       # production build to dist/
 npm run verify      # lint + typecheck + unit tests — run before pushing
 ```
 
+[docs/refactor-status.md](docs/refactor-status.md) is the working state of the
+rebuild — what has landed, what was decided, what the next phase needs, and the
+mistakes worth not repeating.
+
 See [docs/testing.md](docs/testing.md) for the full picture: what runs in CI,
 why browser tests target a Deploy Preview rather than localhost, the ESLint
 rules that encode past regressions, and the one branch-protection setting that

@@ -33,7 +33,7 @@ identityWidget: true
 
 {% block afterBody %}
 <!-- ── Lightbox ─────────────────────────────────────────────────────────── -->
-  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Media viewer">
+  <dialog class="lightbox" id="lightbox" aria-label="Media viewer">
     <button class="lightbox-close" id="lightbox-close" aria-label="Close lightbox">✕</button>
     <div class="lightbox-inner">
       <div class="lightbox-media-wrap" id="lightbox-media-wrap">
@@ -50,11 +50,10 @@ identityWidget: true
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <!-- ── Upload modal ─────────────────────────────────────────────────────── -->
-  <div class="modal" id="upload-modal" role="dialog"
-    aria-modal="true" aria-labelledby="modal-title">
+  <dialog class="modal" id="upload-modal" aria-labelledby="modal-title">
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modal-title">Add to Gallery</h3>
@@ -97,7 +96,7 @@ identityWidget: true
       </form>
 
     </div>
-  </div>
+  </dialog>
 
   <script type="module" src="./core/js/gallery.js"></script>
 {% endblock %}

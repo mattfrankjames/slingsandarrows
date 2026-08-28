@@ -34,6 +34,21 @@
   a {
     color: inherit;
   }
+
+  /*
+   * The UA stylesheet sets `color: CanvasText` on dialog — black, and a
+   * declaration on the element itself, so it beats the white that would
+   * otherwise inherit from body. Every native dialog rendered black text on
+   * its own near-black surface: the sign-in modal, the new-thread modal, the
+   * gallery upload modal and the lightbox. Only the post composer escaped it,
+   * by happening to set its own colour.
+   *
+   * Set here rather than on each dialog so the next one added is not the fifth
+   * time this is discovered.
+   */
+  dialog {
+    color: var(--color-text);
+  }
   .wrapper {
     background-color: var(--color-page);
     min-height: 100svh;
@@ -64,7 +79,15 @@
     z-index: -1;
     background-image: var(--hero-scrim), var(--hero-narrow);
     background-size: cover;
-    background-position: center;
+    /*
+     * Anchored top-left, as it was before the pseudo-element. `center` looks
+     * like the safer default and is not: the photograph is 1920x1455 against a
+     * 16:9 viewport, so `cover` always overflows, and centring the overflow
+     * pushes the band out of frame — on a phone it crops to the middle of the
+     * mural with the players off both edges. The composition is weighted to the
+     * top-left and wants to stay there.
+     */
+    background-position: 0 0;
     background-repeat: no-repeat;
   }
 
@@ -383,4 +406,48 @@
   }
 
   /* ── Auth Modal ──────────────────────────────────────────────────────────── */
+
+  /* ── Reduced motion ─────────────────────────────────────────────────────── */
+  /*
+   * Two animations here never stop: the grain overlay behind the masthead runs
+   * `static 1s steps(10) infinite`, and the glitch treatment on the title runs
+   * on load. For a visitor with vestibular sensitivity the header simply never
+   * settles, and nothing in the codebase asked whether they wanted that (F-13).
+   *
+   * The blanket rule catches everything — including the two studio animations
+   * and the lightbox fade — rather than listing them and missing the next one.
+   * Durations are near-zero rather than `none` so animation events still fire
+   * and any JavaScript waiting on animationend is not left hanging.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ── Focus ──────────────────────────────────────────────────────────────── */
+  /*
+   * A visible focus ring on everything interactive. Several components set
+   * their own :focus styling on inputs, but buttons, links, the nav and the
+   * gallery tiles had nothing, so keyboard focus was invisible on most of the
+   * site — you could tab through a page with no idea where you were.
+   *
+   * :focus-visible rather than :focus, so a mouse click does not leave a ring
+   * behind on a button that was just pressed.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* The UA default ring is removed only where ours has replaced it. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }

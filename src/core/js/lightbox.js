@@ -1,30 +1,48 @@
 // Minimal single-image lightbox — click a post/reply photo to view it full-size.
 // Self-contained: injects its own styles and DOM on first use.
+//
+// Built on <dialog>. The previous version was a div with role="dialog" and
+// aria-modal="true", which promises behaviour the browser then has to be told
+// to provide: focus stayed on the page behind, Tab walked straight out of the
+// open lightbox, and nothing restored focus on close. showModal() gives all of
+// that — the focus trap, the inert background, the ::backdrop and Escape — from
+// the platform, and deletes the code that was half-implementing it.
 
-let overlay, imgEl, captionEl;
+/** @type {HTMLDialogElement | null} */
+let dialog = null;
+let imgEl, captionEl;
 
 function ensureBuilt() {
-  if (overlay) return;
+  if (dialog) return;
 
   const style = document.createElement('style');
   style.textContent = `
     .sa-lightbox {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.9);
-      z-index: 1000;
+      border: 0;
+      padding: 2em 1em;
+      max-width: 100vw;
+      max-height: 100vh;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+    }
+    /* <dialog> is display:none until open, so this replaces the old
+       .active class entirely — the open state is now the element's own. */
+    .sa-lightbox[open] {
+      display: flex;
       align-items: center;
       justify-content: center;
-      padding: 2em 1em;
     }
-    .sa-lightbox.active { display: flex; }
+    .sa-lightbox::backdrop {
+      background: rgba(0, 0, 0, 0.9);
+    }
     .sa-lightbox img {
       max-width: 100%;
       max-height: 85vh;
       object-fit: contain;
       display: block;
-      border-radius: 4px;
+      border-radius: var(--radius, 4px);
     }
     .sa-lightbox-caption {
       color: rgba(255, 255, 255, 0.7);
@@ -53,44 +71,53 @@ function ensureBuilt() {
   `;
   document.head.appendChild(style);
 
-  overlay = document.createElement('div');
-  overlay.className = 'sa-lightbox';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.innerHTML = `
+  dialog = document.createElement('dialog');
+  dialog.className = 'sa-lightbox';
+  dialog.setAttribute('aria-label', 'Media viewer');
+  dialog.innerHTML = `
     <button class="sa-lightbox-close" aria-label="Close">✕</button>
     <figure class="sa-lightbox-figure">
       <img alt="">
       <figcaption class="sa-lightbox-caption"></figcaption>
     </figure>
   `;
-  document.body.appendChild(overlay);
+  document.body.appendChild(dialog);
 
-  imgEl = overlay.querySelector('img');
-  captionEl = overlay.querySelector('.sa-lightbox-caption');
+  imgEl = dialog.querySelector('img');
+  captionEl = dialog.querySelector('.sa-lightbox-caption');
 
-  overlay.querySelector('.sa-lightbox-close').addEventListener('click', close);
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) close();
+  dialog.querySelector('.sa-lightbox-close').addEventListener('click', close);
+
+  // Click-outside-to-close. The dialog fills the viewport so that its
+  // ::backdrop can be styled, which means "outside" is the dialog's own
+  // padding — anything that is not the figure or the close button.
+  dialog.addEventListener('click', event => {
+    if (event.target === dialog) close();
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && overlay.classList.contains('active')) close();
+
+  // Escape is handled by the browser, which fires 'cancel' then 'close'. The
+  // scroll lock is released in the 'close' handler so it lifts however the
+  // dialog was dismissed.
+  dialog.addEventListener('close', () => {
+    document.body.style.overflow = '';
   });
 }
 
+/**
+ * @param {string} src
+ * @param {string} [caption]
+ */
 function open(src, caption = '') {
   ensureBuilt();
   imgEl.src = src;
   imgEl.alt = caption;
   captionEl.textContent = caption;
-  overlay.classList.add('active');
+  dialog.showModal();
   document.body.style.overflow = 'hidden';
 }
 
 function close() {
-  if (!overlay) return;
-  overlay.classList.remove('active');
-  document.body.style.overflow = '';
+  if (dialog?.open) dialog.close();
 }
 
 export const lightbox = { open, close };

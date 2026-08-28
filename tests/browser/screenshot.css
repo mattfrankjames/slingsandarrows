@@ -1,15 +1,31 @@
 /*
  * Injected only while a screenshot is captured (see visual.spec.js).
  *
- * The hero photograph is the background of .wrapper on every page. Left in, it
- * dominates each PNG — the baselines were 6 MB — while being the one thing
- * Phase 3 is least likely to break. Flattening it to the underlying colour
- * keeps the diffs about layout, spacing and typography, which is what actually
- * moves when the page shells are rebuilt.
+ * The hero photograph sits behind every page. Left in, it dominates each PNG —
+ * the baselines were 6 MB — while being the one thing Phase 3 is least likely
+ * to break. Flattening it to the underlying colour keeps the diffs about
+ * layout, spacing and typography, which is what actually moves when the page
+ * shells are rebuilt.
+ *
+ * Both selectors are needed, and for a while only the first was. The hero moved
+ * from a background on .wrapper to a fixed .wrapper::before, and this file was
+ * not updated — so the rule below went on matching an element that no longer
+ * carried the image, and the captures quietly filled with the fixture
+ * placeholder blurred over the navy body colour. Every baseline still passed:
+ * the change was under maxDiffPixelRatio and nobody looked at the PNGs.
+ *
+ * body is flattened too. It is navy, not black, and shows through wherever the
+ * blurred backdrop is translucent.
  *
  * Contrast against the real background is checked by axe, not here.
  */
-.wrapper {
+.wrapper,
+body {
+  background-image: none !important;
+  background-color: #0d0d0d !important;
+}
+
+.wrapper::before {
   background-image: none !important;
   background-color: #0d0d0d !important;
 }

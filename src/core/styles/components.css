@@ -8,22 +8,24 @@
  */
 @layer components {
   .auth-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
+    border: 0;
+    padding: 1em;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .auth-modal[open] {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1em;
   }
 
-  .auth-modal[hidden] {
-    display: none !important;
-  }
-
-  .auth-modal-overlay {
-    position: absolute;
-    inset: 0;
+  /* Was a .auth-modal-overlay div positioned behind the content. The browser
+     paints this across the viewport and makes everything behind it inert. */
+  .auth-modal::backdrop {
     background: rgba(0, 0, 0, 0.8);
   }
 
@@ -396,7 +398,6 @@
   /* ── Post composer modal (feed page "+ New Post" dialog) ─────────────────── */
   dialog#post-composer-dialog {
     background: #0d0d0d;
-    color: white;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     padding: 1.75em 2em;
@@ -539,18 +540,30 @@
     padding: 3em 0;
     opacity: 0.6;
   }
+  /*
+   * <dialog> is display:none until open and centred by the browser, so the
+   * open state is the element's own rather than an .active class the JavaScript
+   * has to remember to add and remove. The dimming moves to ::backdrop, which
+   * the browser paints across the whole viewport for free.
+   */
   .modal {
-  display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 100;
+    border: 0;
+    padding: 1em;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .modal[open] {
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1em;
   }
-  .modal.active {
-  display: flex;
+
+  .modal::backdrop {
+    background: rgba(0, 0, 0, 0.75);
   }
   .modal-content {
   background: #0d0d0d;
