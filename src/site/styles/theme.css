@@ -47,5 +47,8 @@
     --hero-narrow: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_768/v1738006890/hero_paeruh");
     --hero-wide: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_1920/v1738006890/hero_paeruh");
     --hero-scrim: linear-gradient(rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%);
+
+    /* The grain overlay behind the masthead. */
+    --texture-static: url("https://res.cloudinary.com/mjtestrun/image/upload/f_auto,q_80,w_512/v1738007110/static-bg_aamn1d");
   }
 }

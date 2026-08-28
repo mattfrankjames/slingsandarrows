@@ -53,10 +53,24 @@ describe('src/core stays band-agnostic', () => {
     const offenders = [];
 
     for (const file of coreFiles) {
-      readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-        // Comments may name these while explaining why they are absent.
-        const code = line.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '');
-        if (pattern.test(code)) {
+      // Comments legitimately name these things while explaining why they are
+      // absent, so strip them first.
+      //
+      // Block comments are blanked in place rather than removed, so the line
+      // numbers reported below stay accurate — an earlier version only handled
+      // comments opening and closing on one line, and read a multi-line one as
+      // code.
+      //
+      // `//` is only stripped from JavaScript. CSS has no line comments, and
+      // stripping them there truncated every url(https://…) at the protocol
+      // slashes — which silently hid four Cloudinary URLs in the stylesheets.
+      const isJs = /\.(js|mjs)$/.test(file);
+      let source = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, block => block.replace(/[^\n]/g, ' '));
+      if (isJs) source = source.replace(/\/\/.*$/gm, '');
+
+      source.split('\n').forEach((line, i) => {
+        if (pattern.test(line)) {
           offenders.push(`${relative('.', file)}:${i + 1}  ${line.trim().slice(0, 90)}`);
         }
       });
