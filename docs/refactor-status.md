@@ -136,6 +136,15 @@ images hidden, `/app` baselined while signed out (so it captured a sign-in
 prompt), and a hero substitute that removed the very properties it was meant to
 guard. Each looked like passing coverage.
 
+A fifth, found while fixing the dialog colours: `screenshot.css` flattened the
+hero by targeting `.wrapper`, and kept doing so after the hero moved to
+`.wrapper::before`. The captures filled with the fixture placeholder blurred
+over the navy body colour, and all 30 comparisons passed — `maxDiffPixelRatio`
+was 0.02, wide enough to absorb the page's entire ground. It is 0.005 now, and
+the flattening covers the pseudo-element. Note what that number can and cannot
+do: the black-on-black dialog text measured 0.0015 of the frame, so no workable
+threshold catches a recolouring. That belongs in an assertion, and is one now.
+
 **Screenshots are bad at "is this consistent across pages."** The hero
 regression — 6.8× scaling on the feed, missing frosting on two pages — passed 30
 comparisons. Explicit cross-page assertions found it and now guard it.
@@ -148,6 +157,20 @@ throwaway probe file is the only way to know.
 regardless of specificity. Hoisting `.modal.active` into a layer while
 `.modal { display: none }` stayed unlayered meant the modals silently stopped
 opening.
+
+**`<dialog>` carries its own colour.** The UA stylesheet sets `color:
+CanvasText` on the element, which beats anything inherited from `body` no
+matter how dark the page is. Four of the five dialogs shipped black text on
+their own near-black surface; the composer escaped only by declaring
+`color: white` itself. It is one rule on `dialog` in `base.css` now. The
+focus-trap tests passed throughout — they assert behaviour, and the behaviour
+was correct — and axe never saw a dialog open.
+
+**A cross-page assertion only guards what it reads.** The hero check compares
+`background-image`, `background-size` and `position` across all eight pages and
+said nothing when the crop moved: switching `background-position` from `0 0` to
+`center` pushed the band out of frame on the home page and off both edges on a
+phone, with every assertion still green. `background-position` is compared now.
 
 **`:focus-visible` does not match programmatic focus.** A test calling
 `el.focus()` measures `:focus` only and reports no ring where one works.
@@ -167,9 +190,11 @@ indistinguishable from a good capture.
 duplicates. Two have nearly reached CI. Sweep before committing:
 `find . -path ./node_modules -prune -o -name "* 2*" -print`
 
-**Baselines are per platform** (`darwin/`, `linux/`). CI's linux set gates the
-merge. Regenerate via the *Update visual baselines* workflow, then download and
-commit — reviewing the images first.
+**Baselines come from the runners.** Only `linux/` is committed — every
+workflow is `ubuntu-latest`, and that set gates the merge. Running the visual
+specs on a Mac writes a throwaway `darwin/` set that gates nothing; do not
+commit it. Regenerate via the *Update visual baselines* workflow, then download
+and commit — reviewing the images first.
 
 ---
 

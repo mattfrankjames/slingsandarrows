@@ -52,12 +52,19 @@ jobs:
 
       # No `|| true`. --update-snapshots passes when it writes a snapshot, so
       # anything that fails here is a real problem and should be visible.
+      #
+      # `=all`, not the bare flag. The default mode is `changed`, which rewrites
+      # only a baseline whose comparison already failed — so a change smaller
+      # than maxDiffPixelRatio updates nothing, and the job reports success
+      # having written the same files back. That is how the dialogs kept their
+      # black-on-black text through a baseline refresh. `all` rewrites every
+      # capture, which is what a workflow named "update baselines" should do.
       - name: Capture
         env:
           BASE_URL: ${{ inputs.preview_url }}
         run: |
           npx playwright test --project=desktop --project=mobile \
-            visual.spec.js visual-authed.spec.js --update-snapshots
+            visual.spec.js visual-authed.spec.js --update-snapshots=all
 
       # Uploaded even on failure, so a partial capture can still be inspected —
       # but the job goes red, which is the part that was missing.

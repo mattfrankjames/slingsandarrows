@@ -48,7 +48,23 @@ export default defineConfig({
     toHaveScreenshot: {
       // Font rendering and image decoding differ enough between machines that a
       // zero threshold fails on cosmetically identical pages.
-      maxDiffPixelRatio: 0.02,
+      //
+      // 0.02 was too generous to be a guard. It passed a whole background
+      // change — the hero moving to a pseudo-element that screenshot.css no
+      // longer flattened, filling every capture with a navy wash — without one
+      // comparison objecting.
+      //
+      // 0.005 catches that class: a change to the page's ground, or to a
+      // region rather than a few glyphs. It is deliberately not tight enough to
+      // catch text recolouring, and no workable number would be — the dialog
+      // heading and labels going black measured 1923 pixels, 0.0015 of the
+      // frame, and the captures already jitter by 2px in height between runs.
+      // Colour and contrast are asserted directly in a11y.spec.js instead,
+      // which is where that belongs.
+      //
+      // If the Linux runners need more room for text rasterisation, raise this
+      // deliberately with a note, rather than back to a number that cannot fail.
+      maxDiffPixelRatio: 0.005,
       animations: 'disabled',
     },
   },
