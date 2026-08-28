@@ -1,6 +1,6 @@
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
 import { initPostComposerForm, retryQueuedPostsOnReconnect, syncQueuedPostsIfOnline } from './post-composer.js';
-import { currentEmail, clearSession, signOut } from './lib/session.js';
+import { currentEmail, clearSession } from './lib/session.js';
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async () => {
@@ -27,9 +27,9 @@ import { currentEmail, clearSession, signOut } from './lib/session.js';
 function initAuth() {
   const authGate      = document.getElementById('auth-gate');
   const composerPanel = document.getElementById('composer-panel');
-  const userEmailEl   = document.getElementById('user-email');
+
   const loginBtn      = document.getElementById('login-btn');
-  const logoutBtn     = document.getElementById('logout-btn');
+
 
   const resolveUser = () => {
     const email = currentEmail();
@@ -38,15 +38,13 @@ function initAuth() {
 
   function applyUser(user) {
     if (user) {
-      authGate.hidden         = true;
-      composerPanel.hidden    = false;
-      userEmailEl.textContent = user.email;
+      authGate.hidden      = true;
+      composerPanel.hidden = false;
       // Close the custom auth modal in case it was open
       authModal.close();
     } else {
-      authGate.hidden         = false;
-      composerPanel.hidden    = true;
-      userEmailEl.textContent = '';
+      authGate.hidden      = false;
+      composerPanel.hidden = true;
     }
   }
 
@@ -72,16 +70,11 @@ function initAuth() {
     applyUser({ email: e.detail.email });
   });
 
-  // Login button opens the custom auth modal
+  // Login button opens the custom auth modal. Signing out is handled by the
+  // shared auth bar (initAuthBar) — this page used to carry a second Sign Out
+  // of its own inside the composer panel, so both rendered at once.
   loginBtn.addEventListener('click', () => authModal.open('login'));
 
-  logoutBtn.addEventListener('click', () => {
-    const hadWidgetSession = Boolean(identity?.currentUser?.());
-    signOut();
-    // The widget's 'logout' handler repaints when there was a widget session;
-    // otherwise nothing else will.
-    if (!hadWidgetSession) applyUser(null);
-  });
 
   // Wire the post form once (it's always in the DOM)
   initPostComposerForm();
