@@ -163,30 +163,41 @@ Two related things found in the same pass:
   `noStore`, so Phase 0's fix holds — but the config's stated intent is not what
   happens, and the header block should say what it means.
 
-### Verification status — read before trusting any of this
+### Verification status
 
-`supabase/migrations/` **has never been executed.** There is no Postgres,
-Docker or Supabase CLI on the development machine, so the schema has been
-parsed and not run.
+`supabase/migrations/` **applied cleanly to an empty project on the first run**,
+2026-08-28, through the dashboard SQL Editor. Verified by querying the
+catalogue rather than by trusting the editor's "Success":
 
-Parsed means parsed: `libpg-query` is Postgres's own parser, so the syntax is
-real, but it resolves nothing. It would accept a reference to a table that does
-not exist, a policy that locks everyone out, or a trigger that fires on the
-wrong event. Three bugs found by reading rather than by tooling — recursive
-RLS through `has_role`, `''::json` on an empty claim, a null email breaking
-sign-up — are the kind the parser cannot see, and are evidence there may be
-more.
+| Check | Result |
+|---|---|
+| Tables with RLS enabled | 9 / 9 |
+| Tables with RLS **off** | 0 |
+| Policies | 23 / 23 |
+| Views | 3 / 3 |
+| Functions | 4 / 4 |
+| `has_role` is `security definer` | yes |
+| Trigger on `auth.users` | `on_auth_user_created` |
 
-Nothing else in Phase 4 should be built on top of it until it has run once.
-That needs a Supabase project, which needs an account and credentials:
+The `security definer` row is the one that mattered. `has_role` reads
+`public.roles`, and the policies on `public.roles` call `has_role` to decide who
+may read them; without definer rights that recurses and Postgres aborts every
+policy consulting a role. It parsed identically either way, so only running it
+could tell us.
 
-1. A Supabase project, and its connection string in Netlify's environment.
-2. The migration applied to it once, from zero, so the bootstrap path is proven
-   rather than assumed.
-3. The CI job the plan already calls for, running migrations against a preview
-   branch per pull request, which is what keeps step 2 true.
+There is still no Postgres, Docker or Supabase CLI on the development machine,
+so the loop is: write here, apply there, read the catalogue back. That is
+workable for schema changes and will not scale to the data migration, which
+needs to be run and re-run. The CI job the plan calls for — migrations against
+a preview branch per pull request — is what closes that gap, and is worth
+building before the migration script rather than after.
 
-Until then the schema is a proposal.
+**What is proven and what is not.** The objects exist and RLS is on. Whether
+each policy *admits and refuses the right people* is untested; that is a
+behavioural question and the catalogue cannot answer it. Until there is a test
+that signs in as an author, a non-author and an anonymous visitor and asserts
+what each can read and write, treat the policies as plausible rather than
+correct.
 
 ### Phase 4.5 — first paint without a loading state
 
