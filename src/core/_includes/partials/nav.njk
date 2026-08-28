@@ -1,0 +1,15 @@
+{#
+  Site navigation, from site.json.
+
+  The links were previously hand-copied into eight files and had already
+  drifted: the home page used clean URLs while every other page pointed at
+  ./feed.html and friends. One list, one form.
+
+  aria-current marks the page you are on, which the copies never did.
+#}
+<nav class="site-nav" aria-label="Site navigation">
+  {% set here = page.url | cleanUrl %}
+  {% for item in site.nav %}
+  <a href="{{ item.href }}"{% if here == item.href %} aria-current="page"{% endif %}>{{ item.label }}</a>
+  {% endfor %}
+</nav>

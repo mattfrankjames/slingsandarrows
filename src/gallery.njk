@@ -1,0 +1,103 @@
+---
+title: "Slings & Arrows | Gallery"
+description: "Photo and video gallery from Slings & Arrows"
+permalink: "/gallery.html"
+pageStyles: gallery
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+      <div class="gallery-container">
+
+        <div id="auth-bar" hidden class="auth-bar">
+          <span id="auth-bar-email" class="auth-bar-email"></span>
+          <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
+        </div>
+
+        <div class="gallery-header">
+          <h2>Gallery</h2>
+          <!-- Upload button — shown only when logged in as allowed author -->
+          <button class="btn btn-primary" id="upload-btn" type="button" hidden>
+            + Add Photo / Video
+          </button>
+        </div>
+
+        <div id="loading" role="status" aria-live="polite">Loading…</div>
+        <div id="empty-state" hidden>No photos yet.</div>
+        <div id="error-state" hidden>Could not load gallery.</div>
+        <div id="gallery-grid" role="list" aria-label="Photo and video gallery"></div>
+
+      </div>
+{% endblock %}
+
+{% block afterBody %}
+<!-- ── Lightbox ─────────────────────────────────────────────────────────── -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Media viewer">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close lightbox">✕</button>
+    <div class="lightbox-inner">
+      <div class="lightbox-media-wrap" id="lightbox-media-wrap">
+        <!-- populated by JS -->
+      </div>
+      <div class="lightbox-bar">
+        <nav class="lightbox-nav" aria-label="Gallery navigation">
+          <button id="lightbox-prev" aria-label="Previous item">&#8592;</button>
+          <button id="lightbox-next" aria-label="Next item">&#8594;</button>
+        </nav>
+        <div class="lightbox-info">
+          <p class="lightbox-caption" id="lightbox-caption"></p>
+          <p class="lightbox-counter" id="lightbox-counter"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Upload modal ─────────────────────────────────────────────────────── -->
+  <div class="modal" id="upload-modal" role="dialog"
+    aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Add to Gallery</h3>
+        <button class="modal-close-btn" id="modal-close" aria-label="Close modal">✕</button>
+      </div>
+
+      <!-- Auth gate — shown when logged out -->
+      <div id="gallery-auth-gate" hidden>
+        <p style="margin-block-end: 1em; opacity: 0.8;">Sign in to upload photos and videos</p>
+        <button class="btn" id="login-btn"
+          style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
+          Sign In
+        </button>
+      </div>
+
+      <!-- Upload form — shown when logged in -->
+      <form id="upload-form" hidden>
+        <div class="form-group">
+          <label for="media-file">Photo or Video *</label>
+          <input type="file" id="media-file" name="media" accept="image/*,video/*" required>
+          <div id="media-preview-wrap" hidden>
+            <div id="media-preview"></div>
+            <button type="button" id="remove-media-btn" class="btn btn-sm btn-danger"
+              style="margin-block-start: 0.5em;">
+              Remove
+            </button>
+          </div>
+          <p id="media-status" aria-live="polite"></p>
+        </div>
+        <div class="form-group">
+          <label for="media-caption">Caption (optional)</label>
+          <textarea id="media-caption" name="caption"
+            placeholder="Describe this photo or video…"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="upload-submit-btn">Upload</button>
+          <button type="button" class="btn" id="modal-cancel">Cancel</button>
+        </div>
+        <p id="form-status" role="status" aria-live="polite"></p>
+      </form>
+
+    </div>
+  </div>
+
+  <script type="module" src="./core/js/gallery.js"></script>
+{% endblock %}

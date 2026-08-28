@@ -1,0 +1,54 @@
+{#
+  The home page's shell, which is genuinely different rather than drifted: the
+  masthead carries an announcement instead of the title, the title is the
+  page's own h1, and the navigation sits in the footer.
+
+  It shares the head, the social icons and the skip link with every other page;
+  only the arrangement differs. Extending base.njk and overriding would have
+  meant a base layout with holes shaped like this one page.
+#}
+<!DOCTYPE html>
+<html lang="{{ site.locale }}">
+<head>
+  {% include "partials/head.njk" %}
+  {% if identityWidget %}
+  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  {% endif %}
+  {% if pageStyles %}<style>{% include "page-styles/" + pageStyles + ".css" %}</style>{% endif %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="wrapper min-h-screen">
+    {% if site.announcement %}
+    <header class="p-4 text-white">
+      <p>{{ site.announcement.emoji }}<strong>{{ site.announcement.text | safe }}</strong> <a href="{{ site.announcement.href }}">{{ site.announcement.linkLabel }}</a>{{ site.announcement.emoji }}</p>
+    </header>
+    {% endif %}
+
+    <main class="p-4 home" id="main-content">
+      <h1 class="glitch">
+        <span aria-hidden="true">{{ site.name }}</span>
+        {{ site.name }}
+        <span aria-hidden="true">{{ site.name }}</span>
+      </h1>
+      <p class="text-emphasis mb-2">{{ site.tagline }}</p>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="p-4 text-center text-white">
+      <nav class="bottom-nav" aria-label="Site navigation">
+        {% for item in site.nav %}
+        <a href="{{ item.href }}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
+      <div style="display: flex;justify-content: space-between;width:100%;">
+        <p>&copy; {{ buildYear }} {{ site.name }}</p>
+        {% include "partials/social-icons.njk" %}
+      </div>
+    </footer>
+  </div>
+
+  {% block afterBody %}{% endblock %}
+</body>
+</html>

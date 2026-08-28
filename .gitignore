@@ -88,3 +88,6 @@ test-results/
 playwright-report/
 blob-report/
 .lighthouseci/
+
+# Eleventy's intermediate output; Parcel builds dist/ from it
+.eleventy/

@@ -1,0 +1,341 @@
+---
+title: "Slings & Arrows | Studio"
+description: "Interactive music studio with Web MIDI synthesizer, drum machine, and bass sequencer. Create and record music in your browser."
+permalink: "/studio.html"
+pageStyles: studio
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+      <div class="instruments-container">
+
+        <h2>Instruments</h2>
+
+        <!-- ── Universal transport ───────────────────────────────────────── -->
+        <div class="universal-transport" id="universal-transport">
+
+          <!-- Row 1: BPM slider -->
+          <div class="universal-bpm">
+            <label for="universal-bpm">BPM</label>
+            <input type="range" id="universal-bpm" min="40" max="240" step="1" value="120"
+              aria-label="Global tempo in beats per minute">
+            <span id="universal-bpm-value">120</span>
+          </div>
+
+          <!-- Row 2: action buttons -->
+          <div class="transport-actions">
+            <button class="stop-all-btn" id="stop-all-btn" type="button"
+              aria-label="Stop drum machine and sequencers">
+              ■ Stop Sequencers
+            </button>
+            <button class="record-btn" id="record-btn" type="button"
+              aria-pressed="false" aria-label="Start recording (R)">
+              ● Record
+            </button>
+            <span class="record-time" id="record-time" hidden>0:00</span>
+            <span class="transport-hint">Start sequencers first to include them</span>
+          </div>
+
+        </div>
+
+        <!-- ── Tab navigation ────────────────────────────────────────────── -->
+        <div class="instrument-tabs" role="tablist" aria-label="Instrument selection">
+          <button class="tab-btn" id="tab-synth"
+            role="tab" aria-selected="true" aria-controls="panel-synth">
+            Synth
+          </button>
+          <button class="tab-btn" id="tab-drums"
+            role="tab" aria-selected="false" aria-controls="panel-drums">
+            Drum Machine
+          </button>
+          <button class="tab-btn" id="tab-bass"
+            role="tab" aria-selected="false" aria-controls="panel-bass">
+            Bass Sequencer
+          </button>
+          <button class="tab-btn" id="tab-mixer"
+            role="tab" aria-selected="false" aria-controls="panel-mixer">
+            Mixer
+          </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             SYNTH PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel tab-panel--active" id="panel-synth"
+          role="tabpanel" aria-labelledby="tab-synth">
+
+          <p class="intro-text">
+            Click the keys to play, or connect a MIDI controller. You can also use your
+            computer keyboard — <kbd>Z</kbd>–<kbd>M</kbd> for the white keys and
+            <kbd>S D</kbd> / <kbd>G H J</kbd> for the black keys.
+            Use <kbd>↑</kbd> / <kbd>↓</kbd> to shift octaves.
+          </p>
+
+          <div class="instrument-panel">
+            <h3>Synth</h3>
+
+            <!-- MIDI status -->
+            <div class="midi-status" id="midi-status" role="status" aria-live="polite">
+              <span class="midi-indicator" id="midi-indicator" aria-hidden="true"></span>
+              <span id="midi-text">No MIDI device connected</span>
+            </div>
+
+            <!-- Octave selector -->
+            <div class="octave-display">
+              <span>Octave</span>
+              <button class="octave-btn" id="octave-down" aria-label="Octave down">−</button>
+              <span id="octave-value">4</span>
+              <button class="octave-btn" id="octave-up" aria-label="Octave up">+</button>
+            </div>
+
+            <!-- On-screen keyboard -->
+            <div class="keyboard" id="keyboard" role="group" aria-label="Synthesizer keyboard"></div>
+
+            <!-- Synth controls -->
+            <div class="controls">
+              <div class="control-group">
+                <label for="waveform">Wave</label>
+                <select id="waveform" aria-label="Oscillator waveform">
+                  <option value="sine">Sine</option>
+                  <option value="square">Square</option>
+                  <option value="sawtooth">Sawtooth</option>
+                  <option value="triangle">Triangle</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="attack">Attack</label>
+                <input type="range" id="attack" min="0.001" max="2" step="0.001" value="0.01"
+                  aria-label="Attack time">
+                <span class="control-value" id="attack-value">10ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="decay">Decay</label>
+                <input type="range" id="decay" min="0.001" max="2" step="0.001" value="0.1"
+                  aria-label="Decay time">
+                <span class="control-value" id="decay-value">100ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="sustain">Sustain</label>
+                <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7"
+                  aria-label="Sustain level">
+                <span class="control-value" id="sustain-value">70%</span>
+              </div>
+
+              <div class="control-group">
+                <label for="release">Release</label>
+                <input type="range" id="release" min="0.001" max="4" step="0.001" value="0.5"
+                  aria-label="Release time">
+                <span class="control-value" id="release-value">500ms</span>
+              </div>
+
+              <div class="control-group">
+                <label for="volume">Volume</label>
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.3"
+                  aria-label="Master volume">
+                <span class="control-value" id="volume-value">30%</span>
+              </div>
+            </div>
+
+            <div class="info-text" aria-label="Keyboard shortcuts">
+              <strong>White keys:</strong> Z X C V B N M<br>
+              <strong>Black keys:</strong> S D &nbsp; G H J<br>
+              <strong>Octave:</strong> ↑ / ↓ arrow keys<br>
+              <strong>Record:</strong> R (toggle start/stop)<br>
+              <strong>MIDI:</strong> Connect a device to play automatically
+            </div>
+          </div>
+        </div><!-- /panel-synth -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             DRUM MACHINE PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-drums"
+          role="tabpanel" aria-labelledby="tab-drums">
+
+          <p class="intro-text">
+            Toggle steps on/off for each drum voice. Hit Play to start the loop.
+            Try a preset to get going fast, or build your own pattern from scratch.
+          </p>
+
+          <div class="instrument-panel">
+            <h3>Drum Machine</h3>
+
+            <!-- Transport + Volume -->
+            <div class="drum-transport">
+              <button class="drum-play-btn" id="drum-play-btn"
+                aria-pressed="false" aria-label="Play or stop the drum machine">
+                ▶ Play
+              </button>
+
+              <div class="control-group">
+                <label for="drum-volume">Volume</label>
+                <input type="range" id="drum-volume" min="0" max="1" step="0.01" value="0.6"
+                  aria-label="Master volume">
+                <span class="control-value" id="drum-volume-value">60%</span>
+              </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="drum-preset-row" role="group" aria-label="Pattern presets">
+              <button class="preset-btn" data-drum-preset="basic" type="button">Basic</button>
+              <button class="preset-btn" data-drum-preset="funk"  type="button">Funk</button>
+              <button class="drum-clear-btn" id="drum-clear-btn"  type="button">Clear</button>
+            </div>
+
+            <!-- Step grid (populated by JS) -->
+            <div id="drum-grid" role="group" aria-label="16-step drum grid"></div>
+
+            <p style="font-size:0.82em; opacity:0.5; line-height:1.6; margin-block-start:0.75em;">
+              Each column is one 16th note. Steps are grouped into 4 beats.
+              Beat numbers appear inside the first step of each group.
+            </p>
+          </div>
+        </div><!-- /panel-drums -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             BASS SEQUENCER PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-bass"
+          role="tabpanel" aria-labelledby="tab-bass">
+
+          <p class="intro-text">
+            A 16-step bass line sequencer. Toggle steps on/off, pick a note for each step,
+            set your tempo and hit play. Try a preset to get started fast.
+          </p>
+
+          <div class="instrument-panel">
+            <h3>Bass Sequencer</h3>
+
+            <!-- Transport + tempo -->
+            <div class="seq-transport">
+              <button class="seq-play-btn" id="seq-play-btn"
+                aria-pressed="false" aria-label="Play or stop the sequencer">
+                ▶ Play
+              </button>
+
+              <div class="seq-control-row">
+                <label for="seq-note-len">Note</label>
+                <input type="range" id="seq-note-len" min="0.05" max="1" step="0.01" value="0.5"
+                  aria-label="Note length as fraction of step">
+                <span class="seq-control-value" id="seq-note-len-value">50%</span>
+              </div>
+
+              <div class="seq-control-row">
+                <label for="seq-waveform">Wave</label>
+                <select id="seq-waveform" aria-label="Oscillator waveform">
+                  <option value="sawtooth" selected>Sawtooth</option>
+                  <option value="sine">Sine</option>
+                  <option value="square">Square</option>
+                  <option value="triangle">Triangle</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="seq-preset-row" role="group" aria-label="Pattern presets">
+              <button class="preset-btn" data-preset="classic" type="button">Classic</button>
+              <button class="preset-btn" data-preset="walking" type="button">Walking</button>
+              <button class="preset-btn" data-preset="funk"    type="button">Funk</button>
+              <button class="seq-clear-btn" id="seq-clear-btn" type="button">Clear</button>
+            </div>
+
+            <!-- Step grid (populated by JS) -->
+            <div id="seq-grid" role="group" aria-label="16-step sequencer grid"></div>
+
+            <!-- Volume -->
+            <div class="seq-control-row" style="margin-block-end: 0.5em;">
+              <label for="seq-volume">Volume</label>
+              <input type="range" id="seq-volume" min="0" max="1" step="0.01" value="0.5"
+                aria-label="Master volume">
+              <span class="seq-control-value" id="seq-volume-value">50%</span>
+            </div>
+
+            <!-- ADSR (collapsed by default) -->
+            <details class="seq-adsr-details">
+              <summary>Envelope (ADSR)</summary>
+              <div class="seq-adsr-grid">
+                <div class="seq-control-row">
+                  <label for="seq-attack">Attack</label>
+                  <input type="range" id="seq-attack" min="0.001" max="0.5" step="0.001" value="0.005"
+                    aria-label="Attack time">
+                  <span class="seq-control-value" id="seq-attack-value">5ms</span>
+                </div>
+                <div class="seq-control-row">
+                  <label for="seq-decay">Decay</label>
+                  <input type="range" id="seq-decay" min="0.001" max="1" step="0.001" value="0.08"
+                    aria-label="Decay time">
+                  <span class="seq-control-value" id="seq-decay-value">80ms</span>
+                </div>
+                <div class="seq-control-row">
+                  <label for="seq-sustain">Sustain</label>
+                  <input type="range" id="seq-sustain" min="0" max="1" step="0.01" value="0.5"
+                    aria-label="Sustain level">
+                  <span class="seq-control-value" id="seq-sustain-value">50%</span>
+                </div>
+                <div class="seq-control-row">
+                  <label for="seq-release">Release</label>
+                  <input type="range" id="seq-release" min="0.001" max="2" step="0.001" value="0.15"
+                    aria-label="Release time">
+                  <span class="seq-control-value" id="seq-release-value">150ms</span>
+                </div>
+              </div>
+            </details>
+
+            <p style="font-size:0.82em; opacity:0.5; line-height:1.6; margin-block-start:0.75em;">
+              <strong style="opacity:0.9;">Steps:</strong> each column is a 16th note.
+              Click a step to activate it, then choose its note from the dropdown below.
+              Steps are grouped into 4 beats (numbered 1–4 above the grid).
+            </p>
+          </div>
+        </div><!-- /panel-bass -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             MIXER PANEL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-mixer"
+          role="tabpanel" aria-labelledby="tab-mixer">
+
+          <p class="intro-text">
+            Adjust the level, pan, mute, and solo for each instrument. VU meters
+            show real-time signal levels. The Master channel controls the final
+            output level. Start the instruments on their own tabs first, then
+            come back here to mix.
+          </p>
+
+          <div class="instrument-panel mixer-panel">
+            <h3>Mixer</h3>
+            <div id="mixer-tracks" role="group" aria-label="Mixer channel strips">
+              <p style="opacity:0.55; font-size:0.9em; padding:1em 0;">
+                Loading mixer… (interact with any instrument first to unlock audio)
+              </p>
+            </div>
+          </div>
+
+        </div><!-- /panel-mixer -->
+
+      </div><!-- /.instruments-container -->
+
+      <!-- Recordings list (appears when recordings exist) -->
+      <div class="recordings-section" id="recordings-section" hidden>
+        <div class="recordings-container">
+          <h3>Recordings</h3>
+          <div id="recordings-list"></div>
+        </div>
+      </div>
+{% endblock %}
+
+{% block afterBody %}
+<script type="module" src="./core/js/instruments.js"></script>
+  <script type="module">
+    import { initIdentityWidget } from './core/js/identity-widget.js';
+    if (document.readyState === 'complete') {
+      initIdentityWidget();
+    } else {
+      window.addEventListener('load', initIdentityWidget, { once: true });
+    }
+  </script>
+{% endblock %}

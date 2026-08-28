@@ -1,3 +1,17 @@
+/* ─── Type tokens ─────────────────────────────────────────────────────────── */
+/*
+ * The families themselves are a site decision — these two are commercial faces
+ * licensed to this account through Adobe Fonts, and naming them inside shared
+ * page styles both hardcodes this band and would fail to load anywhere without
+ * that kit. Everything in src/core refers to the token.
+ *
+ * This is the first pair of what becomes the full token layer.
+ */
+:root {
+  --font-display: "fatfrank", system-ui, sans-serif;
+  --font-body: "ballinger-mono", ui-monospace, monospace;
+}
+
 /* @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -779,4 +793,31 @@ dialog#post-composer-dialog::backdrop {
 .composer-modal-close:hover {
   color: white;
   background: rgba(255, 255, 255, 0.1);
+}
+/* ─── Skip link ───────────────────────────────────────────────────────────── */
+/* Off-screen until focused, rather than display:none — a hidden link is not
+   reachable by keyboard, which would defeat the point of having one. */
+.skip-link {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform: translateY(-100%);
+  z-index: 100;
+  padding: 0.6em 1em;
+  background: white;
+  color: #0d0d0d;
+  font-family: "ballinger-mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform 0.15s ease-out;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
 }

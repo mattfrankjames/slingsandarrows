@@ -1,0 +1,14 @@
+{#
+  The masthead. The glitch effect duplicates the title into two aria-hidden
+  layers that CSS offsets; only the middle copy is read aloud.
+#}
+<header class="p-4 text-white">
+  <h1 class="glitch">
+    <a href="/">
+      <span aria-hidden="true">{{ site.name }}</span>
+      {{ site.name }}
+      <span aria-hidden="true">{{ site.name }}</span>
+    </a>
+  </h1>
+  {% include "partials/nav.njk" %}
+</header>

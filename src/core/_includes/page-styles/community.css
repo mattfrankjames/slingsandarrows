@@ -1,0 +1,606 @@
+    main {
+      backdrop-filter: blur(50px);
+      align-items: flex-start;
+    }
+
+    .board-container {
+      width: 95%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1em;
+      margin-block-end: 1.5em;
+    }
+
+    .board-header h2 {
+      margin-block-end: 0;
+    }
+
+    .community-guidelines {
+      font-size: 0.9em;
+      opacity: 0.7;
+      line-height: 1.6;
+      padding: 0.85em 1em;
+      margin-block-end: 1.5em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .community-guidelines p {
+      margin: 0;
+    }
+
+    .community-guidelines p + p {
+      margin-block-start: 0.5em;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.6em 1.5em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: rgba(168, 245, 168, 0.12);
+      border-color: rgba(168, 245, 168, 0.45);
+      color: #a8f5a8;
+    }
+
+    .btn-primary:hover {
+      background: rgba(168, 245, 168, 0.22);
+    }
+
+    .btn-sm {
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+    }
+
+    /* ── Thread cards ────────────────────────────────────────────────────── */
+    .thread-card {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 1.25em 1.5em;
+      margin-block-end: 1.25em;
+    }
+
+    .thread-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1em;
+      margin-block-end: 0.75em;
+    }
+
+    .thread-title {
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      font-size: clamp(1rem, 1vw + 0.75rem, 1.35rem);
+      margin: 0;
+    }
+
+    .thread-meta {
+      display: flex;
+      gap: 1em;
+      font-size: 0.8em;
+      opacity: 0.5;
+      margin-block-end: 0.75em;
+      flex-wrap: wrap;
+    }
+
+    .thread-preview {
+      font-size: 0.95em;
+      opacity: 0.75;
+      line-height: 1.6;
+      margin-block-end: 1em;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .toggle-replies-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      padding: 0.5em 1em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+      letter-spacing: -0.05ch;
+      margin-block-end: 1em;
+    }
+
+    .toggle-replies-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .toggle-replies-btn[aria-expanded="true"] {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* ── Replies section ───────────────────────────────────────────────── */
+    .replies-container {
+      display: none;
+      margin-block-start: 1em;
+      padding-block-start: 1em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .replies-container.visible {
+      display: block;
+    }
+
+    .replies-list {
+      margin-block-end: 1.25em;
+    }
+
+    .reply-card {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 2px solid rgba(168, 245, 168, 0.4);
+      padding: 0.75em 1em;
+      margin-block-end: 0.75em;
+      border-radius: 4px;
+    }
+
+    .reply-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-block-end: 0.5em;
+      font-size: 0.85em;
+      gap: 0.75em;
+    }
+
+    .reply-author {
+      opacity: 0.7;
+      font-family: var(--font-body);
+      font-weight: 500;
+    }
+
+    .reply-date {
+      opacity: 0.5;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+
+    .reply-body {
+      line-height: 1.6;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      opacity: 0.85;
+    }
+
+    .no-replies {
+      font-size: 0.9em;
+      opacity: 0.5;
+      font-style: italic;
+      padding: 0.75em 0;
+    }
+
+    .replies-loading {
+      font-size: 0.9em;
+      opacity: 0.6;
+      padding: 0.75em 0;
+    }
+
+    /* ── Reply form ────────────────────────────────────────────────────── */
+    .reply-form-section {
+      margin-block-start: 1.25em;
+      padding-block-start: 1em;
+      border-block-start: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .reply-form-section h4 {
+      font-size: 0.95em;
+      opacity: 0.8;
+      margin-block-end: 0.75em;
+    }
+
+    .reply-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75em;
+    }
+
+    .reply-form textarea {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      padding: 0.75em;
+      border-radius: 4px;
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .reply-form textarea::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .reply-form textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .reply-form-actions {
+      display: flex;
+      gap: 0.5em;
+      flex-wrap: wrap;
+    }
+
+    .reply-status {
+      font-size: 0.85em;
+      min-height: 1.2em;
+      opacity: 0.7;
+    }
+
+    .reply-status.error {
+      color: #f5a8a8;
+    }
+
+    .reply-status.success {
+      color: #a8f5a8;
+    }
+
+    /* ── Auth gate ─────────────────────────────────────────────────────── */
+    .auth-required {
+      font-size: 0.9em;
+      opacity: 0.65;
+      padding: 0.75em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    /* ── Delete buttons ────────────────────────────────────────────────── */
+    .thread-delete-btn {
+      background: transparent;
+      border: 1px solid rgba(245, 168, 168, 0.3);
+      color: #f5a8a8;
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      padding: 0.3em 0.75em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .thread-delete-btn:hover {
+      background: rgba(245, 168, 168, 0.12);
+      border-color: rgba(245, 168, 168, 0.6);
+    }
+
+    .thread-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .reply-delete-btn {
+      background: transparent;
+      border: none;
+      color: rgba(245, 168, 168, 0.6);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      padding: 0.1em 0.4em;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: color 0.15s, background 0.15s;
+      margin-inline-start: auto;
+      flex-shrink: 0;
+    }
+
+    .reply-delete-btn:hover {
+      color: #f5a8a8;
+      background: rgba(245, 168, 168, 0.1);
+    }
+
+    .reply-delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── Loading/empty states ──────────────────────────────────────────── */
+    #loading, #empty-state, #error-state {
+      text-align: center;
+      padding: 3em 0;
+      opacity: 0.6;
+    }
+
+    /* ── Modal overlay ───────────────────────────────────────────────────── */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1em;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #0d0d0d;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.75em 2em;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-block-end: 1.25em;
+    }
+
+    .modal-header h3 {
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .modal-close:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .form-group {
+      margin-block-end: 1.1em;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9em;
+      opacity: 0.7;
+      margin-block-end: 0.3em;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.75em;
+      border-radius: 4px;
+      resize: vertical;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .form-group textarea {
+      min-height: 140px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75em;
+      margin-block-end: 1.25em;
+      padding-block-end: 0.75em;
+      border-block-end: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.85em;
+    }
+    .auth-bar-email {
+      opacity: 0.6;
+    }
+
+    /* ── Thread / reply media ──────────────────────────────────────────── */
+    .thread-media {
+      margin-block-start: 1em;
+      margin-block-end: 1em;
+    }
+
+    .thread-media img,
+    .thread-media video {
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .thread-media audio {
+      width: 100%;
+      display: block;
+    }
+
+    .reply-media {
+      margin-block-start: 0.75em;
+      margin-block-end: 0.75em;
+    }
+
+    .reply-media img,
+    .reply-media video {
+      max-width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .reply-media audio {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Media upload in forms ─────────────────────────────────────────── */
+    .form-group input[type="file"] {
+      background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      padding: 0.5em;
+      border-radius: 4px;
+    }
+
+    .form-group input[type="file"]::-webkit-file-upload-button {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: white;
+      font-family: var(--font-body);
+      padding: 0.3em 0.8em;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-inline-end: 0.75em;
+    }
+
+    #media-preview-wrap {
+      margin-block-start: 0.75em;
+    }
+
+    #media-preview img,
+    #media-preview video {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    #media-preview audio {
+      width: 100%;
+      display: block;
+    }
+
+    #media-status {
+      font-size: 0.85em;
+      margin-block-start: 0.5em;
+      min-height: 1.2em;
+    }
+
+    #media-status.error  { color: #f5a8a8; }
+    #media-status.uploading { opacity: 0.6; }
+
+    /* Reply form media */
+    .reply-media-wrap {
+      margin-block-start: 0.5em;
+    }
+
+    .reply-media-preview img,
+    .reply-media-preview video {
+      max-width: 100%;
+      max-height: 160px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .reply-media-preview audio {
+      width: 100%;
+      display: block;
+    }
+
+    .reply-media-status {
+      font-size: 0.8em;
+      min-height: 1.1em;
+    }
+
+    .reply-media-status.error { color: #f5a8a8; }
+    .reply-media-status.uploading { opacity: 0.6; }
+
+    /* ── RSS button ────────────────────────────────────────────────────── */
+    .rss-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 0.3em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      flex-shrink: 0;
+    }
+    .rss-btn:hover {
+      color: #f5a060;
+      border-color: rgba(245, 160, 96, 0.6);
+      background: rgba(245, 160, 96, 0.08);
+    }
+    .rss-btn svg {
+      display: block;
+    }
+    .rss-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 0.72rem;
+      line-height: 1;
+      white-space: nowrap;
+      padding: 0.45em 0.65em;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      z-index: 10;
+    }
+    .rss-tooltip.show {
+      opacity: 1;
+    }

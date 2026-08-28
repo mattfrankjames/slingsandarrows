@@ -1,0 +1,171 @@
+---
+title: "Slings & Arrows | Community"
+description: "Community — Slings & Arrows"
+permalink: "/community.html"
+pageStyles: community
+identityWidget: true
+---
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+      <div class="board-container">
+
+        <div id="auth-bar" hidden class="auth-bar">
+          <span id="auth-bar-email" class="auth-bar-email"></span>
+          <button class="btn btn-sm" id="auth-bar-logout">Sign Out</button>
+        </div>
+
+        <div class="board-header">
+          <h2>Community</h2>
+          <div style="display:flex;align-items:center;gap:0.75em;">
+            <a id="rss-btn" href="#" class="rss-btn"
+              aria-label="Copy the Community RSS feed URL to subscribe in your reader"
+              title="Copy RSS feed URL">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
+                  C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0
+                  0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1
+                  9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+              </svg>
+              <span class="rss-tooltip" role="status" aria-live="polite"></span>
+            </a>
+            <button class="btn btn-primary" id="new-thread-btn" type="button">
+              + New Thread
+            </button>
+          </div>
+        </div>
+
+        <div class="community-guidelines">
+          <p>This is a space for Slings &amp; Arrows fans, or fans of experimental, instrumental, or St. Louis artists generally, and anyone hanging out where those worlds overlap. Post your work, your shows, your questions, photos, whatever — this is your board too.</p>
+          <p>Just be a decent human about it.</p>
+          <p>We read this board, and we'll remove any post or reply that fails to show basic respect and decency toward others. No warning required.</p>
+        </div>
+
+        <div id="loading" role="status" aria-live="polite">Loading…</div>
+        <div id="empty-state" hidden>No threads yet. Start one!</div>
+        <div id="error-state" hidden>Could not load threads.</div>
+        <div id="threads-list"></div>
+
+      </div>
+{% endblock %}
+
+{% block afterBody %}
+<!-- ── New Thread Modal ────────────────────────────────────────────────── -->
+  <div class="modal" id="new-thread-modal" role="dialog"
+    aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Start a New Thread</h3>
+        <button class="modal-close" id="modal-close" aria-label="Close modal">✕</button>
+      </div>
+
+      <!-- Auth gate inside modal — shown when logged out -->
+      <div id="board-auth-gate" hidden>
+        <p style="margin-block-end: 1em; opacity: 0.8;">
+          Sign in to post on the message board
+        </p>
+        <button class="btn" id="login-btn-board"
+          style="background: rgba(168, 245, 168, 0.12); border-color: rgba(168, 245, 168, 0.45); color: #a8f5a8; width: 100%;">
+          Sign In / Create Account
+        </button>
+        <p style="margin-block-start: 1em; font-size: 0.8em; opacity: 0.6; line-height: 1.6;">
+          New users can create an account directly from the sign-in dialog.
+        </p>
+      </div>
+
+      <!-- Thread form — shown when logged in -->
+      <form id="new-thread-form" hidden>
+        <div class="form-group">
+          <label for="thread-title">Title *</label>
+          <input type="text" id="thread-title" name="title" required
+            placeholder="Thread title">
+        </div>
+        <div class="form-group">
+          <label for="thread-body">Message *</label>
+          <textarea id="thread-body" name="body" required
+            placeholder="Your message…"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="thread-media">Media (optional)</label>
+          <input type="file" id="thread-media" name="media"
+            accept="image/*,video/*,audio/*"
+            aria-label="Attach photo, video, or audio">
+          <div id="media-preview-wrap" hidden>
+            <div id="media-preview"></div>
+            <button type="button" id="remove-media-btn"
+              class="btn btn-sm"
+              style="margin-block-start: 0.5em; background: rgba(245, 168, 168, 0.12); border-color: rgba(245, 168, 168, 0.35); color: #f5a8a8;">
+              Remove Media
+            </button>
+          </div>
+          <p id="media-status" aria-live="polite"></p>
+        </div>
+        <div style="display: flex; gap: 1em; flex-wrap: wrap;">
+          <button type="submit" class="btn btn-primary" id="thread-submit-btn">Post Thread</button>
+          <button type="button" class="btn" id="modal-cancel">Cancel</button>
+        </div>
+        <p id="form-status" role="status" aria-live="polite"
+          style="margin-block-start: 1em; font-size: 0.9em; min-height: 1.4em;"></p>
+      </form>
+
+    </div>
+  </div>
+
+  <script type="module" src="./core/js/board.js"></script>
+  <script>
+    // RSS feed URL set at runtime so Parcel doesn't try to resolve /community.xml as a local asset.
+    // The button copies the absolute feed URL to the clipboard (browsers have no native
+    // "open in reader" action) so the user can paste it into their feed reader.
+    (function () {
+      var FEED_URL = window.location.origin + '/community.xml';
+      var link = document.getElementById('rss-link');
+      var btn = document.getElementById('rss-btn');
+      if (link) link.href = FEED_URL;
+      if (!btn) return;
+      btn.href = FEED_URL;
+
+      var tip = btn.querySelector('.rss-tooltip');
+      var hideTimer;
+      function flash(msg) {
+        if (!tip) return;
+        tip.textContent = msg;
+        tip.classList.add('show');
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () { tip.classList.remove('show'); }, 2000);
+      }
+
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            ok ? resolve() : reject();
+          } catch (err) { reject(err); }
+        });
+      }
+
+      btn.addEventListener('click', function (e) {
+        // Let modified / non-primary clicks behave like a normal link (open, copy link, new tab)
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        copy(FEED_URL).then(function () {
+          flash('Feed URL copied — paste into your reader');
+        }).catch(function () {
+          // Clipboard unavailable: fall back to navigating so the URL is in the address bar
+          window.location.href = FEED_URL;
+        });
+      });
+    })();
+  </script>
+{% endblock %}

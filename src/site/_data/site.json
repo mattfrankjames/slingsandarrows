@@ -1,0 +1,75 @@
+{
+  "_comment": "Everything about this particular band. src/core reads it through the layout and never hardcodes any of it \u2014 see tests/unit/boundary.test.js. Another band's deployment replaces this file and nothing else.",
+  "name": "Slings & Arrows",
+  "shortName": "S&A",
+  "tagline": "Midwestern atmospheric instrumentals",
+  "url": "https://slingsandarrows.band",
+  "email": "mattjamesmedia@gmail.com",
+  "themeColor": "#7209b7",
+  "locale": "en",
+  "social": [
+    {
+      "id": "email",
+      "label": "email slings and arrows",
+      "href": "mailto:mattjamesmedia@gmail.com"
+    },
+    {
+      "id": "instagram",
+      "label": "Slings and arrows on Instagram",
+      "href": "https://www.instagram.com/slings.andarrows/"
+    },
+    {
+      "id": "youtube",
+      "label": "Slings and arrows on YouTube",
+      "href": "https://www.youtube.com/channel/UCvM4IhlFf1W8jcAHgsTb9qQ"
+    },
+    {
+      "id": "bandcamp",
+      "label": "Slings & Arrows Bandcamp",
+      "href": "https://slingsarrows.bandcamp.com"
+    }
+  ],
+  "nav": [
+    {
+      "label": "Feed",
+      "href": "/feed"
+    },
+    {
+      "label": "Community",
+      "href": "/community"
+    },
+    {
+      "label": "Gallery",
+      "href": "/gallery"
+    },
+    {
+      "label": "Shows",
+      "href": "/shows"
+    },
+    {
+      "label": "Studio",
+      "href": "/studio"
+    }
+  ],
+  "fonts": {
+    "_comment": "Adobe kit ids are tied to this account's Creative Cloud subscription and are domain-restricted, so they belong to the site rather than the kit. The template ships open-licensed defaults instead.",
+    "provider": "adobe",
+    "adobe": {
+      "kitIds": [
+        "nwv0ezl",
+        "bro0tvr"
+      ]
+    }
+  },
+  "media": {
+    "cloudinaryCloud": "mjtestrun",
+    "heroPublicId": "v1738006890/hero_paeruh"
+  },
+  "announcement": {
+    "_comment": "Set to null to hide the banner on the home page.",
+    "emoji": "\ud83e\udeb9",
+    "text": "Slings & Arrows at <a href=\"https://www.instagram.com/thecrowsnestbar/p/DbvpCL_klnZ/\" target=\"_blank\" rel=\"noopener noreferrer\">Nest Fest</a>, 9/5 12pm",
+    "href": "/shows",
+    "linkLabel": "More Info"
+  }
+}
