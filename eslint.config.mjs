@@ -153,6 +153,38 @@ export default [
     },
   },
 
+  // ── Shared libraries ───────────────────────────────────────────────────────
+  //
+  // Same boundary as the handlers below, for the files they import. Scoped to
+  // netlify/lib/** rather than netlify/** on purpose: the two globs must not
+  // overlap. A flat-config block *replaces* a rule it names rather than merging
+  // with an earlier one, so a wider block here would quietly switch off the
+  // handlers' restriction — which has happened in this file before, to the
+  // innerHTML rule.
+  //
+  // The two owners are exempt because owning the import is their job.
+  {
+    files: ['netlify/lib/**/*.mjs'],
+    ignores: ['netlify/lib/db.mjs', 'netlify/lib/store.mjs'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@netlify/blobs',
+              message: 'Go through netlify/lib/store.mjs.',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Go through netlify/lib/db.mjs.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // ── Function handlers ──────────────────────────────────────────────────────
   {
     files: ['netlify/functions/**/*.mjs'],
@@ -165,6 +197,11 @@ export default [
               name: '@netlify/blobs',
               message:
                 'Go through netlify/lib/store.mjs — it owns paging, and a direct list()+get() loop reads the entire store on every request.',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message:
+                'Go through netlify/lib/db.mjs — it owns the client, and creating your own opens a second one per instance with the wrong auth options.',
             },
           ],
         },

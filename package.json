@@ -1,7 +1,7 @@
 {
 	"name": "slings-and-arrows",
 	"version": "1.0.0",
-	"description": "Slings & Arrows band website \u2014 Parcel/Tailwind static site with Netlify Functions backend.",
+	"description": "Slings & Arrows band website — Parcel/Tailwind static site with Netlify Functions backend.",
 	"scripts": {
 		"start": "npm run build:pages && parcel .eleventy/*.html",
 		"build": "npm run build:pages && parcel build .eleventy/*.html --dist-dir dist",
@@ -17,7 +17,8 @@
 		"build:pages": "eleventy"
 	},
 	"dependencies": {
-		"@netlify/blobs": "^8.1.0"
+		"@netlify/blobs": "^8.1.0",
+		"@supabase/supabase-js": "^2.112.4"
 	},
 	"keywords": [],
 	"author": "",
