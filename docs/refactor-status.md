@@ -80,8 +80,35 @@ unrelated to a change, fix the flakiness rather than dropping the requirement.
 
 Settled — don't relitigate without a reason:
 
-- **Supabase** for Postgres + auth. Chosen over Neon for GoTrue continuity: the
-  existing sign-in modal already speaks that protocol.
+- **Netlify DB (Neon)** for Postgres. **Reversed 2026-08-29** — this entry
+  previously read "Supabase, chosen over Neon for GoTrue continuity: the
+  existing sign-in modal already speaks that protocol." Two things made that
+  reasoning stop applying, and both are worth recording so this does not get
+  reopened a third time.
+
+  Auth is not moving. The original argument was about migrating sign-in *to*
+  Supabase; Phase 4 instead keeps Netlify Identity and does authorisation in
+  `auth.mjs`, so Supabase Auth and RLS would have gone unused. And Netlify
+  Identity is not being deprecated after all — announced, then
+  [reversed in February 2026](https://answers.netlify.com/t/netlify-identity-is-staying-feb-2026-reversal-what-changed-whos-affected-and-how-to-proceed/162733)
+  — so there is no forcing function to move it.
+
+  The deciding argument was not cost. On Supabase the schema carried 23 row
+  level security policies that could not work: they read the caller from
+  `request.jwt.claims`, which only a Supabase-issued JWT populates, and the
+  server key bypasses policies regardless. They would have sat in the schema
+  looking like access control while enforcing nothing — the same failure shape
+  as a test that cannot fail. Dropping them made the schema smaller and honest:
+  17 statements instead of 55.
+
+  Cost agrees: Neon's free tier scales to zero and wakes itself, where a free
+  Supabase project pauses after a week and needs a manual restore, and Neon's
+  paid tier is usage-based against $25/month per project.
+
+  **The store is what could reverse this again.** Customer accounts are where
+  Supabase's auth-plus-database bundle earns its price. The plan is a separate
+  store on a subdomain with its own stack, which is a normal shape for band
+  merch and keeps that decision out of this one.
 - **Eleventy**, not Astro. Compiles to plain HTML, no client runtime.
 - **JSDoc + `checkJs`**, not TypeScript. Files stay `.js`, no build step.
 - **Keep Cloudinary.** Only the upload path needed fixing, and it was.
@@ -165,39 +192,29 @@ Two related things found in the same pass:
 
 ### Verification status
 
-`supabase/migrations/` **applied cleanly to an empty project on the first run**,
-2026-08-28, through the dashboard SQL Editor. Verified by querying the
-catalogue rather than by trusting the editor's "Success":
+The Supabase draft of this schema was applied to a live project on 2026-08-28
+and verified against the catalogue — 9/9 tables with RLS, 23 policies, the
+`auth.users` trigger present. That project is being deleted. The exercise was
+not wasted: applying it is what proved `has_role` needed `security definer`,
+and reading it back is what made the dead-policy problem obvious enough to act
+on.
 
-| Check | Result |
-|---|---|
-| Tables with RLS enabled | 9 / 9 |
-| Tables with RLS **off** | 0 |
-| Policies | 23 / 23 |
-| Views | 3 / 3 |
-| Functions | 4 / 4 |
-| `has_role` is `security definer` | yes |
-| Trigger on `auth.users` | `on_auth_user_created` |
+**The Neon schema in `migrations/0001` has not been run.** It parses —
+`libpg-query` is Postgres's own parser, 17 statements — and that checks syntax
+and nothing else. It is a smaller, simpler descendant of a schema that did
+apply cleanly, which is reason for some confidence and not for any assurance.
 
-The `security definer` row is the one that mattered. `has_role` reads
-`public.roles`, and the policies on `public.roles` call `has_role` to decide who
-may read them; without definer rights that recurses and Postgres aborts every
-policy consulting a role. It parsed identically either way, so only running it
-could tell us.
+`scripts/migrate.mjs` is how it gets applied, rather than a paste into a
+console. It tracks what has run in `schema_migrations`, wraps each migration
+and its bookkeeping row in one transaction, and refuses to continue if an
+applied migration's checksum has changed — editing one that has already run is
+the easiest way to get two databases that disagree while both report being up
+to date.
 
-There is still no Postgres, Docker or Supabase CLI on the development machine,
-so the loop is: write here, apply there, read the catalogue back. That is
-workable for schema changes and will not scale to the data migration, which
-needs to be run and re-run. The CI job the plan calls for — migrations against
-a preview branch per pull request — is what closes that gap, and is worth
-building before the migration script rather than after.
-
-**What is proven and what is not.** The objects exist and RLS is on. Whether
-each policy *admits and refuses the right people* is untested; that is a
-behavioural question and the catalogue cannot answer it. Until there is a test
-that signs in as an author, a non-author and an anonymous visitor and asserts
-what each can read and write, treat the policies as plausible rather than
-correct.
+Still true, and the reason CI matters: the objects existing is not the same as
+the behaviour being right. There is no test yet that inserts a post, comments
+on it, deletes it and asserts the comments went too. Until there is, treat the
+constraints and cascades as plausible rather than proven.
 
 ### Phase 4.5 — first paint without a loading state
 
@@ -218,8 +235,10 @@ build step gets written once, against the data source it will keep.
 - `netlify/lib/store.mjs` is the only file importing `@netlify/blobs` (ESLint
   enforces it). Rewriting it is most of the data layer.
 - `netlify/lib/auth.mjs` exports `getUser` / `isAuthor` / `isAdmin` /
-  `canModerate` / `require*`. Swapping Identity for Supabase changes the body,
-  not the exports.
+  `canModerate` / `require*`. These keep their signatures; `isAuthor` and
+  `isAdmin` change from reading `ALLOWED_AUTHORS` / `ALLOWED_ADMINS` to querying
+  the `roles` table. Sign-in stays on Netlify Identity, so token verification is
+  untouched.
 - `src/core/js/lib/api.js` names every endpoint in one place.
 - `store.page()` returns `{ items, nextCursor, total }`; list endpoints already
   accept `?limit` and `?cursor`. **The frontend does not send them yet** —

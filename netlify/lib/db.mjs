@@ -1,97 +1,122 @@
 /**
- * db.mjs — the only file that talks to Supabase.
+ * db.mjs — the only file that talks to Postgres.
  *
- * The same boundary store.mjs holds for @netlify/blobs, and enforced the same
- * way (see eslint.config.mjs). Swapping providers, or moving off PostgREST to a
- * direct connection, should be a change to this file rather than a search.
+ * The same boundary store.mjs holds for @netlify/blobs, enforced the same way
+ * (see eslint.config.mjs). Changing providers, or moving off the HTTP driver,
+ * should be a change to this file rather than a search across the codebase.
  *
- * ── Why PostgREST rather than a `pg` connection ──────────────────────────────
+ * ── Why the HTTP driver ──────────────────────────────────────────────────────
  *
  * Two reasons, both about running in a function rather than a server.
  *
- * Connections. A pool belongs to a long-lived process. These handlers are not
- * one — Netlify runs as many concurrent instances as traffic asks for, each
- * with its own module scope, and a pool per instance multiplies out to more
- * connections than a small Postgres will accept. Supabase's pooler exists for
- * exactly this and would work, but PostgREST is HTTP: stateless, nothing to
- * exhaust, nothing to leak when an instance is frozen mid-request.
+ * Connections. A pool belongs to a long-lived process, and these handlers are
+ * not one — Netlify runs as many concurrent instances as traffic asks for, each
+ * with its own module scope. A pool per instance multiplies out to more
+ * connections than a small Postgres will accept, and an instance frozen
+ * mid-request leaks whatever it was holding. `neon()` issues each query as an
+ * ordinary HTTPS request: nothing to exhaust, nothing to leak.
  *
- * Cold starts. Measured before any of this was written, a cold function on this
- * site costs ~1000ms, against ~50ms warm — far more than the queries it fixes
- * (see docs/refactor-status.md). Opening a Postgres connection means TCP, TLS
- * and authentication *inside* that cold start. An HTTPS request to PostgREST is
- * one round trip on a connection the runtime already knows how to make. This
- * phase should not make the number that actually hurts worse.
+ * Cold starts. Measured on the live site before any of this was written, a cold
+ * function costs ~1000ms against ~50ms warm — far more than the queries this
+ * phase set out to fix (docs/refactor-status.md). Opening a Postgres connection
+ * puts TCP, TLS and authentication *inside* that cold start. An HTTPS request
+ * adds nothing the runtime was not already doing.
  *
- * ── Why the secret key ───────────────────────────────────────────────────────
+ * The tradeoff is real: no transactions and one statement per round trip. Every
+ * read here is a single statement, and the one place that genuinely needs a
+ * transaction — the data migration — uses the WebSocket client below instead.
  *
- * It bypasses row level security completely. That is deliberate for now, and
- * worth being clear-eyed about: sign-in is still Netlify Identity, whose tokens
- * mean nothing to policies that read `request.jwt.claims` from a Supabase JWT.
- * Until auth moves, the policies cannot be the gate, so authorisation stays
- * where it is today — in auth.mjs, checked before the query.
+ * ── Authorisation is not here ────────────────────────────────────────────────
  *
- * This is not a loosening. Functions already had unrestricted access to every
- * Blob store; the trust boundary is unchanged. What changed is that RLS now
- * exists underneath it, correct and dormant, so moving auth later is a cutover
- * rather than a security project.
+ * This connects as the database owner and can read and write everything. That
+ * is the same trust boundary the handlers already had over the Blob stores, and
+ * it is why migrations/0001 has no row level security: sign-in is Netlify
+ * Identity, whose tokens Postgres cannot read, so policies would have evaluated
+ * against a null identity while looking like a defence. Authorisation lives in
+ * auth.mjs, in front of the query.
  *
- * The cost is that a bug in a handler is a whole-database bug. That is why
- * scripts/check-bundle-secrets.mjs fails the build if this key ever reaches a
- * browser bundle.
+ * The cost is that a bug in a handler is a whole-database bug, which is what
+ * scripts/check-bundle-secrets.mjs exists to keep out of the browser.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { neon, Client } from '@neondatabase/serverless';
 
 /**
- * Read an environment variable or fail loudly at import time.
- *
- * Failing here rather than at the first query is deliberate: a missing key
- * otherwise surfaces as a PostgREST 401 on one endpoint, which reads like a
- * permissions bug and sends you looking at policies.
+ * Netlify DB injects NETLIFY_DATABASE_URL. DATABASE_URL is accepted as a
+ * fallback so the migration runner and any local tooling work against a
+ * connection string supplied by hand.
  */
-function required(name) {
-  const value = process.env[name];
-  if (!value) {
+function connectionString() {
+  const url = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL;
+  if (!url) {
     throw new Error(
-      `${name} is not set. Add it in Netlify → Site configuration → ` +
-        `Environment variables. SUPABASE_SECRET_KEY must be scoped to ` +
-        `functions only — it bypasses row level security.`
+      'No database connection string. Netlify DB sets NETLIFY_DATABASE_URL — ' +
+        'run `netlify db init` if it is missing, or set DATABASE_URL to ' +
+        'override it locally.'
     );
   }
-  return value;
+  return url;
+}
+
+/** @type {ReturnType<typeof neon> | null} */
+let query = null;
+
+/**
+ * The tagged-template query function, memoised per instance.
+ *
+ * Used as sql`select * from posts where id = ${id}` — interpolations become
+ * bind parameters, not string concatenation, so this is the safe construction
+ * rather than a convenience. Building a query by joining strings would bypass
+ * that; if a query needs to be assembled dynamically, assemble the *parameters*
+ * and keep the statement literal.
+ *
+ * Lazy rather than module scope so importing this file does not require the
+ * environment to be configured — the unit tests and the ESLint boundary probe
+ * both do exactly that.
+ */
+/**
+ * @param {TemplateStringsArray} strings
+ * @param {...unknown} values
+ */
+export function sql(strings, ...values) {
+  if (!query) query = neon(connectionString());
+  return query(strings, ...values);
 }
 
 /**
- * One client per instance, reused across warm invocations.
+ * A single-use WebSocket client, for the one case the HTTP driver cannot serve:
+ * several statements that must succeed or fail together.
  *
- * Created lazily rather than at module scope so that importing this file — as
- * the unit tests and the ESLint boundary probe both do — does not require the
- * environment to be configured.
+ * Only the data migration needs this. A handler reaching for it is a sign the
+ * work belongs in one statement instead — Postgres can do far more per
+ * statement than the Blob store could, and that is most of the point of moving.
+ *
+ * The caller owns the connection and must close it; `withTransaction` below is
+ * the version that cannot be forgotten.
  */
-/** @type {import('@supabase/supabase-js').SupabaseClient | null} */
-let client = null;
-
-export function db() {
-  if (client) return client;
-
-  client = createClient(required('SUPABASE_URL'), required('SUPABASE_SECRET_KEY'), {
-    auth: {
-      // No user session is involved. Without these the client tries to persist
-      // and refresh a session it will never have, and keeps a refresh timer
-      // alive that can hold a function instance open past its response.
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    global: {
-      headers: { 'X-Client-Info': 'slingsandarrows/functions' },
-    },
-  });
-
-  return client;
+export async function withTransaction(fn) {
+  const client = new Client(connectionString());
+  await client.connect();
+  try {
+    await client.query('begin');
+    const result = await fn(client);
+    await client.query('commit');
+    return result;
+  } catch (err) {
+    // Rolling back can itself fail if the connection is already gone. The
+    // original error is the one worth surfacing, so this one is swallowed.
+    try {
+      await client.query('rollback');
+    } catch {
+      // Connection lost — the transaction is already discarded server-side.
+    }
+    throw err;
+  } finally {
+    await client.end();
+  }
 }
 
-/** Reset the memoised client. Tests only — nothing in a handler should call it. */
+/** Drop the memoised query function. Tests only. */
 export function resetDbForTests() {
-  client = null;
+  query = null;
 }

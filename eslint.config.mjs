@@ -176,7 +176,7 @@ export default [
               message: 'Go through netlify/lib/store.mjs.',
             },
             {
-              name: '@supabase/supabase-js',
+              name: '@neondatabase/serverless',
               message: 'Go through netlify/lib/db.mjs.',
             },
           ],
@@ -199,9 +199,9 @@ export default [
                 'Go through netlify/lib/store.mjs — it owns paging, and a direct list()+get() loop reads the entire store on every request.',
             },
             {
-              name: '@supabase/supabase-js',
+              name: '@neondatabase/serverless',
               message:
-                'Go through netlify/lib/db.mjs — it owns the client, and creating your own opens a second one per instance with the wrong auth options.',
+                'Go through netlify/lib/db.mjs — it owns the connection string and the choice of HTTP over a pool, which is load-bearing in a function.',
             },
           ],
         },

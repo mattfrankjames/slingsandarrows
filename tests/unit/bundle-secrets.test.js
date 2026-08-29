@@ -8,6 +8,34 @@ const jwt = claims =>
   '.c2lnbmF0dXJl';
 
 describe('bundle secret scanner', () => {
+  /*
+   * The credential that actually matters now. NETLIFY_DATABASE_URL grants the
+   * connecting role everything, and migrations/0001 has no row level security
+   * underneath it, so this in a bundle is the whole database.
+   */
+  it('catches a Postgres connection string with credentials', () => {
+    const url = 'postgresql://neondb_owner:npg_S3cr3tPw@ep-cool-frog-123.us-east-2.aws.neon.tech/neondb';
+    const hits = findSecrets(`const DB="${url}";`);
+    expect(hits).toHaveLength(1);
+    // The report must not repeat the password back into CI logs.
+    expect(hits[0]).not.toContain('npg_S3cr3tPw');
+    expect(hits[0]).toContain('neon.tech');
+  });
+
+  it('catches the postgres:// spelling as well as postgresql://', () => {
+    expect(findSecrets('a="postgres://u:p@host.tld/db"')).toHaveLength(1);
+  });
+
+  /*
+   * A check people learn to wave through is worse than no check, so a bare
+   * scheme with no credentials in it must not fire — that shape turns up in
+   * comments, docs and error messages.
+   */
+  it('ignores a connection string with no credentials in it', () => {
+    expect(findSecrets('// see postgres://localhost/dev for local runs')).toEqual([]);
+    expect(findSecrets('const doc="postgresql://host/db";')).toEqual([]);
+  });
+
   it('catches a current-format secret key', () => {
     expect(findSecrets('const k="sb_secret_9xKq2LmNpRtVwZaB3cDeFg";')).toHaveLength(1);
   });

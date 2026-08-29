@@ -1,26 +1,35 @@
 /**
- * Fail the build if a Supabase secret reached the browser bundles.
+ * Fail the build if a database credential reached the browser bundles.
  *
- * The secret key bypasses row level security completely. Every policy in
- * supabase/migrations is irrelevant to a caller holding one, so this is not a
- * leak of one resource — it is the whole database, readable and writable, to
- * anyone who views source.
+ * NETLIFY_DATABASE_URL carries a password and grants the connecting role
+ * everything. migrations/0001 has no row level security — deliberately, since
+ * sign-in is Netlify Identity and Postgres cannot read those tokens — so there
+ * is no second line of defence underneath. A connection string in a bundle is
+ * the entire database, readable and writable, to anyone who views source.
  *
- * This is a script rather than a grep in the workflow because the legacy key
- * format cannot be grepped for. A legacy key is a JWT whose payload claims
- * `service_role`, and the payload is base64url — where the encoding of
- * "service_role" depends on its byte offset within the JSON, so the same
- * claim has three different encoded forms. A single needle catches one of
- * them. The first version of this check used one, tested clean against a
- * planted key, and would have shipped.
- *
- * Decoding is the only honest way to ask the question.
+ * A script rather than a grep in the workflow for a reason worth keeping. This
+ * started out guarding Supabase keys, and the legacy form of those is a JWT
+ * claiming service_role — where the payload is base64url, and base64 encodes in
+ * three-byte groups, so the same claim has three different encoded forms
+ * depending on its byte offset. The grep version matched one of the three,
+ * passed its own probe, and would have shipped. Decoding is the only honest way
+ * to ask that question, and the JWT check is kept because a Supabase key is
+ * still a credential if one ever finds its way in here.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** Current format: sb_secret_<random>. Unambiguous, so matched literally. */
+/**
+ * A Postgres connection string carrying credentials.
+ *
+ * The `user:password@` part is required rather than optional. Matching bare
+ * `postgres://` would fire on documentation, comments and error messages, and a
+ * check people learn to wave through is worse than no check.
+ */
+const CONNECTION_STRING = /postgres(?:ql)?:\/\/[^\s:/@]+:[^\s@]+@[^\s/]+/;
+
+/** Supabase's current key format. Kept: still a credential if one appears. */
 const SECRET_KEY = /sb_secret_[A-Za-z0-9_-]{8,}/;
 
 /**
@@ -42,6 +51,12 @@ const JWT = /eyJ[A-Za-z0-9_-]{6,}\.([A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]*/g;
  */
 export function findSecrets(source) {
   const hits = [];
+
+  const conn = source.match(CONNECTION_STRING);
+  if (conn) {
+    // Report the host, never the password.
+    hits.push(`database connection string (host ${conn[0].split('@')[1] ?? '?'})`);
+  }
 
   const literal = source.match(SECRET_KEY);
   if (literal) hits.push(`Supabase secret key (${literal[0].slice(0, 14)}…)`);
@@ -82,9 +97,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()
   }
 
   if (failed) {
-    console.error('Scope the key to functions only in Netlify — a variable in the');
+    console.error('Scope the variable to functions only in Netlify — anything in the');
     console.error('build context is reachable by the bundler.');
     process.exit(1);
   }
-  console.log(`No Supabase secret in ${dir}/`);
+  console.log(`No database credentials in ${dir}/`);
 }

@@ -17,8 +17,8 @@
 		"build:pages": "eleventy"
 	},
 	"dependencies": {
-		"@netlify/blobs": "^8.1.0",
-		"@supabase/supabase-js": "^2.112.4"
+		"@neondatabase/serverless": "^1.1.0",
+		"@netlify/blobs": "^8.1.0"
 	},
 	"keywords": [],
 	"author": "",
