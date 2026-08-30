@@ -1,107 +1,79 @@
 /**
- * store.mjs — Blob access, with paging.
+ * store.mjs — which storage layer the handlers are talking to.
  *
- * Five functions independently did this:
+ * Phase 4 moves this site from Netlify Blobs to Postgres. Both implementations
+ * are present and complete, and this file picks between them from one
+ * environment variable, so the cutover is a setting rather than a deploy and
+ * the way back is the same setting.
  *
- *     const { blobs } = await store.list();
- *     const items = await Promise.all(blobs.map(b => store.get(b.key, ...)));
- *     items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+ * ── USE_POSTGRES ─────────────────────────────────────────────────────────────
  *
- * — read every record in the store, sort in memory, return all of it. Cost grows
- * with total content on every request, forever, and the whole feed crosses the
- * wire on each cold load.
+ * Off by default, deliberately. A flag that defaults on is not a flag — it is a
+ * migration with extra steps, and the first environment to discover a problem
+ * is production. Turn it on for one deploy preview, look at the site, then turn
+ * it on in production. The Blob data is untouched either way and stays a
+ * rollback for as long as the flag exists.
  *
- * `page()` fixes the read amplification without changing the storage model:
- * blob keys start with a millisecond timestamp (see validate.newId), so keys
- * alone sort chronologically. We sort the *key list*, take one page, and fetch
- * only those records. A store with 500 posts serving a 25-item page does 25
- * reads instead of 500.
+ * ── Why both halves present the same surface ─────────────────────────────────
  *
- * It does not fix the underlying issue — list() still enumerates every key, so
- * this is O(keys) metadata plus O(page) reads rather than O(1). Blobs has no
- * index to do better. Phase 4 replaces this with a keyset query.
+ * The handlers used to call blob methods directly — setJSON, delete, list with
+ * a key prefix — which meant the storage model leaked into twenty files. That
+ * is fine while there is one storage model. It is a rewrite of twenty files the
+ * moment there are two.
+ *
+ * So the operations are named for what the site does rather than for how a blob
+ * store does it: `putRecord`, `countUnder`, `toggleLike`, `likedPostIds`. Each
+ * half implements them its own way. The Blob key layouts that made those
+ * queries possible — `<parentId>/<id>` for children, `<email>::<postId>` for
+ * likes — stay an implementation detail of store-blobs.mjs, which is where they
+ * always belonged.
  */
 
-import { getStore } from '@netlify/blobs';
-
-export { getStore };
+import * as blobs from './store-blobs.mjs';
+import * as postgres from './store-pg.mjs';
 
 /**
- * One page of records, newest first.
+ * Read at call time rather than at import.
  *
- * @param {string} name            Blob store name.
- * @param {object} [opts]
- * @param {string} [opts.prefix]   Restrict to keys under this prefix.
- * @param {number} [opts.limit]    Page size. Omit for everything.
- * @param {string} [opts.cursor]   `nextCursor` from the previous page.
- * @param {'desc'|'asc'} [opts.order]  Newest first (default), or oldest first.
- * @returns {Promise<{ items: object[], nextCursor: string|null, total: number }>}
+ * Module scope is evaluated once per function instance and outlives any single
+ * request, so caching this would mean a flag change needing a redeploy to take
+ * effect — and, worse, instances disagreeing with each other while the old ones
+ * aged out.
  */
-export async function page(name, opts = {}) {
-  const store = getStore(name);
-  const { blobs } = await store.list(opts.prefix ? { prefix: opts.prefix } : undefined);
-
-  const { keys, nextCursor, total } = selectPage(blobs.map(b => b.key), opts);
-
-  const items = (
-    await Promise.all(keys.map(key => store.get(key, { type: 'json' }).catch(() => null)))
-  ).filter(Boolean);
-
-  return { items, nextCursor, total };
+function backend() {
+  return process.env.USE_POSTGRES === 'true' ? postgres : blobs;
 }
 
-/**
- * Choose which keys make up a page. Pure, so the paging rules can be tested
- * without a blob store — `page()` is only the I/O around this.
- *
- * @param {string[]} allKeys
- * @param {{ limit?: number, cursor?: string|null, order?: 'desc'|'asc' }} [opts]
- * @returns {{ keys: string[], nextCursor: string|null, total: number }}
- */
-export function selectPage(allKeys, { limit, cursor, order = 'desc' } = {}) {
-  // Keys are `<timestamp>-<random>`, optionally behind a prefix, so sorting the
-  // key strings is chronological without reading a single record. Feeds and
-  // galleries want newest first; comment and reply threads read oldest first.
-  const keys = [...allKeys].sort();
-  if (order === 'desc') keys.reverse();
-
-  let start = 0;
-  if (cursor) {
-    const at = keys.indexOf(cursor);
-    // An unknown cursor means the record was deleted between pages. Starting
-    // from the top is the safe answer — better a repeated item than a silently
-    // truncated list.
-    start = at === -1 ? 0 : at + 1;
-  }
-
-  const pageKeys = limit ? keys.slice(start, start + limit) : keys.slice(start);
-  const more = limit ? start + pageKeys.length < keys.length : false;
-
-  return {
-    keys: pageKeys,
-    nextCursor: more ? pageKeys[pageKeys.length - 1] : null,
-    total: keys.length,
-  };
+/** Which one is live. For the health endpoint and for reading logs. */
+export function backendName() {
+  return process.env.USE_POSTGRES === 'true' ? 'postgres' : 'blobs';
 }
 
-/**
- * Count keys under a prefix without reading any records.
- * Used for reply/comment counts, where the record contents are irrelevant.
- */
-export async function countUnder(name, prefix) {
-  const { blobs } = await getStore(name).list({ prefix });
-  return blobs.length;
-}
+export const page = (name, opts) => backend().page(name, opts);
+export const getRecord = (name, id) => backend().getRecord(name, id);
+export const putRecord = (name, record) => backend().putRecord(name, record);
+export const deleteRecord = (name, id) => backend().deleteRecord(name, id);
+export const countUnder = (name, prefix) => backend().countUnder(name, prefix);
+export const likedPostIds = email => backend().likedPostIds(email);
+export const toggleLike = (postId, email) => backend().toggleLike(postId, email);
+export const exists = (name, id) => backend().exists(name, id);
+export const createChild = (name, record) => backend().createChild(name, record);
+export const getChild = (name, parentId, childId) => backend().getChild(name, parentId, childId);
+export const deleteChild = (name, parentId, childId) =>
+  backend().deleteChild(name, parentId, childId);
 
 /**
  * Read one record, or throw the caller's chosen 404.
  *
  * @param {string} name
- * @param {string} key
+ * @param {string} id
  * @param {Error} missing  Error to throw when absent.
  */
-export async function getOrThrow(name, key, missing) {
-  const record = await getStore(name).get(key, { type: 'json' });
+export async function getOrThrow(name, id, missing) {
+  const record = await backend().getRecord(name, id);
   if (!record) throw missing;
   return record;
 }
+
+/** Pure paging arithmetic, used by store-blobs and covered by its own tests. */
+export { selectPage } from './store-blobs.mjs';

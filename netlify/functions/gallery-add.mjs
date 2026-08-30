@@ -1,7 +1,7 @@
 import { route, json, badRequest } from '../lib/http.mjs';
 import { requireAuthor } from '../lib/auth.mjs';
 import { readJson, optionalString, cloudinaryUrl, newId, LIMITS } from '../lib/validate.mjs';
-import { getStore } from '../lib/store.mjs';
+import { putRecord } from '../lib/store.mjs';
 
 export default route(async req => {
   const user = await requireAuthor(req);
@@ -21,7 +21,7 @@ export default route(async req => {
     createdAt: new Date().toISOString(),
   };
 
-  await getStore('gallery').setJSON(item.id, item);
+  await putRecord('gallery', item);
   return json(item, 201);
 });
 

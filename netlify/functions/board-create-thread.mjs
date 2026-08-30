@@ -1,7 +1,7 @@
 import { route, json } from '../lib/http.mjs';
 import { requireUser } from '../lib/auth.mjs';
 import { readJson, requiredString, cloudinaryUrl, newId, LIMITS } from '../lib/validate.mjs';
-import { getStore } from '../lib/store.mjs';
+import { putRecord } from '../lib/store.mjs';
 
 /** Start a board thread. Open to any signed-in user. */
 export default route(async req => {
@@ -18,7 +18,7 @@ export default route(async req => {
     createdAt:  new Date().toISOString(),
   };
 
-  await getStore('board-threads').setJSON(thread.id, thread);
+  await putRecord('board-threads', thread);
   return json(thread, 201);
 });
 

@@ -180,7 +180,7 @@ export default [
   // The two owners are exempt because owning the import is their job.
   {
     files: ['netlify/lib/**/*.mjs'],
-    ignores: ['netlify/lib/db.mjs', 'netlify/lib/store.mjs'],
+    ignores: ['netlify/lib/db.mjs', 'netlify/lib/store-blobs.mjs', 'netlify/lib/store-pg.mjs'],
     rules: {
       'no-restricted-imports': [
         'error',

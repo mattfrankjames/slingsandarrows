@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireUser } from '../lib/auth.mjs';
 import { readJson, requiredString, requiredId, cloudinaryUrl, newId, LIMITS } from '../lib/validate.mjs';
-import { getStore } from '../lib/store.mjs';
+import { createChild, exists } from '../lib/store.mjs';
 
 export default route(async (req, context) => {
   const user = await requireUser(req);
@@ -9,9 +9,7 @@ export default route(async (req, context) => {
 
   const threadId = requiredId(context.params?.threadId ?? body.threadId, 'threadId');
 
-  const threads = getStore('board-threads');
-  const thread  = await threads.get(threadId, { type: 'json' });
-  if (!thread) throw notFound('That thread no longer exists');
+  if (!(await exists('board-threads', threadId))) throw notFound('That thread no longer exists');
 
   const reply = {
     id:        newId(),
@@ -22,12 +20,9 @@ export default route(async (req, context) => {
     createdAt: new Date().toISOString(),
   };
 
-  await getStore('board-replies').setJSON(`${threadId}/${reply.id}`, reply);
-
-  // Denormalised badge count. board-get-threads reconciles it on read, because
-  // this increment is read-modify-write and can lose a concurrent update.
-  thread.replyCount = (thread.replyCount || 0) + 1;
-  await threads.setJSON(threadId, thread);
+  // The reply count is the storage layer's problem — an aggregate in Postgres,
+  // a read-modify-write in Blobs — and not this handler's.
+  await createChild('board-replies', reply);
 
   return json(reply, 201);
 });

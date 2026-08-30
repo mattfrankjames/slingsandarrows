@@ -82,6 +82,27 @@ export function sql(strings, ...values) {
 }
 
 /**
+ * A parameterised statement whose text is not a template literal.
+ *
+ * The tagged template above cannot express a table name, and a table name
+ * cannot be a bind parameter — so store-pg.mjs composes the identifier and
+ * passes the values here. Identifiers come from a fixed map in that file and
+ * can never derive from a request; everything a caller supplies goes through
+ * `params` and is bound.
+ *
+ * This exists so that nothing has to hand-roll quote escaping. A homemade
+ * escape() is the wrong answer to SQL injection every time, and having no
+ * parameterised escape hatch is what pushes people into writing one.
+ *
+ * @param {string} text   Statement with $1, $2 … placeholders.
+ * @param {unknown[]} [params]
+ */
+export async function query(text, params = []) {
+  const result = await conn().pool.query(text, params);
+  return result.rows;
+}
+
+/**
  * Several statements that must succeed or fail together.
  *
  * Only the data migration needs this. A handler reaching for it is usually a
