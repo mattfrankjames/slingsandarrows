@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { withTransaction, sql } from '../netlify/lib/db.mjs';
+import { withTransaction, query } from '../netlify/lib/db.mjs';
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
 
@@ -65,16 +65,14 @@ export function plan(available, applied) {
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
 
-  await sql`
-    create table if not exists schema_migrations (
-      name       text primary key,
-      checksum   text not null,
-      applied_at timestamptz not null default now()
-    )
-  `;
+  await query(`create table if not exists schema_migrations (
+    name       text primary key,
+    checksum   text not null,
+    applied_at timestamptz not null default now()
+  )`);
 
   const available = readMigrations();
-  const applied = await sql`select name, checksum from schema_migrations`;
+  const applied = await query(`select name, checksum from schema_migrations`);
   const { pending, altered } = plan(available, applied);
 
   if (altered.length) {

@@ -191,7 +191,11 @@ export default [
               message: 'Go through netlify/lib/store.mjs.',
             },
             {
-              name: '@netlify/database',
+              name: '@neondatabase/serverless',
+              message: 'Go through netlify/lib/db.mjs.',
+            },
+            {
+              name: 'pg',
               message: 'Go through netlify/lib/db.mjs.',
             },
           ],
@@ -214,9 +218,14 @@ export default [
                 'Go through netlify/lib/store.mjs — it owns paging, and a direct list()+get() loop reads the entire store on every request.',
             },
             {
-              name: '@netlify/database',
+              name: '@neondatabase/serverless',
               message:
-                'Go through netlify/lib/db.mjs — it owns the connection string and the transport, which differs between local Postgres and Neon.',
+                'Go through netlify/lib/db.mjs — it owns the connection string and which transport answers it.',
+            },
+            {
+              name: 'pg',
+              message:
+                'Go through netlify/lib/db.mjs — a pool per module is a pool per function instance.',
             },
           ],
         },

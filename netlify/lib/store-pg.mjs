@@ -52,7 +52,13 @@ function tableFor(name) {
   return entry;
 }
 
-/** snake_case row → the camelCase record the API has always returned. */
+/**
+ * snake_case row → the camelCase record the API has always returned.
+ *
+ * @returns {any} The shape varies by store, and every caller already knows
+ * which one it asked for. Narrowing it to a union buys nothing and costs a cast
+ * at every use.
+ */
 export function toRecord(name, row) {
   if (!row) return null;
   const iso = value => (value instanceof Date ? value.toISOString() : value);
