@@ -5,26 +5,25 @@
  * (see eslint.config.mjs). Changing providers, or moving off the HTTP driver,
  * should be a change to this file rather than a search across the codebase.
  *
- * ── Why the HTTP driver ──────────────────────────────────────────────────────
+ * ── Why @netlify/database rather than the Neon driver directly ───────────────
  *
- * Two reasons, both about running in a function rather than a server.
+ * getDatabase() picks the transport from the connection string: Neon's HTTP
+ * client against a Neon host, an ordinary pg pool against anything else. That
+ * second case is not a nicety. `netlify dev` runs a real PostgreSQL 17 compiled
+ * to WebAssembly on this machine, and the Neon HTTP driver cannot talk to it —
+ * it expects Neon's endpoint and rejects the local connection string outright.
  *
- * Connections. A pool belongs to a long-lived process, and these handlers are
- * not one — Netlify runs as many concurrent instances as traffic asks for, each
- * with its own module scope. A pool per instance multiplies out to more
- * connections than a small Postgres will accept, and an instance frozen
- * mid-request leaks whatever it was holding. `neon()` issues each query as an
- * ordinary HTTPS request: nothing to exhaust, nothing to leak.
+ * Which is the difference between a schema that has been executed and one that
+ * has only been parsed. migrations/0001 now applies locally, and the
+ * constraints it claims can be tested by violating them, rather than believed.
  *
- * Cold starts. Measured on the live site before any of this was written, a cold
- * function costs ~1000ms against ~50ms warm — far more than the queries this
- * phase set out to fix (docs/refactor-status.md). Opening a Postgres connection
- * puts TCP, TLS and authentication *inside* that cold start. An HTTPS request
- * adds nothing the runtime was not already doing.
- *
- * The tradeoff is real: no transactions and one statement per round trip. Every
- * read here is a single statement, and the one place that genuinely needs a
- * transaction — the data migration — uses the WebSocket client below instead.
+ * The HTTP transport is still what runs in production, and the reasons hold.
+ * A pool belongs to a long-lived process; these handlers are not one, and
+ * Netlify runs as many concurrent instances as traffic asks for, each with its
+ * own module scope. And a cold function on this site measured ~1000ms against
+ * ~50ms warm, far more than the queries this phase set out to fix — opening a
+ * connection would put TCP, TLS and authentication inside that cold start,
+ * where an HTTPS request adds nothing the runtime was not already doing.
  *
  * ── Authorisation is not here ────────────────────────────────────────────────
  *
@@ -39,64 +38,58 @@
  * scripts/check-bundle-secrets.mjs exists to keep out of the browser.
  */
 
-import { neon, Client } from '@neondatabase/serverless';
+import { getDatabase } from '@netlify/database';
+
+/** @type {ReturnType<typeof getDatabase> | null} */
+let connection = null;
 
 /**
- * Netlify DB injects NETLIFY_DATABASE_URL. DATABASE_URL is accepted as a
- * fallback so the migration runner and any local tooling work against a
- * connection string supplied by hand.
+ * The connection, memoised per instance.
+ *
+ * Lazy rather than module scope so importing this file does not require a
+ * database to exist — the unit tests and the ESLint boundary probe both do
+ * exactly that.
  */
-function connectionString() {
-  const url = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL;
-  if (!url) {
+function conn() {
+  if (connection) return connection;
+
+  const connectionString = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL;
+  if (!connectionString) {
     throw new Error(
-      'No database connection string. Netlify DB sets NETLIFY_DATABASE_URL — ' +
-        'run `netlify db init` if it is missing, or set DATABASE_URL to ' +
-        'override it locally.'
+      'No database connection string. Netlify DB sets NETLIFY_DATABASE_URL on ' +
+        'deploy — the database is provisioned by deploying with @netlify/database ' +
+        'installed, not by the CLI. Set DATABASE_URL to point somewhere else locally.'
     );
   }
-  return url;
+
+  connection = getDatabase({ connectionString });
+  return connection;
 }
 
-/** @type {ReturnType<typeof neon> | null} */
-let query = null;
-
 /**
- * The tagged-template query function, memoised per instance.
+ * Tagged-template query: sql`select * from posts where id = ${id}`.
  *
- * Used as sql`select * from posts where id = ${id}` — interpolations become
- * bind parameters, not string concatenation, so this is the safe construction
- * rather than a convenience. Building a query by joining strings would bypass
- * that; if a query needs to be assembled dynamically, assemble the *parameters*
- * and keep the statement literal.
+ * Interpolations become bind parameters rather than string concatenation, so
+ * this is the safe construction and not merely the tidy one. Assembling a
+ * statement by joining strings bypasses that entirely; when a query has to vary,
+ * vary the *parameters* and keep the statement literal.
  *
- * Lazy rather than module scope so importing this file does not require the
- * environment to be configured — the unit tests and the ESLint boundary probe
- * both do exactly that.
- */
-/**
  * @param {TemplateStringsArray} strings
  * @param {...unknown} values
  */
 export function sql(strings, ...values) {
-  if (!query) query = neon(connectionString());
-  return query(strings, ...values);
+  return conn().sql(strings, ...values);
 }
 
 /**
- * A single-use WebSocket client, for the one case the HTTP driver cannot serve:
- * several statements that must succeed or fail together.
+ * Several statements that must succeed or fail together.
  *
- * Only the data migration needs this. A handler reaching for it is a sign the
- * work belongs in one statement instead — Postgres can do far more per
- * statement than the Blob store could, and that is most of the point of moving.
- *
- * The caller owns the connection and must close it; `withTransaction` below is
- * the version that cannot be forgotten.
+ * Only the data migration needs this. A handler reaching for it is usually a
+ * sign the work belongs in one statement — Postgres can do far more per
+ * statement than the Blob store could, which is most of the point of moving.
  */
 export async function withTransaction(fn) {
-  const client = new Client(connectionString());
-  await client.connect();
+  const client = await conn().pool.connect();
   try {
     await client.query('begin');
     const result = await fn(client);
@@ -112,11 +105,11 @@ export async function withTransaction(fn) {
     }
     throw err;
   } finally {
-    await client.end();
+    client.release();
   }
 }
 
-/** Drop the memoised query function. Tests only. */
+/** Drop the memoised connection. Tests only. */
 export function resetDbForTests() {
-  query = null;
+  connection = null;
 }

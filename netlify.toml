@@ -4,6 +4,20 @@
   functions = "netlify/functions"
 
 # Clean URLs
+# ── Local development ─────────────────────────────────────────────────────────
+#
+# Pinned because the build is two stages and Netlify cannot guess which is the
+# dev server: it detects both Eleventy and Parcel, then stops to ask. That
+# prompt makes `netlify dev` unusable non-interactively, which matters more than
+# it sounds — `netlify dev` is what runs the local PostgreSQL (a real Postgres
+# 17 compiled to WebAssembly), and that is the only way to execute a migration
+# on this machine. Without it the schema can be parsed and not run.
+[dev]
+  command = "npm run start"
+  targetPort = 1234
+  framework = "#custom"
+  autoLaunch = false
+
 [[redirects]]
   from = "/feed"
   to = "/feed.html"

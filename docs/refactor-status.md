@@ -192,29 +192,45 @@ Two related things found in the same pass:
 
 ### Verification status
 
-The Supabase draft of this schema was applied to a live project on 2026-08-28
-and verified against the catalogue — 9/9 tables with RLS, 23 policies, the
-`auth.users` trigger present. That project is being deleted. The exercise was
-not wasted: applying it is what proved `has_role` needed `security definer`,
-and reading it back is what made the dead-policy problem obvious enough to act
-on.
+**The schema has been executed and its behaviour tested.** Not on Neon — on the
+local database, which turned out to be the useful discovery of this phase.
 
-**The Neon schema in `migrations/0001` has not been run.** It parses —
-`libpg-query` is Postgres's own parser, 17 statements — and that checks syntax
-and nothing else. It is a smaller, simpler descendant of a schema that did
-apply cleanly, which is reason for some confidence and not for any assurance.
+`netlify dev` runs a real PostgreSQL 17.5 compiled to WebAssembly (`compiled by
+emcc`), on this machine, with no Docker. `netlify database connect --query` runs
+one-shot statements against it and the data persists between invocations. That
+is the difference between a schema that parses and one that works.
 
-`scripts/migrate.mjs` is how it gets applied, rather than a paste into a
-console. It tracks what has run in `schema_migrations`, wraps each migration
-and its bookkeeping row in one transaction, and refuses to continue if an
-applied migration's checksum has changed — editing one that has already run is
-the easiest way to get two databases that disagree while both report being up
-to date.
+`migrations/0001` applies cleanly: 8 tables, 3 views, 14 indexes, 3 foreign
+keys, 18 check constraints. More usefully, the four things this phase exists to
+fix were tested by trying to violate them:
 
-Still true, and the reason CI matters: the objects existing is not the same as
-the behaviour being right. There is no test yet that inserts a post, comments
-on it, deletes it and asserts the comments went too. Until there is, treat the
-constraints and cascades as plausible rather than proven.
+| Attempt | Result |
+|---|---|
+| Like the same post twice | `duplicate key value violates unique constraint` |
+| Delete a post with comments and likes | 0 orphans — the cascade works |
+| Insert a mixed-case author email | rejected by check constraint |
+| Read a show's status | computed `upcoming` / `past` from the date |
+
+The first is the concurrency bug that loses a like, now structurally
+impossible. The second is the "deleting a post leaves its comments behind" entry
+under *Known and deliberately unfixed*, which can come off the list once the
+handlers are cut over.
+
+`netlify/lib/db.mjs` was exercised against the same database: the tagged
+template returns rows, an id containing `'; drop table posts; --` matches
+nothing and leaves the table standing, and a throwing `withTransaction` leaves
+no row behind.
+
+**Two things this does not prove.** The local database is Postgres compiled to
+WASM, not Neon — close, but not the same build, and the HTTP transport is not
+exercised at all locally, only the `pg` path. And nothing has run against a
+Neon instance, because **the database is not provisioned yet**: Netlify creates
+it on deploy, when `@netlify/database` is present, not from the CLI.
+
+One caveat worth writing down: **the local connection string changes on every
+run.** Capturing it once and reusing it fails with a connection error that
+surfaces as a query failure, which reads like a schema problem. Re-read it each
+time.
 
 ### Phase 4.5 — first paint without a loading state
 

@@ -18,7 +18,8 @@
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.1.0",
-		"@netlify/blobs": "^8.1.0"
+		"@netlify/blobs": "^8.1.0",
+		"@netlify/database": "^2.0.0"
 	},
 	"keywords": [],
 	"author": "",
