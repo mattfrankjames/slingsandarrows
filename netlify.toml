@@ -3,6 +3,18 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Pinned, not inherited. @netlify/database declares `engines: node >= 22.12.0`,
+# and this site had no NODE_VERSION — so builds took whatever the build image
+# defaulted to, which was older, and the first deploy after adding that
+# dependency failed with a bare "Build script returned non-zero exit code: 4".
+#
+# The build succeeds locally and in a clean clone with npm ci, which is what
+# makes this worth writing down: nothing in the repository was wrong, and
+# reproducing it needed the one thing the repository did not specify. Pinning
+# also means the version stops moving under us when Netlify changes a default.
+[build.environment]
+  NODE_VERSION = "22"
+
 # Clean URLs
 # ── Local development ─────────────────────────────────────────────────────────
 #
