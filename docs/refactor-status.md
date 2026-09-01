@@ -80,7 +80,8 @@ unrelated to a change, fix the flakiness rather than dropping the requirement.
 
 Settled — don't relitigate without a reason:
 
-- **Netlify DB (Neon)** for Postgres. **Reversed 2026-08-29** — this entry
+- **Neon for Postgres, direct rather than through Netlify DB.** **Reversed
+  2026-08-29, amended 2026-08-30** — this entry
   previously read "Supabase, chosen over Neon for GoTrue continuity: the
   existing sign-in modal already speaks that protocol." Two things made that
   reasoning stop applying, and both are worth recording so this does not get
@@ -150,9 +151,10 @@ needs: no transactions, no unique constraints, no atomic counters.
   confirm, then writes. Leave the Blob data as a rollback for a few deploys.
 - RLS replaces `ALLOWED_AUTHORS` / `ALLOWED_ADMINS`; roles move to a table.
 - `shows.json` becomes a table, with upcoming/past computed from the date.
-- Migrations committed and runnable from zero — CI runs them on a Supabase
-  preview branch per PR, which continuously proves the bootstrap path the
-  template will depend on.
+- Migrations committed and runnable from zero, applied by `scripts/migrate.mjs`
+  rather than pasted into a console. CI should run them against a throwaway
+  Postgres per pull request, which continuously proves the bootstrap path the
+  template will depend on. Not built yet.
 
 ### What Phase 4 will not fix
 
@@ -222,15 +224,43 @@ nothing and leaves the table standing, and a throwing `withTransaction` leaves
 no row behind.
 
 **Two things this does not prove.** The local database is Postgres compiled to
-WASM, not Neon — close, but not the same build, and the HTTP transport is not
-exercised at all locally, only the `pg` path. And nothing has run against a
-Neon instance, because **the database is not provisioned yet**: Netlify creates
-it on deploy, when `@netlify/database` is present, not from the CLI.
+WASM, not Neon — close, but not the same build, and only the `pg` transport is
+exercised locally. The Neon HTTP path in `db.mjs` has never run. And **no
+database is provisioned**, so nothing has been tested end to end against the
+one this will actually use.
 
 One caveat worth writing down: **the local connection string changes on every
 run.** Capturing it once and reusing it fails with a connection error that
 surfaces as a query failure, which reads like a schema problem. Re-read it each
 time.
+
+### Why Neon directly, and not Netlify DB
+
+Attempted first, and it does not work on this account. Installing
+`@netlify/database` makes every Netlify build try to provision a database, and
+the API answers:
+
+    API error on "createSiteDatabase"
+      status: 403
+      message: 'database feature not available for this account'
+
+Two deploys failed on that before the cause was found, reporting only `Build
+script returned non-zero exit code: 4`. It built locally and in a clean clone
+with `npm ci`; `netlify build --context deploy-preview` runs the real pipeline
+locally and named it immediately. **Reach for that before guessing at a Netlify
+build failure** — the first guess here was a Node version, which was wrong and
+got pushed.
+
+The account is on Netlify's *legacy* Free plan (`credit_features: included:
+false`). Netlify Database requires the newer credit-based plans, whose Free tier
+is also $0 — so this is a plan migration rather than a price. Not worth doing:
+on credit-based plans an active database draws down the same credits as builds
+and bandwidth, and it is the same Neon underneath either way. A Neon account
+keeps the database's limits separate from the host's.
+
+The package is gone. `db.mjs` selects the transport itself — Neon's HTTP client
+for a `*.neon.tech` host, `pg` for anything else — which is a dozen lines and
+was the only thing that package was doing for us.
 
 ### Phase 4.5 — first paint without a loading state
 
