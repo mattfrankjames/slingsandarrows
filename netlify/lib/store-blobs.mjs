@@ -28,9 +28,31 @@
  * index to do better. Phase 4 replaces this with a keyset query.
  */
 
-import { getStore } from '@netlify/blobs';
+import { getStore as getBlobStore } from '@netlify/blobs';
 
-export { getStore };
+/**
+ * A blob store, by name.
+ *
+ * Inside a function, @netlify/blobs finds the site and token from the ambient
+ * runtime and a bare name is enough. Outside one it finds nothing and throws
+ * "The environment has not been configured to use Netlify Blobs" — which is
+ * where the data migration runs, since it reads Blobs and writes Postgres from
+ * an ordinary node process.
+ *
+ * `netlify dev:exec` does not close that gap: it injects the site's environment
+ * variables, and Blobs credentials are not among them. So explicit siteID and
+ * token are read from the environment when present, and ignored when not.
+ * Handlers are unaffected — they never set these.
+ *
+ * @param {string} name
+ */
+function blobStore(name) {
+  const siteID = process.env.NETLIFY_SITE_ID;
+  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_API_TOKEN;
+  return siteID && token ? getBlobStore({ name, siteID, token }) : getBlobStore(name);
+}
+
+export { blobStore as getStore };
 
 /**
  * One page of records, newest first.
@@ -44,7 +66,7 @@ export { getStore };
  * @returns {Promise<{ items: object[], nextCursor: string|null, total: number }>}
  */
 export async function page(name, opts = {}) {
-  const store = getStore(name);
+  const store = blobStore(name);
   const { blobs } = await store.list(opts.prefix ? { prefix: opts.prefix } : undefined);
 
   const { keys, nextCursor, total } = selectPage(blobs.map(b => b.key), opts);
@@ -95,7 +117,7 @@ export function selectPage(allKeys, { limit, cursor, order = 'desc' } = {}) {
  * Used for reply/comment counts, where the record contents are irrelevant.
  */
 export async function countUnder(name, prefix) {
-  const { blobs } = await getStore(name).list({ prefix });
+  const { blobs } = await blobStore(name).list({ prefix });
   return blobs.length;
 }
 
@@ -107,7 +129,7 @@ export async function countUnder(name, prefix) {
  * @param {Error} missing  Error to throw when absent.
  */
 export async function getOrThrow(name, key, missing) {
-  const record = await getStore(name).get(key, { type: 'json' });
+  const record = await blobStore(name).get(key, { type: 'json' });
   if (!record) throw missing;
   return record;
 }
@@ -138,11 +160,11 @@ function keyFor(name, record) {
 }
 
 export async function getRecord(name, id) {
-  return (await getStore(name).get(id, { type: 'json' })) || null;
+  return (await blobStore(name).get(id, { type: 'json' })) || null;
 }
 
 export async function putRecord(name, record) {
-  await getStore(name).setJSON(keyFor(name, record), record);
+  await blobStore(name).setJSON(keyFor(name, record), record);
   return record;
 }
 
@@ -165,7 +187,7 @@ async function adjustCount(name, parentId, delta) {
   const child = CHILD_OF[name];
   if (!child) return;
 
-  const store = getStore(child.parent);
+  const store = blobStore(child.parent);
   const parent = await store.get(parentId, { type: 'json' });
   if (!parent) return;
 
@@ -176,17 +198,17 @@ async function adjustCount(name, parentId, delta) {
 export async function createChild(name, record) {
   const child = CHILD_OF[name];
   if (!child) throw new Error(`Store "${name}" is not a child store`);
-  await getStore(name).setJSON(`${record[child.key]}/${record.id}`, record);
+  await blobStore(name).setJSON(`${record[child.key]}/${record.id}`, record);
   await adjustCount(name, record[child.key], +1);
   return record;
 }
 
 export async function getChild(name, parentId, childId) {
-  return (await getStore(name).get(`${parentId}/${childId}`, { type: 'json' })) || null;
+  return (await blobStore(name).get(`${parentId}/${childId}`, { type: 'json' })) || null;
 }
 
 export async function deleteChild(name, parentId, childId) {
-  await getStore(name).delete(`${parentId}/${childId}`);
+  await blobStore(name).delete(`${parentId}/${childId}`);
   await adjustCount(name, parentId, -1);
 }
 
@@ -204,7 +226,7 @@ export async function deleteRecord(name, id) {
   const children = Object.entries(CHILD_OF).filter(([, c]) => c.parent === name);
 
   for (const [childStore] of children) {
-    const store = getStore(childStore);
+    const store = blobStore(childStore);
     const { blobs } = await store.list({ prefix: `${id}/` });
     await Promise.all(blobs.map(({ key }) => store.delete(key)));
   }
@@ -212,19 +234,19 @@ export async function deleteRecord(name, id) {
   if (name === 'posts') {
     // Likes are keyed <email>::<postId>, so they cannot be found by prefix.
     // Listing the store is acceptable here only because deletes are rare.
-    const likes = getStore('post-likes');
+    const likes = blobStore('post-likes');
     const { blobs } = await likes.list();
     await Promise.all(
       blobs.filter(({ key }) => key.endsWith(`::${id}`)).map(({ key }) => likes.delete(key))
     );
   }
 
-  await getStore(name).delete(id);
+  await blobStore(name).delete(id);
 }
 
 export async function likedPostIds(email) {
   const prefix = `${String(email).toLowerCase()}::`;
-  const { blobs } = await getStore('post-likes').list({ prefix });
+  const { blobs } = await blobStore('post-likes').list({ prefix });
   return blobs.map(({ key }) => key.slice(prefix.length));
 }
 
@@ -237,11 +259,11 @@ export async function likedPostIds(email) {
  * this function — which is why the count became an aggregate in Postgres.
  */
 export async function toggleLike(postId, email) {
-  const posts = getStore('posts');
+  const posts = blobStore('posts');
   const post = await posts.get(postId, { type: 'json' });
   if (!post) return null;
 
-  const likes = getStore('post-likes');
+  const likes = blobStore('post-likes');
   const key = `${String(email).toLowerCase()}::${postId}`;
   const liked = !(await likes.get(key));
 
@@ -262,5 +284,5 @@ export async function toggleLike(postId, email) {
 }
 
 export async function exists(name, id) {
-  return Boolean(await getStore(name).get(id, { type: 'json' }));
+  return Boolean(await blobStore(name).get(id, { type: 'json' }));
 }
