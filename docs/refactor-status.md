@@ -194,45 +194,35 @@ Two related things found in the same pass:
 
 ### Verification status
 
-**The schema has been executed and its behaviour tested.** Not on Neon — on the
-local database, which turned out to be the useful discovery of this phase.
+**The schema is applied to Neon and the tests pass against it.** 2026-09-01,
+Postgres 18.6, through `scripts/migrate.mjs` — 8 tables, 3 views, 15 indexes, 3
+foreign keys, 18 check constraints, one row in `schema_migrations`.
 
-`netlify dev` runs a real PostgreSQL 17.5 compiled to WebAssembly (`compiled by
-emcc`), on this machine, with no Docker. `netlify database connect --query` runs
-one-shot statements against it and the data persists between invocations. That
-is the difference between a schema that parses and one that works.
+`npm run test:db` runs the 16 database tests. They pass against Neon over the
+HTTP transport, and they passed earlier against the local WebAssembly Postgres
+17.5 over `pg`. Two builds of Postgres, two transports, same results — which is
+most of what this phase needed to know.
 
-`migrations/0001` applies cleanly: 8 tables, 3 views, 14 indexes, 3 foreign
-keys, 18 check constraints. More usefully, the four things this phase exists to
-fix were tested by trying to violate them:
+Earlier verification, which still counts for what it proved: applying the
+Supabase draft is what showed `has_role` needed `security definer`, and the
+local database is where the four things this phase exists to fix were tested by
+trying to violate them — a double like rejected by the primary key, a deleted
+post taking its comments and likes, a mixed-case email refused, a show's status
+computed rather than stored.
 
-| Attempt | Result |
-|---|---|
-| Like the same post twice | `duplicate key value violates unique constraint` |
-| Delete a post with comments and likes | 0 orphans — the cascade works |
-| Insert a mixed-case author email | rejected by check constraint |
-| Read a show's status | computed `upcoming` / `past` from the date |
+**What is still untested.** The data migration has never run: it needs a
+Netlify personal access token to read the Blob stores, and only its planning is
+covered by unit tests. And nothing has exercised the flag end to end — no deploy
+has run with `USE_POSTGRES=true`.
 
-The first is the concurrency bug that loses a like, now structurally
-impossible. The second is the "deleting a post leaves its comments behind" entry
-under *Known and deliberately unfixed*, which can come off the list once the
-handlers are cut over.
+Two things worth knowing when working with this:
 
-`netlify/lib/db.mjs` was exercised against the same database: the tagged
-template returns rows, an id containing `'; drop table posts; --` matches
-nothing and leaves the table standing, and a throwing `withTransaction` leaves
-no row behind.
-
-**Two things this does not prove.** The local database is Postgres compiled to
-WASM, not Neon — close, but not the same build, and only the `pg` transport is
-exercised locally. The Neon HTTP path in `db.mjs` has never run. And **no
-database is provisioned**, so nothing has been tested end to end against the
-one this will actually use.
-
-One caveat worth writing down: **the local connection string changes on every
-run.** Capturing it once and reusing it fails with a connection error that
-surfaces as a query failure, which reads like a schema problem. Re-read it each
-time.
+- **A Neon statement costs a round trip.** The database tests take ~2.4s against
+  Neon and ~0.12s against the local WASM build. Correctness is identical; the
+  difference is latency, and it is the same tax every handler will pay.
+- **A Neon connection string contains `&`.** Sourcing `.env` in a shell splits
+  on it and fails confusingly. `scripts/test-db.mjs` reads the file itself, and
+  `node --env-file=.env` works; `set -a && . ./.env` does not.
 
 ### Why Neon directly, and not Netlify DB
 
