@@ -64,6 +64,13 @@ export default [
 
   // ── Browser code, minus the shared library ─────────────────────────────────
   // Each of these prevents a specific regression that has already happened.
+  //
+  // process.env is in the same list rather than a block of its own, and that is
+  // load-bearing. A flat-config block *replaces* a rule it names instead of
+  // merging: adding a second `no-restricted-properties` for src/** switched
+  // this localStorage restriction off silently, which is how this file lost the
+  // innerHTML rule once before. Both live in one array, and the block below
+  // re-states the environment half for lib/, which this one exempts.
   {
     files: ['src/**/*.js'],
     ignores: ['src/core/js/lib/**'],
@@ -75,12 +82,38 @@ export default [
           message:
             'The session lives in src/core/js/lib/session.js. Six modules used to read `gotrue.user` directly and two forgot to check expires_at.',
         },
+        {
+          object: 'process',
+          property: 'env',
+          message:
+            'Browser code must not read the environment — Parcel inlines it into the public bundle, which is how the Cloudinary upload preset shipped publicly (#87). Ask the server instead; see src/core/js/lib/media.js.',
+        },
       ],
       'no-restricted-globals': [
         'error',
         {
           name: 'localStorage',
           message: 'Use src/core/js/lib/session.js — it owns the stored session.',
+        },
+      ],
+    },
+  },
+
+  // src/core/js/lib/** is exempt from the localStorage restriction above —
+  // session.js owns the stored session and has to touch it. It is not exempt
+  // from the environment one, so that half is re-stated here. Restating rather
+  // than narrowing the ignore above, because the two rules have genuinely
+  // different scopes.
+  {
+    files: ['src/core/js/lib/**/*.js'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'process',
+          property: 'env',
+          message:
+            'Browser code must not read the environment — Parcel inlines it into the public bundle.',
         },
       ],
     },
