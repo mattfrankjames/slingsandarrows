@@ -210,10 +210,38 @@ trying to violate them — a double like rejected by the primary key, a deleted
 post taking its comments and likes, a mixed-case email refused, a show's status
 computed rather than stored.
 
-**What is still untested.** The data migration has never run: it needs a
-Netlify personal access token to read the Blob stores, and only its planning is
-covered by unit tests. And nothing has exercised the flag end to end — no deploy
-has run with `USE_POSTGRES=true`.
+**The data is across.** 2026-09-01, 73 records, verified by counting the
+destination rather than trusting the writes:
+
+| | |
+|---|---|
+| posts | 12 |
+| board-threads | 4 |
+| gallery | 31 |
+| post-comments | 2 |
+| board-replies | 4 |
+| post-likes | 5 |
+| shows (from shows.json) | 15 |
+
+Spot-checked as the site would read it: posts come back newest-first with
+lowercased authors, valid dates and correct like and comment counts from the
+aggregate views; all 31 gallery items kept Cloudinary URLs; thread reply counts
+are 0/1/1/2, summing to the four replies that were read; and `shows_with_status`
+computes 13 past and 2 upcoming from the dates rather than the hand-maintained
+field it replaces.
+
+**No orphans.** The plan found every child had its parent, so the orphan
+handling did not fire. The `delete-post` cascade bug is real but has never been
+triggered here — no post with comments or likes has been deleted. The guard
+still earns its place for the re-run and for the template, where another band's
+data will not be this clean, but it did nothing on this pass and it is worth
+saying so.
+
+**Blobs is untouched** and remains the rollback.
+
+**What is still untested.** Nothing has exercised the flag end to end — no
+deploy has run with `USE_POSTGRES=true`, so no handler has served a real request
+from Postgres. That is the cutover, and it is the last thing this phase needs.
 
 Two things worth knowing when working with this:
 
