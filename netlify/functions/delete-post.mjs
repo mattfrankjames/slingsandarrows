@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireAuthor } from '../lib/auth.mjs';
 import { readJson, requiredId } from '../lib/validate.mjs';
-import { getStore } from '../lib/store.mjs';
+import { deleteRecord, exists } from '../lib/store.mjs';
 
 /**
  * Delete a post. Any band member may remove any post — that was the existing
@@ -22,10 +22,11 @@ export default route(async (req, context) => {
     ? requiredId(context.params.id)
     : requiredId((await readJson(req)).id, 'Post id');
 
-  const store = getStore('posts');
-  if (!await store.get(id, { type: 'json' })) throw notFound('That post no longer exists');
+  if (!(await exists('posts', id))) throw notFound('That post no longer exists');
 
-  await store.delete(id);
+  // Comments and likes go with it. Postgres does that with foreign keys;
+  // store-blobs enumerates them, because Blobs has no cascade.
+  await deleteRecord('posts', id);
   return json({ success: true, id });
 });
 

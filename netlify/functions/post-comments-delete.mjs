@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireModerator } from '../lib/auth.mjs';
 import { readJson, requiredId } from '../lib/validate.mjs';
-import { getStore, getOrThrow } from '../lib/store.mjs';
+import { getChild, deleteChild } from '../lib/store.mjs';
 
 /** Remove a comment. Its author may; so may an admin. */
 export default route(async (req, context) => {
@@ -11,19 +11,11 @@ export default route(async (req, context) => {
   const postId    = requiredId(params.postId    ?? body.postId,    'postId');
   const commentId = requiredId(params.commentId ?? body.commentId, 'commentId');
 
-  const comments = getStore('post-comments');
-  const key      = `${postId}/${commentId}`;
-  const comment  = await getOrThrow('post-comments', key, notFound('That comment is already gone'));
+  const comment = await getChild('post-comments', postId, commentId);
+  if (!comment) throw notFound('That comment is already gone');
 
   await requireModerator(req, comment.author);
-  await comments.delete(key);
-
-  const posts = getStore('posts');
-  const post  = await posts.get(postId, { type: 'json' });
-  if (post) {
-    post.commentCount = Math.max(0, (post.commentCount || 1) - 1);
-    await posts.setJSON(postId, post);
-  }
+  await deleteChild('post-comments', postId, commentId);
 
   return json({ success: true, postId, commentId });
 });

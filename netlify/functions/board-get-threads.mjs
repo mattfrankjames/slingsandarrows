@@ -1,6 +1,6 @@
 import { route, json, cacheFor } from '../lib/http.mjs';
 import { readPageParams } from '../lib/validate.mjs';
-import { page, countUnder, getStore } from '../lib/store.mjs';
+import { page } from '../lib/store.mjs';
 
 /**
  * Board threads, newest first.
@@ -25,19 +25,6 @@ export default route(async req => {
     cursor,
   });
 
-  const store = getStore('board-threads');
-  await Promise.all(threads.map(async thread => {
-    try {
-      const actual = await countUnder('board-replies', `${thread.id}/`);
-      if (thread.replyCount !== actual) {
-        thread.replyCount = actual;
-        await store.setJSON(thread.id, thread);
-      }
-    } catch {
-      // Reply store unavailable — serve the stored count rather than failing
-      // the whole listing over a badge.
-    }
-  }));
 
   return json(limit ? { threads, nextCursor, total } : threads, 200, cacheFor(30));
 });

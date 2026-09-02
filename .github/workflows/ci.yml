@@ -50,6 +50,19 @@ jobs:
           fi
           echo "No upload credentials in dist/"
 
+      # NETLIFY_DATABASE_URL carries a password and grants the connecting role
+      # everything, and migrations/0001 has no row level security underneath it
+      # — deliberately, since Postgres cannot read Netlify Identity tokens. A
+      # connection string in a bundle is therefore the whole database.
+      #
+      # A script rather than a grep because the Supabase key format this
+      # started life guarding cannot be grepped for: the legacy one is a JWT
+      # claiming service_role, and base64 encodes that claim three different
+      # ways depending on its byte offset. The first attempt matched one of the
+      # three and passed its own probe. See tests/unit/bundle-secrets.test.js.
+      - name: No database credentials in the built bundles
+        run: node scripts/check-bundle-secrets.mjs dist
+
       # A service worker can only control pages beneath its own URL. Moving the
       # source into a subdirectory once already pushed the build output to
       # /core/sw.js, where registering with { scope: '/' } throws — and offline

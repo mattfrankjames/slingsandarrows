@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireModerator } from '../lib/auth.mjs';
 import { readJson, requiredId } from '../lib/validate.mjs';
-import { getStore, getOrThrow } from '../lib/store.mjs';
+import { deleteRecord, getOrThrow } from '../lib/store.mjs';
 
 export default route(async (req, context) => {
   const id = context.params?.id
@@ -11,7 +11,7 @@ export default route(async (req, context) => {
   const item = await getOrThrow('gallery', id, notFound('That item is already gone'));
   await requireModerator(req, item.author);
 
-  await getStore('gallery').delete(id);
+  await deleteRecord('gallery', id);
   return json({ success: true, id });
 });
 

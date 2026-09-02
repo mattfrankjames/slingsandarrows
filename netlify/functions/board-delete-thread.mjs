@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireModerator } from '../lib/auth.mjs';
 import { readJson, requiredId } from '../lib/validate.mjs';
-import { getStore, getOrThrow } from '../lib/store.mjs';
+import { deleteRecord, getOrThrow, countUnder } from '../lib/store.mjs';
 
 /**
  * Delete a thread and the replies under it.
@@ -19,13 +19,12 @@ export default route(async (req, context) => {
   const thread = await getOrThrow('board-threads', id, notFound('That thread is already gone'));
   await requireModerator(req, thread.author);
 
-  const replies = getStore('board-replies');
-  const { blobs } = await replies.list({ prefix: `${id}/` });
-  await Promise.all(blobs.map(({ key }) => replies.delete(key)));
+  // Counted before the delete, because afterwards there is nothing to count.
+  // Postgres cascades through the foreign key; store-blobs enumerates.
+  const repliesDeleted = await countUnder('board-replies', `${id}/`);
+  await deleteRecord('board-threads', id);
 
-  await getStore('board-threads').delete(id);
-
-  return json({ success: true, id, repliesDeleted: blobs.length });
+  return json({ success: true, id, repliesDeleted });
 });
 
 export const config = {

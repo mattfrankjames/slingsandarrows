@@ -160,12 +160,12 @@ describe('getUser — Identity URL resolution', () => {
 describe('allowlists', () => {
   it('admits a listed author', async () => {
     const { isAuthor } = await loadAuth();
-    expect(isAuthor({ email: 'author@band.test' })).toBe(true);
+    expect(await isAuthor({ email: 'author@band.test' })).toBe(true);
   });
 
   it('matches case-insensitively', async () => {
     const { isAuthor } = await loadAuth();
-    expect(isAuthor({ email: 'OWNER@band.TEST' })).toBe(true);
+    expect(await isAuthor({ email: 'OWNER@band.TEST' })).toBe(true);
   });
 
   it.each([
@@ -173,50 +173,50 @@ describe('allowlists', () => {
     ['a null user', null],
   ])('refuses %s', async (_label, user) => {
     const { isAuthor } = await loadAuth();
-    expect(isAuthor(user)).toBe(false);
+    expect(await isAuthor(user)).toBe(false);
   });
 
   it('does not treat an author as an admin', async () => {
     const { isAdmin } = await loadAuth();
-    expect(isAdmin({ email: 'author@band.test' })).toBe(false);
+    expect(await isAdmin({ email: 'author@band.test' })).toBe(false);
   });
 
   it('falls back to the author list when ALLOWED_ADMINS is unset', async () => {
     delete process.env.ALLOWED_ADMINS;
     const { isAdmin } = await loadAuth();
-    expect(isAdmin({ email: 'author@band.test' })).toBe(true);
+    expect(await isAdmin({ email: 'author@band.test' })).toBe(true);
   });
 
   it('denies everyone when the allowlists are empty', async () => {
     process.env.ALLOWED_AUTHORS = '';
     delete process.env.ALLOWED_ADMINS;
     const { isAuthor, isAdmin } = await loadAuth();
-    expect(isAuthor({ email: 'author@band.test' })).toBe(false);
-    expect(isAdmin({ email: 'author@band.test' })).toBe(false);
+    expect(await isAuthor({ email: 'author@band.test' })).toBe(false);
+    expect(await isAdmin({ email: 'author@band.test' })).toBe(false);
   });
 });
 
 describe('canModerate', () => {
   it('lets an owner remove their own content', async () => {
     const { canModerate } = await loadAuth();
-    expect(canModerate({ email: 'stranger@band.test' }, 'stranger@band.test')).toBe(true);
+    expect(await canModerate({ email: 'stranger@band.test' }, 'stranger@band.test')).toBe(true);
   });
 
   // The old inline check was `reply.author === user.email`, which could deny
   // someone their own post on a case difference.
   it('matches the owner case-insensitively', async () => {
     const { canModerate } = await loadAuth();
-    expect(canModerate({ email: 'Stranger@Band.test' }, 'stranger@band.test')).toBe(true);
+    expect(await canModerate({ email: 'Stranger@Band.test' }, 'stranger@band.test')).toBe(true);
   });
 
   it('lets an admin remove anyone\'s', async () => {
     const { canModerate } = await loadAuth();
-    expect(canModerate({ email: 'admin@band.test' }, 'stranger@band.test')).toBe(true);
+    expect(await canModerate({ email: 'admin@band.test' }, 'stranger@band.test')).toBe(true);
   });
 
   it('refuses a stranger', async () => {
     const { canModerate } = await loadAuth();
-    expect(canModerate({ email: 'stranger@band.test' }, 'someone@band.test')).toBe(false);
+    expect(await canModerate({ email: 'stranger@band.test' }, 'someone@band.test')).toBe(false);
   });
 });
 

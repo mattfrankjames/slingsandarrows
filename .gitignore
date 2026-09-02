@@ -98,3 +98,12 @@ blob-report/
 # CI's. Those files are captured against whatever preview was handy and are
 # throwaway — ignored so a green local run cannot be mistaken for CI agreeing.
 tests/browser/__screenshots__/darwin/
+
+# Local Netlify folder. `netlify dev` writes bundled functions here, and
+# `netlify db` keeps the local WASM Postgres under it.
+.netlify
+
+# Written by `netlify dev` when it prepares the edge-functions runtime. It
+# pins Deno's dependencies, not ours — nothing in this repo imports from Deno,
+# and it reappears on any machine that runs the dev server.
+deno.lock

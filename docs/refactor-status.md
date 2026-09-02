@@ -80,8 +80,36 @@ unrelated to a change, fix the flakiness rather than dropping the requirement.
 
 Settled — don't relitigate without a reason:
 
-- **Supabase** for Postgres + auth. Chosen over Neon for GoTrue continuity: the
-  existing sign-in modal already speaks that protocol.
+- **Neon for Postgres, direct rather than through Netlify DB.** **Reversed
+  2026-08-29, amended 2026-08-30** — this entry
+  previously read "Supabase, chosen over Neon for GoTrue continuity: the
+  existing sign-in modal already speaks that protocol." Two things made that
+  reasoning stop applying, and both are worth recording so this does not get
+  reopened a third time.
+
+  Auth is not moving. The original argument was about migrating sign-in *to*
+  Supabase; Phase 4 instead keeps Netlify Identity and does authorisation in
+  `auth.mjs`, so Supabase Auth and RLS would have gone unused. And Netlify
+  Identity is not being deprecated after all — announced, then
+  [reversed in February 2026](https://answers.netlify.com/t/netlify-identity-is-staying-feb-2026-reversal-what-changed-whos-affected-and-how-to-proceed/162733)
+  — so there is no forcing function to move it.
+
+  The deciding argument was not cost. On Supabase the schema carried 23 row
+  level security policies that could not work: they read the caller from
+  `request.jwt.claims`, which only a Supabase-issued JWT populates, and the
+  server key bypasses policies regardless. They would have sat in the schema
+  looking like access control while enforcing nothing — the same failure shape
+  as a test that cannot fail. Dropping them made the schema smaller and honest:
+  17 statements instead of 55.
+
+  Cost agrees: Neon's free tier scales to zero and wakes itself, where a free
+  Supabase project pauses after a week and needs a manual restore, and Neon's
+  paid tier is usage-based against $25/month per project.
+
+  **The store is what could reverse this again.** Customer accounts are where
+  Supabase's auth-plus-database bundle earns its price. The plan is a separate
+  store on a subdomain with its own stack, which is a normal shape for band
+  merch and keeps that decision out of this one.
 - **Eleventy**, not Astro. Compiles to plain HTML, no client runtime.
 - **JSDoc + `checkJs`**, not TypeScript. Files stay `.js`, no build step.
 - **Keep Cloudinary.** Only the upload path needed fixing, and it was.
@@ -123,17 +151,158 @@ needs: no transactions, no unique constraints, no atomic counters.
   confirm, then writes. Leave the Blob data as a rollback for a few deploys.
 - RLS replaces `ALLOWED_AUTHORS` / `ALLOWED_ADMINS`; roles move to a table.
 - `shows.json` becomes a table, with upcoming/past computed from the date.
-- Migrations committed and runnable from zero — CI runs them on a Supabase
-  preview branch per PR, which continuously proves the bootstrap path the
-  template will depend on.
+- Migrations committed and runnable from zero, applied by `scripts/migrate.mjs`
+  rather than pasted into a console. CI should run them against a throwaway
+  Postgres per pull request, which continuously proves the bootstrap path the
+  template will depend on. Not built yet.
+
+### What Phase 4 will not fix
+
+Measured on the live site before starting, because the assumption was that
+Postgres would take the loading states with it. It will not.
+
+A cold visit to `/gallery`: `DOMContentLoaded` at 550ms, the request for
+`/api/v1/gallery` *starting* at 549ms and taking 1102ms, content on screen at
+1651ms. Three costs, and this phase only touches the smallest:
+
+| Cost | Measured | Phase 4 |
+|---|---|---|
+| Nothing fetched until the JS module graph runs | ~550ms | no effect |
+| Netlify function cold start | ~1000ms | likely worse |
+| The query itself | ~50ms warm | this is the part it fixes |
+
+`board/threads` took 1053ms on its first call and 2ms on the next; `posts` and
+`gallery` answer in ~52ms once warm, with 12 and 31 items. So the reader is
+waiting on a function booting, not on Blobs enumerating keys. Opening a
+Postgres connection during that boot adds to it rather than removing it — worth
+watching once the first endpoint is cut over, and an argument for a pooler.
+
+Two related things found in the same pass:
+
+- **The service worker cache cannot help a first visit.** It is not yet
+  controlling the page, so that load always pays full price, and the cache is
+  keyed per URL — a warm `/feed` does nothing for `/gallery`. This is what
+  "loading states as if nothing is cached" actually is.
+- **`netlify.toml` and the functions disagree about edge caching.** The config
+  sets `/api/*` to `no-cache, no-store, must-revalidate` and comments that API
+  responses are never cached at the edge. The functions override it through
+  `cacheFor()`, and a live response carries `public,max-age=60` with
+  `cache-status: "Netlify Edge"; hit`. Not a leak — every user-specific
+  endpoint (`post-likes-mine`, `cloudinary-sign`, `post-likes-toggle`) uses
+  `noStore`, so Phase 0's fix holds — but the config's stated intent is not what
+  happens, and the header block should say what it means.
+
+### Verification status
+
+**The schema is applied to Neon and the tests pass against it.** 2026-09-01,
+Postgres 18.6, through `scripts/migrate.mjs` — 8 tables, 3 views, 15 indexes, 3
+foreign keys, 18 check constraints, one row in `schema_migrations`.
+
+`npm run test:db` runs the 16 database tests. They pass against Neon over the
+HTTP transport, and they passed earlier against the local WebAssembly Postgres
+17.5 over `pg`. Two builds of Postgres, two transports, same results — which is
+most of what this phase needed to know.
+
+Earlier verification, which still counts for what it proved: applying the
+Supabase draft is what showed `has_role` needed `security definer`, and the
+local database is where the four things this phase exists to fix were tested by
+trying to violate them — a double like rejected by the primary key, a deleted
+post taking its comments and likes, a mixed-case email refused, a show's status
+computed rather than stored.
+
+**The data is across.** 2026-09-01, 73 records, verified by counting the
+destination rather than trusting the writes:
+
+| | |
+|---|---|
+| posts | 12 |
+| board-threads | 4 |
+| gallery | 31 |
+| post-comments | 2 |
+| board-replies | 4 |
+| post-likes | 5 |
+| shows (from shows.json) | 15 |
+
+Spot-checked as the site would read it: posts come back newest-first with
+lowercased authors, valid dates and correct like and comment counts from the
+aggregate views; all 31 gallery items kept Cloudinary URLs; thread reply counts
+are 0/1/1/2, summing to the four replies that were read; and `shows_with_status`
+computes 13 past and 2 upcoming from the dates rather than the hand-maintained
+field it replaces.
+
+**No orphans.** The plan found every child had its parent, so the orphan
+handling did not fire. The `delete-post` cascade bug is real but has never been
+triggered here — no post with comments or likes has been deleted. The guard
+still earns its place for the re-run and for the template, where another band's
+data will not be this clean, but it did nothing on this pass and it is worth
+saying so.
+
+**Blobs is untouched** and remains the rollback.
+
+**What is still untested.** Nothing has exercised the flag end to end — no
+deploy has run with `USE_POSTGRES=true`, so no handler has served a real request
+from Postgres. That is the cutover, and it is the last thing this phase needs.
+
+Two things worth knowing when working with this:
+
+- **A Neon statement costs a round trip.** The database tests take ~2.4s against
+  Neon and ~0.12s against the local WASM build. Correctness is identical; the
+  difference is latency, and it is the same tax every handler will pay.
+- **A Neon connection string contains `&`.** Sourcing `.env` in a shell splits
+  on it and fails confusingly. `scripts/test-db.mjs` reads the file itself, and
+  `node --env-file=.env` works; `set -a && . ./.env` does not.
+
+### Why Neon directly, and not Netlify DB
+
+Attempted first, and it does not work on this account. Installing
+`@netlify/database` makes every Netlify build try to provision a database, and
+the API answers:
+
+    API error on "createSiteDatabase"
+      status: 403
+      message: 'database feature not available for this account'
+
+Two deploys failed on that before the cause was found, reporting only `Build
+script returned non-zero exit code: 4`. It built locally and in a clean clone
+with `npm ci`; `netlify build --context deploy-preview` runs the real pipeline
+locally and named it immediately. **Reach for that before guessing at a Netlify
+build failure** — the first guess here was a Node version, which was wrong and
+got pushed.
+
+The account is on Netlify's *legacy* Free plan (`credit_features: included:
+false`). Netlify Database requires the newer credit-based plans, whose Free tier
+is also $0 — so this is a plan migration rather than a price. Not worth doing:
+on credit-based plans an active database draws down the same credits as builds
+and bandwidth, and it is the same Neon underneath either way. A Neon account
+keeps the database's limits separate from the host's.
+
+The package is gone. `db.mjs` selects the transport itself — Neon's HTTP client
+for a `*.neon.tech` host, `pg` for anything else — which is a dozen lines and
+was the only thing that package was doing for us.
+
+### Phase 4.5 — first paint without a loading state
+
+Agreed to follow this phase rather than join it, so the migration stays
+reviewable on its own.
+
+Render the first screen into the HTML at build time. Eleventy already builds
+these pages; having `feed.njk` and `gallery.njk` emit the first N items
+server-side means first paint has content and the client only revalidates.
+That removes the loading state on cold *and* warm visits, and it is the only
+one of the three costs above that can be removed rather than reduced.
+
+It works against Blobs or Postgres. Doing it after the migration means the
+build step gets written once, against the data source it will keep.
 
 ### Where the seams already are
 
 - `netlify/lib/store.mjs` is the only file importing `@netlify/blobs` (ESLint
   enforces it). Rewriting it is most of the data layer.
 - `netlify/lib/auth.mjs` exports `getUser` / `isAuthor` / `isAdmin` /
-  `canModerate` / `require*`. Swapping Identity for Supabase changes the body,
-  not the exports.
+  `canModerate` / `require*`. These keep their signatures; `isAuthor` and
+  `isAdmin` change from reading `ALLOWED_AUTHORS` / `ALLOWED_ADMINS` to querying
+  the `roles` table. Sign-in stays on Netlify Identity, so token verification is
+  untouched.
 - `src/core/js/lib/api.js` names every endpoint in one place.
 - `store.page()` returns `{ items, nextCursor, total }`; list endpoints already
   accept `?limit` and `?cursor`. **The frontend does not send them yet** —

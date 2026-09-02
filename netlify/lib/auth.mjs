@@ -157,6 +157,21 @@ export async function getUser(req) {
   return user;
 }
 
+/**
+ * Roles used to be comma-separated environment variables: invisible to the app,
+ * unauditable, and needing a redeploy to change. Phase 4 moves them to a table.
+ *
+ * Both are live, chosen the same way as the storage layer, so authorisation and
+ * data cut over together — a deploy reading posts from Postgres while deciding
+ * who may publish from a stale env var is a confusing half-state to debug.
+ *
+ * These became async as a result. Nothing outside this file called them
+ * directly; the require* wrappers below were already async.
+ */
+function usingPostgres() {
+  return process.env.USE_POSTGRES === 'true';
+}
+
 /** Parse a comma-separated allowlist env var into lowercased addresses. */
 function emailList(value) {
   return (value || '')
@@ -166,29 +181,59 @@ function emailList(value) {
 }
 
 /**
+ * Does this person hold this role?
+ *
+ * Failing closed is the whole point of the empty-list behaviour below, and it
+ * has to survive the move: a database that is unreachable must not make
+ * everyone an author. The query is allowed to throw and the caller turns that
+ * into a 500, rather than being caught and treated as "no role" — which would
+ * be indistinguishable from a correct denial in the logs.
+ */
+async function hasRole(email, role) {
+  const address = String(email).toLowerCase();
+
+  if (!usingPostgres()) {
+    const list =
+      role === 'admin'
+        ? emailList(process.env.ALLOWED_ADMINS || process.env.ALLOWED_AUTHORS)
+        : emailList(process.env.ALLOWED_AUTHORS);
+    return list.includes(address);
+  }
+
+  const { query } = await import('./db.mjs');
+  const rows = await query('select 1 from roles where email = $1 and role = $2 limit 1', [
+    address,
+    role,
+  ]);
+  return rows.length > 0;
+}
+
+/**
  * May this user publish posts and gallery items?
  *
- * Note the empty-list behaviour: if ALLOWED_AUTHORS is unset, nobody is an
+ * Note the empty-list behaviour: if nobody is granted the role, nobody is an
  * author. Failing closed matters more than convenience for a publish gate.
  *
  * @param {{ email: string } | null} user
  */
-export function isAuthor(user) {
+export async function isAuthor(user) {
   if (!user?.email) return false;
-  return emailList(process.env.ALLOWED_AUTHORS).includes(user.email.toLowerCase());
+  return hasRole(user.email, 'author');
 }
 
 /**
  * May this user delete other people's board and comment content?
- * Falls back to the author list when ALLOWED_ADMINS is unset, matching the
- * behaviour the individual functions had before.
+ *
+ * On the env-var path this falls back to the author list when ALLOWED_ADMINS is
+ * unset, matching the behaviour the individual functions had before. The table
+ * has no such fallback — a role is granted or it is not, which is the point of
+ * moving them somewhere auditable.
  *
  * @param {{ email: string } | null} user
  */
-export function isAdmin(user) {
+export async function isAdmin(user) {
   if (!user?.email) return false;
-  const admins = emailList(process.env.ALLOWED_ADMINS || process.env.ALLOWED_AUTHORS);
-  return admins.includes(user.email.toLowerCase());
+  return hasRole(user.email, 'admin');
 }
 
 /**
@@ -198,10 +243,10 @@ export function isAdmin(user) {
  * @param {{ email: string } | null} user
  * @param {string} ownerEmail
  */
-export function canModerate(user, ownerEmail) {
+export async function canModerate(user, ownerEmail) {
   if (!user?.email) return false;
-  if (isAdmin(user)) return true;
-  return user.email.toLowerCase() === (ownerEmail || '').toLowerCase();
+  if (user.email.toLowerCase() === (ownerEmail || '').toLowerCase()) return true;
+  return isAdmin(user);
 }
 
 // ── Throwing variants ────────────────────────────────────────────────────────
@@ -226,7 +271,7 @@ export async function requireUser(req) {
  */
 export async function requireAuthor(req) {
   const user = await requireUser(req);
-  if (!isAuthor(user)) throw forbidden('Only band members can publish');
+  if (!(await isAuthor(user))) throw forbidden('Only band members can publish');
   return user;
 }
 
@@ -237,6 +282,6 @@ export async function requireAuthor(req) {
  */
 export async function requireModerator(req, ownerEmail) {
   const user = await requireUser(req);
-  if (!canModerate(user, ownerEmail)) throw forbidden('That is not yours to delete');
+  if (!(await canModerate(user, ownerEmail))) throw forbidden('That is not yours to delete');
   return user;
 }

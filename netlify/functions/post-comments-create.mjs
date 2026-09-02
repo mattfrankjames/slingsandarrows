@@ -1,7 +1,7 @@
 import { route, json, notFound } from '../lib/http.mjs';
 import { requireUser } from '../lib/auth.mjs';
 import { readJson, requiredString, requiredId, newId, LIMITS } from '../lib/validate.mjs';
-import { getStore } from '../lib/store.mjs';
+import { createChild, exists } from '../lib/store.mjs';
 
 export default route(async (req, context) => {
   const user = await requireUser(req);
@@ -9,9 +9,7 @@ export default route(async (req, context) => {
 
   const postId = requiredId(context.params?.postId ?? body.postId, 'postId');
 
-  const posts = getStore('posts');
-  const post  = await posts.get(postId, { type: 'json' });
-  if (!post) throw notFound('That post no longer exists');
+  if (!(await exists('posts', postId))) throw notFound('That post no longer exists');
 
   const comment = {
     id:        newId(),
@@ -21,12 +19,9 @@ export default route(async (req, context) => {
     createdAt: new Date().toISOString(),
   };
 
-  await getStore('post-comments').setJSON(`${postId}/${comment.id}`, comment);
-
-  // Denormalised count for the feed listing. Same read-modify-write caveat as
-  // likes — see post-likes-toggle.mjs.
-  post.commentCount = (post.commentCount || 0) + 1;
-  await posts.setJSON(postId, post);
+  // The comment count is the storage layer's problem — an aggregate in
+  // Postgres, a read-modify-write in Blobs — and not this handler's.
+  await createChild('post-comments', comment);
 
   return json(comment, 201);
 });
