@@ -36,3 +36,76 @@ export const GOTRUE_API_URL = `${window.location.origin}/.netlify/identity`;
 export function initIdentityWidget() {
   window.netlifyIdentity?.init({ APIUrl: GOTRUE_API_URL });
 }
+
+/**
+ * The URL fragments Netlify Identity uses to hand a token to the page.
+ *
+ * These arrive from an email — confirm your address, reset your password,
+ * accept an invite, confirm an address change. Visiting the link does not
+ * confirm anything server-side; it drops the reader here with the token in the
+ * hash, and only the initialised widget exchanges it for a session.
+ */
+const TOKEN_HASHES = [
+  'confirmation_token=',
+  'recovery_token=',
+  'invite_token=',
+  'email_change_token=',
+];
+
+/** Is this page load the landing of one of those emails? */
+export function hasIdentityToken(hash = window.location.hash) {
+  return TOKEN_HASHES.some(token => hash.includes(token));
+}
+
+/** @type {Promise<void> | null} */
+let loading = null;
+
+/**
+ * Fetch the widget script, once, and initialise it.
+ *
+ * It used to be a static `<script async>` in the head of all eight pages. That
+ * is 481ms of third-party download — measured, the single slowest resource on a
+ * cold visit — on every page view, to support two flows that almost no page
+ * view uses: exchanging an emailed token, and opening the password-reset
+ * dialog.
+ *
+ * Async meant it never blocked rendering, so this is not about unblocking. It
+ * is about not competing for bandwidth, connections and main-thread parse time
+ * with the CSS and JavaScript that content actually waits on.
+ *
+ * Resolves either way. A blocked or failed script leaves `window.netlifyIdentity`
+ * undefined, which every caller already tolerates — they were written against a
+ * script that might not have arrived yet.
+ */
+export function loadIdentityWidget() {
+  if (loading) return loading;
+
+  loading = new Promise(resolve => {
+    if (window.netlifyIdentity) return resolve();
+
+    const script = document.createElement('script');
+    script.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
+    script.async = true;
+    script.addEventListener('load', () => {
+      initIdentityWidget();
+      resolve();
+    });
+    // Ad blockers and offline both land here. Callers degrade rather than hang.
+    script.addEventListener('error', () => resolve());
+    document.head.appendChild(script);
+  });
+
+  return loading;
+}
+
+/**
+ * Load the widget only if this page load needs it immediately.
+ *
+ * Called on every page, so a token link works wherever it lands — the default
+ * Netlify template sends people to the site root, but the template is editable
+ * and a link that silently does nothing is a miserable thing to debug.
+ */
+export function loadIdentityWidgetIfTokenPresent() {
+  if (!hasIdentityToken()) return Promise.resolve();
+  return loadIdentityWidget();
+}

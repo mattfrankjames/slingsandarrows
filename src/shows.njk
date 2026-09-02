@@ -2,7 +2,6 @@
 title: "Slings & Arrows | Upcoming Shows"
 description: "Upcoming and past concert dates for Slings & Arrows. Check out our live shows."
 permalink: "/shows.html"
-identityWidget: true
 ---
 {% extends "layouts/base.njk" %}
 
@@ -19,12 +18,12 @@ identityWidget: true
 {% block afterBody %}
 <script type="module">
 			import showsData from './site/data/shows.json';
-			import { initIdentityWidget } from './core/js/identity-widget.js';
+			import { loadIdentityWidgetIfTokenPresent } from './core/js/identity-widget.js';
 
 			if (document.readyState === 'complete') {
-				initIdentityWidget();
+				loadIdentityWidgetIfTokenPresent();
 			} else {
-				window.addEventListener('load', initIdentityWidget, { once: true });
+				window.addEventListener('load', loadIdentityWidgetIfTokenPresent, { once: true });
 			}
 
 			function buildList(shows) {

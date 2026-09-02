@@ -11,9 +11,6 @@
 <html lang="{{ site.locale }}">
 <head>
   {% include "partials/head.njk" %}
-  {% if identityWidget %}
-  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-  {% endif %}
   {% if pageStyles %}<style>{% include "page-styles/" + pageStyles + ".css" %}</style>{% endif %}
 </head>
 <body>

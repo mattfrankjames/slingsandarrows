@@ -2,18 +2,6 @@
 <html lang="{{ site.locale }}">
 <head>
   {% include "partials/head.njk" %}
-  {% if identityWidget %}
-  {#
-    The Netlify Identity widget. Loaded async everywhere — four of the eight
-    pages used to load it render-blocking in <head>, and they were the four
-    heaviest and most visited.
-
-    It has to be present on any page an email confirmation link might land on:
-    those links drop the user on the site with a #confirmation_token hash that
-    only the initialised widget exchanges for a session.
-  #}
-  <script async src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-  {% endif %}
   {% if pageStyles %}<style>{% include "page-styles/" + pageStyles + ".css" %}</style>{% endif %}
 </head>
 <body>

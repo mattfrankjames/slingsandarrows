@@ -3,7 +3,12 @@
  * Provides sign-up and sign-in flows without relying on Netlify Identity widget
  */
 
-import { GOTRUE_API_URL, initIdentityWidget } from './identity-widget.js';
+import {
+  GOTRUE_API_URL,
+  initIdentityWidget,
+  loadIdentityWidget,
+  loadIdentityWidgetIfTokenPresent,
+} from './identity-widget.js';
 import { saveSession, clearSession, currentEmail, signOut, ensureFreshSession } from './lib/session.js';
 
 export { initIdentityWidget };
@@ -348,13 +353,19 @@ export class AuthModal {
     successEl.hidden = true;
   }
 
-  showPasswordReset() {
-    // Delegate to the Netlify Identity widget if available; otherwise show a
-    // helpful message since GoTrue recovery requires the widget flow.
+  async showPasswordReset() {
+    // GoTrue recovery only exists as a widget flow, and the widget is no longer
+    // on every page — it is 481ms of third-party download for something almost
+    // no page view uses. Fetch it at the moment someone asks to reset, which is
+    // the only moment it is needed.
+    this.showError('');
+    await loadIdentityWidget();
+
     if (window.netlifyIdentity) {
       this.close();
       window.netlifyIdentity.open('recovery');
     } else {
+      // Blocked, offline, or the script failed. Same message as before.
       this.showError(
         'To reset your password, visit the sign-in page and use "Forgot password" in the Netlify Identity dialog.'
       );
@@ -434,12 +445,23 @@ export function initAuthBar() {
     }
   }
 
+  // A token link can land on any page, not only the site root — the Netlify
+  // email template is editable, and a confirmation link that silently does
+  // nothing is a miserable thing to diagnose. Costs one hash check when there
+  // is no token, which is every ordinary page view.
+  loadIdentityWidgetIfTokenPresent().then(() => {
+    if (window.netlifyIdentity) attachWidgetEvents();
+  });
+
   // Initial render
   applyUser(resolveUser());
 
   // ── Netlify Identity widget events ────────────────────────────────────────
-  const identity = window.netlifyIdentity;
-  if (identity) {
+  // A function rather than a straight-line block, because the widget is now
+  // loaded on demand and may arrive after this runs.
+  function attachWidgetEvents() {
+    const identity = window.netlifyIdentity;
+    if (!identity) return;
     identity.on('init',   user => applyUser(user ? { email: user.email } : resolveUser()));
     identity.on('login',  user => applyUser({ email: user.email }));
     identity.on('logout', ()   => {
@@ -448,6 +470,8 @@ export function initAuthBar() {
       applyUser(null);
     });
   }
+
+  attachWidgetEvents();
 
   // ── Custom auth-modal login event ─────────────────────────────────────────
   window.addEventListener('auth-modal:login', e => {

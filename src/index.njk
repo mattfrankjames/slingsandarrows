@@ -3,7 +3,6 @@ title: "Slings & Arrows | Midwestern Atmospheric Instrumentals"
 description: "Atmospheric, dark & dreamy instrumental music from the Midwest. Explore our latest releases, live shows, and interactive instruments."
 permalink: "/index.html"
 pageStyles: index
-identityWidget: true
 ---
 {% extends "layouts/home.njk" %}
 
@@ -20,11 +19,11 @@ identityWidget: true
 
 {% block afterBody %}
 <script type="module">
-        import { initIdentityWidget } from './core/js/identity-widget.js';
+        import { loadIdentityWidgetIfTokenPresent } from './core/js/identity-widget.js';
         if (document.readyState === 'complete') {
-            initIdentityWidget();
+            loadIdentityWidgetIfTokenPresent();
         } else {
-            window.addEventListener('load', initIdentityWidget, { once: true });
+            window.addEventListener('load', loadIdentityWidgetIfTokenPresent, { once: true });
         }
     </script>
 {% endblock %}
