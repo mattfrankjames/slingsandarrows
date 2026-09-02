@@ -1,5 +1,6 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
+import { loadingIndicator } from './lib/loading-state.js';
 import { uploadToCloudinary } from './lib/media.js';
 import { currentEmail, clearSession } from './lib/session.js';
 import { api } from './lib/api.js';
@@ -172,10 +173,11 @@ function listenForSWMessages() {
 
 // ─── Gallery loading & rendering ─────────────────────────────────────────────
 async function loadGallery() {
+  const settled = loadingIndicator(loading);
   try {
     galleryItems = await api.gallery.list();
 
-    loading.hidden = true;
+    settled();
 
     if (!galleryItems.length) {
       emptyState.hidden = false;
@@ -184,7 +186,7 @@ async function loadGallery() {
 
     galleryItems.forEach((item, idx) => grid.appendChild(renderThumbnail(item, idx)));
   } catch {
-    loading.hidden = true;
+    settled();
     if (!grid.children.length) errorState.hidden = false;
   }
 }

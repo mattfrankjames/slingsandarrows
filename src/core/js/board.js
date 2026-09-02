@@ -1,4 +1,5 @@
 import { authModal, initAuthBar, ensureFreshSession } from './auth-modal.js';
+import { loadingIndicator } from './lib/loading-state.js';
 import { lightbox } from './lightbox.js';
 import { uploadToCloudinary } from './lib/media.js';
 import { currentEmail, clearSession } from './lib/session.js';
@@ -848,10 +849,11 @@ threadForm.addEventListener('submit', async e => {
 
 // ─── Load all threads on page load ───────────────────────────────────────────
 async function loadThreads() {
+  const settled = loadingIndicator(loadingEl);
   try {
     const threads = await api.board.threads.list();
 
-    loadingEl.hidden = true;
+    settled();
 
     if (!threads.length) {
       emptyState.hidden = false;
@@ -861,7 +863,7 @@ async function loadThreads() {
     threads.forEach(thread => threadsList.appendChild(buildThreadCard(thread)));
   } catch (err) {
     console.error('[board] loadThreads error:', err);
-    loadingEl.hidden = true;
+    settled();
     errorState.hidden = false;
   }
 }

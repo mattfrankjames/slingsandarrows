@@ -1,4 +1,5 @@
 import { initAuthBar, ensureFreshSession } from './auth-modal.js';
+import { loadingIndicator } from './lib/loading-state.js';
 import { renderPost, loadMyLikes, isLoggedIn } from './post-render.js';
 import { postComposerModal } from './post-composer-modal.js';
 import { retryQueuedPostsOnReconnect, syncQueuedPostsIfOnline } from './post-composer.js';
@@ -149,10 +150,11 @@ async function refreshPostsSilently() {
 
 // ─── Load published posts from API ───────────────────────────────────────────
 async function loadPosts() {
+  const settled = loadingIndicator(loading);
   try {
     const posts = await api.posts.list();
 
-    loading.hidden = true;
+    settled();
 
     if (posts.length === 0 && !feed.querySelector('[data-pending-id]')) {
       emptyState.hidden = false;
@@ -161,7 +163,7 @@ async function loadPosts() {
 
     posts.forEach(post => feed.appendChild(renderPost(post)));
   } catch {
-    loading.hidden = true;
+    settled();
     // Only show error state if we have nothing else to display
     if (!feed.children.length) {
       errorState.hidden = false;
