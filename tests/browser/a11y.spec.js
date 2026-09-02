@@ -221,6 +221,46 @@ test.describe('motion and focus', () => {
     await context.close();
   });
 
+  /*
+   * The loading state is built from the masthead's two animations — the grain
+   * scrolling and the glitch displacing three shadow colours. Under reduced
+   * motion the blanket rule in base.css near-zeroes both, which would otherwise
+   * leave the grain frozen mid-scroll and the glyphs stuck at whatever
+   * displacement the last frame had: legible, but it reads as a rendering fault
+   * rather than a design. components.css states a still version deliberately,
+   * and this checks the two rules actually compose that way.
+   */
+  test('the loading state is still legible with motion reduced', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/feed');
+
+    const style = await page.evaluate(() => {
+      const el = document.getElementById('loading');
+      el.hidden = false; // only shown after a real wait; force it to measure
+      const cs = getComputedStyle(el);
+      return {
+        durations: cs.animationDuration.split(',').map(d => parseFloat(d)),
+        shadowLayers: cs.textShadow.split('rgb').length - 1,
+        fontSize: parseFloat(cs.fontSize),
+        clipsToText: (cs.webkitBackgroundClip || cs.backgroundClip) === 'text',
+      };
+    });
+
+    // Motion is gone…
+    for (const d of style.durations) expect(d).toBeLessThan(0.05);
+
+    // …but the treatment is not. Grain still fills the glyphs, and one shadow
+    // remains so the letters do not read as flat body text.
+    expect(style.clipsToText, 'the grain should still show through').toBe(true);
+    expect(style.shadowLayers, 'a still displacement, not three moving ones').toBeGreaterThan(0);
+
+    // And it stays large enough that the em-based treatment is visible at all.
+    expect(style.fontSize).toBeGreaterThan(20);
+
+    await context.close();
+  });
+
   test('leaves animation alone when motion is not reduced', async ({ browser }) => {
     // The guard must be conditional, not a permanent disable.
     const context = await browser.newContext({ reducedMotion: 'no-preference' });
