@@ -78,3 +78,71 @@ jobs:
           grep -q '"/sw.js"' dist/feed.html \
             || { echo "::error::Pages do not resolve the worker to /sw.js."; exit 1; }
           echo "Service worker at dist/sw.js, referenced as /sw.js"
+
+  # ── The database, from zero ────────────────────────────────────────────────
+  #
+  # These tests existed for a while and ran nowhere: they need a Postgres, so
+  # they skipped in CI and only ran when someone remembered `npm run test:db`.
+  # That is the weakest coverage in the repository, and it is how the RLS
+  # recursion bug in the Supabase draft nearly shipped — the schema parsed, the
+  # objects existed, and nothing executed a query until a person did.
+  #
+  # A throwaway container rather than a Neon branch: Neon branching needs an API
+  # token in CI and a paid plan for anything beyond the basics, and this proves
+  # more anyway. Every run starts from an empty database and applies
+  # migrations/0001, so the from-zero bootstrap the template depends on is
+  # exercised continuously rather than remembered.
+  #
+  # postgres:18 to match what Neon serves (18.6). A schema that only works on
+  # the version CI happens to pull is a schema nobody has tested.
+  database:
+    name: Migrations and database tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: slingsandarrows_test
+        ports:
+          - 5432:5432
+        # Without a health check the steps start before Postgres accepts
+        # connections, and the failure is a connection refused that looks like
+        # a configuration problem.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/slingsandarrows_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply migrations to an empty database
+        run: node scripts/migrate.mjs
+
+      # Running twice is the assertion. The runner records what it has applied
+      # and compares checksums, so a second run must be a no-op — if it tries to
+      # replay a migration, `create table` fails and this step goes red.
+      - name: Migrations are re-runnable
+        run: |
+          output=$(node scripts/migrate.mjs)
+          echo "$output"
+          echo "$output" | grep -q "Up to date" \
+            || { echo "::error::A second run was not a no-op."; exit 1; }
+
+      # The schema claims constraints; this is where they are executed. Without
+      # it the job would prove the SQL parses and nothing about what it enforces.
+      - name: Database tests
+        run: npm run test:db
