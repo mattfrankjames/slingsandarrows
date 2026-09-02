@@ -1,4 +1,5 @@
 import { initAuthBar, ensureFreshSession } from './auth-modal.js';
+import { loadingIndicator } from './lib/loading-state.js';
 import { renderPost, loadMyLikes } from './post-render.js';
 import { api } from './lib/api.js';
 
@@ -42,16 +43,19 @@ function registerServiceWorker() {
 
   const id = getPostId();
   if (!id) {
-    loading.hidden = true;
+    // No fetch is coming, so there is nothing to indicate. The element is
+    // already hidden in the markup; this is the error path, not a wait.
     errorState.hidden = false;
     return;
   }
+
+  const settled = loadingIndicator(loading);
 
   try {
     const posts = await api.posts.list();
     const post = posts.find(p => p.id === id);
 
-    loading.hidden = true;
+    settled();
 
     if (!post) {
       errorState.hidden = false;
@@ -63,7 +67,7 @@ function registerServiceWorker() {
     detail.appendChild(renderPost(post, { fullView: true }));
   } catch (err) {
     console.warn('[post-view] load error:', err);
-    loading.hidden = true;
+    settled();
     errorState.hidden = false;
   }
 })();
