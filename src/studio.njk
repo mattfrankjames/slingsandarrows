@@ -3,7 +3,6 @@ title: "Slings & Arrows | Studio"
 description: "Interactive music studio with Web MIDI synthesizer, drum machine, and bass sequencer. Create and record music in your browser."
 permalink: "/studio.html"
 pageStyles: studio
-identityWidget: true
 ---
 {% extends "layouts/base.njk" %}
 
@@ -331,11 +330,11 @@ identityWidget: true
 {% block afterBody %}
 <script type="module" src="./core/js/instruments.js"></script>
   <script type="module">
-    import { initIdentityWidget } from './core/js/identity-widget.js';
+    import { loadIdentityWidgetIfTokenPresent } from './core/js/identity-widget.js';
     if (document.readyState === 'complete') {
-      initIdentityWidget();
+      loadIdentityWidgetIfTokenPresent();
     } else {
-      window.addEventListener('load', initIdentityWidget, { once: true });
+      window.addEventListener('load', loadIdentityWidgetIfTokenPresent, { once: true });
     }
   </script>
 {% endblock %}

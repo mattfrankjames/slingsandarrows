@@ -540,6 +540,81 @@
     padding: 3em 0;
     opacity: 0.6;
   }
+
+  /*
+   * The loading state, in the site's own language.
+   *
+   * It only appears when the wait is real — see lib/loading-state.js, which
+   * holds it back for 250ms so a cached response never flashes one. Which means
+   * that when it does appear, someone is actually looking at it, and a bare
+   * "Loading…" in body text was the one moment the site stopped looking like
+   * itself.
+   *
+   * Built from what is already here rather than something new: the grain
+   * behind the masthead (--texture-static), clipped to the glyphs the way
+   * .glitch does it, and both existing keyframes — `static` scrolling the grain,
+   * `glitch` displacing the three shadow colours. No new animation, no new
+   * palette, nothing to keep in sync with the header if it changes.
+   */
+  #loading {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 1;
+
+    /*
+     * Bigger than body text on purpose, and the reason is mechanical rather
+     * than aesthetic. Both keyframes displace in `em` — 0.04em, tuned against a
+     * 6rem masthead where it lands around five pixels. At 1.1rem the same rule
+     * moves things by less than a pixel and the glitch is invisible: the
+     * animation runs and nothing appears to happen. Scaling the type is what
+     * makes the existing keyframes legible, rather than forking them.
+     */
+    font-size: clamp(1.75rem, 3vw + 1rem, 2.75rem);
+
+    /* The grain shows through the letterforms, as in .glitch. */
+    color: transparent;
+    background: var(--texture-static) repeat;
+    background-size: cover;
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    /* Same three colours as the masthead's displacement. */
+    text-shadow:
+      0.04em 0 0 color(display-p3 0.704 0.735 0.8),
+      -0.025em -0.03em 0 color(display-p3 0.165 0.063 0.278 / 0.7),
+      0.02em 0.03em 0 #2e2d34;
+
+    animation:
+      static 1s steps(10) infinite,
+      glitch 725ms infinite;
+  }
+
+  /* A scanline under it, matching the divider beneath the upcoming shows. */
+  #loading::after {
+    content: '';
+    display: block;
+    width: min(11em, 60%);
+    height: 3px;
+    margin: 0.9em auto 0;
+    background: var(--texture-static) repeat;
+    animation: static 1s steps(10) infinite;
+  }
+
+  /*
+   * Reduced motion gets the treatment without the movement.
+   *
+   * The blanket rule in base.css near-zeroes every animation, which would leave
+   * the grain frozen mid-scroll and the glyphs displaced by whatever frame it
+   * stopped on — legible, but it reads as a rendering fault rather than as a
+   * design. Better to state the still version deliberately: same grain, same
+   * palette, no displacement.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    #loading {
+      text-shadow: 0.02em 0 0 color(display-p3 0.165 0.063 0.278 / 0.7);
+    }
+  }
   /*
    * <dialog> is display:none until open and centred by the browser, so the
    * open state is the element's own rather than an .active class the JavaScript
