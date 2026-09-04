@@ -3,34 +3,20 @@
   publish = "dist"
   functions = "netlify/functions"
 
-# Pinned, not inherited. @netlify/database declares `engines: node >= 22.12.0`,
-# and this site had no NODE_VERSION — so builds took whatever the build image
-# defaulted to, which was older, and the first deploy after adding that
-# dependency failed with a bare "Build script returned non-zero exit code: 4".
+# ── The Postgres cutover, promoted ────────────────────────────────────────────
 #
-# The build succeeds locally and in a clean clone with npm ci, which is what
-# makes this worth writing down: nothing in the repository was wrong, and
-# reproducing it needed the one thing the repository did not specify. Pinning
-# also means the version stops moving under us when Netlify changes a default.
-[build.environment]
-  NODE_VERSION = "22"
-
-# Clean URLs
-# ── The Postgres cutover ──────────────────────────────────────────────────────
-#
-# Deploy previews read from Postgres; production still reads from Blobs. Set
-# here rather than in the Netlify UI because per-context environment variables
-# are a paid feature on this plan and netlify.toml is not — and because a
-# cutover switch belongs in the diff that performs it, where it is reviewable
-# and revertible, rather than in a setting nobody can see from the repository.
+# USE_POSTGRES lived under [context.deploy-preview.environment] while previews
+# were the only thing reading Postgres. It is here now, so every context —
+# production included — reads from Postgres. Netlify Blobs still holds a full
+# copy and is untouched by the migration; it stays the rollback.
 #
 # IMPORTANT: this variable does not reach the functions on its own. Netlify has
 # two environment-variable systems and they do not overlap — what is declared
 # here exists only while the build runs, and functions execute later in a
-# process that sees only UI/API values. This block sat here through every
-# preview after the cutover landed and changed nothing: process.env.USE_POSTGRES
-# was undefined at runtime and every preview served Blobs while reporting
-# success.
+# process that sees only UI/API values. Set under deploy-preview, it sat here
+# through every preview after the cutover landed and changed nothing:
+# process.env.USE_POSTGRES was undefined at runtime and every preview served
+# Blobs while reporting success.
 #
 # scripts/write-build-flags.mjs is what closes that gap. It runs first in
 # `npm run build`, reads this variable while it still exists, and writes it into
@@ -39,13 +25,32 @@
 # tests/unit/build-flags.test.js and by GET /api/v1/health, which reports the
 # backend a deploy is actually serving rather than the one it was configured for.
 #
-# scripts/compare-backends.mjs diffs a preview against production to decide
-# whether this is safe to promote. To promote it, move USE_POSTGRES into
-# [build.environment]; to roll back, delete it — or set USE_POSTGRES=false in
-# the Netlify UI, which reaches the runtime directly and needs no redeploy. The
-# Blob data is untouched by the migration and stays readable for as long as this
-# flag exists.
-[context.deploy-preview.environment]
+# ── Rolling back ─────────────────────────────────────────────────────────────
+#
+# Fastest: set USE_POSTGRES = "false" in the Netlify UI. UI values reach the
+# runtime directly and beat the baked one, so it takes effect without a build.
+# Then confirm at /api/v1/health, which should answer "blobs".
+#
+# Permanent: delete the line below and redeploy.
+#
+# Either way, writes made while Postgres was live exist only in Postgres —
+# Blobs stopped receiving them at the cutover. Rolling back makes those writes
+# invisible without destroying them; scripts/migrate-blobs-to-pg.mjs only ever
+# copies Blobs → Postgres, so recovering the other direction is manual.
+[build.environment]
+  # Pinned, not inherited. @netlify/database declares `engines: node >= 22.12.0`,
+  # and this site had no NODE_VERSION — so builds took whatever the build image
+  # defaulted to, which was older, and the first deploy after adding that
+  # dependency failed with a bare "Build script returned non-zero exit code: 4".
+  #
+  # The build succeeds locally and in a clean clone with npm ci, which is what
+  # makes this worth writing down: nothing in the repository was wrong, and
+  # reproducing it needed the one thing the repository did not specify. Pinning
+  # also means the version stops moving under us when Netlify changes a default.
+  NODE_VERSION = "22"
+
+  # Every context reads Postgres. See the note above for how this reaches the
+  # functions, and for how to roll it back.
   USE_POSTGRES = "true"
 
 # ── Local development ─────────────────────────────────────────────────────────
@@ -61,6 +66,8 @@
   targetPort = 1234
   framework = "#custom"
   autoLaunch = false
+
+# ── Clean URLs ────────────────────────────────────────────────────────────────
 
 [[redirects]]
   from = "/feed"
