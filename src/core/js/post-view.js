@@ -71,3 +71,5 @@ function registerServiceWorker() {
     errorState.hidden = false;
   }
 })();
+
+// diagnostic: force a distinct build output (1788554731)
