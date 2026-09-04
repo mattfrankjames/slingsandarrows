@@ -69,8 +69,18 @@
 
 # ── Clean URLs ────────────────────────────────────────────────────────────────
 
-# DIAGNOSTIC: a splat as the FIRST rule. If this matches, splats are fine and
-# the problem is that rules from position 10 onward are never applied.
+# DIAGNOSTIC: matched pair in the same deploy. The exact rule proves this file
+# is the one being deployed; the splat beside it is then a fair test.
+[[redirects]]
+  from = "/canary"
+  to = "/feed"
+  status = 301
+
+[[redirects]]
+  from = "/canary2/*"
+  to = "/feed"
+  status = 301
+
 [[redirects]]
   from = "/early/*"
   to = "/post.html"
