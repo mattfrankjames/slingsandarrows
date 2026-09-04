@@ -117,8 +117,22 @@
 # Status 200 rewrite — the browser's address bar (and window.location) stays
 # on /post/<id>, it's never rewritten client-side, so post-view.js reads the
 # id back out of the pathname rather than a query string.
+# DIAGNOSTIC — three variants, ordered so each is reachable. Reverted before
+# merge; here only to find out which form Netlify actually matches.
+[[redirects]]
+  from = "/post/:id"
+  to = "/post.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/post/*"
+  to = "/post.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/pv/*"
   to = "/post.html"
   status = 200
   force = true
