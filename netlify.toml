@@ -24,10 +24,27 @@
 # cutover switch belongs in the diff that performs it, where it is reviewable
 # and revertible, rather than in a setting nobody can see from the repository.
 #
+# IMPORTANT: this variable does not reach the functions on its own. Netlify has
+# two environment-variable systems and they do not overlap — what is declared
+# here exists only while the build runs, and functions execute later in a
+# process that sees only UI/API values. This block sat here through every
+# preview after the cutover landed and changed nothing: process.env.USE_POSTGRES
+# was undefined at runtime and every preview served Blobs while reporting
+# success.
+#
+# scripts/write-build-flags.mjs is what closes that gap. It runs first in
+# `npm run build`, reads this variable while it still exists, and writes it into
+# netlify/lib/build-flags.mjs, which the function bundler then ships. Deleting
+# that step silently reverts every deploy to Blobs, so it is covered by
+# tests/unit/build-flags.test.js and by GET /api/v1/health, which reports the
+# backend a deploy is actually serving rather than the one it was configured for.
+#
 # scripts/compare-backends.mjs diffs a preview against production to decide
 # whether this is safe to promote. To promote it, move USE_POSTGRES into
-# [build.environment]; to roll back, delete it. The Blob data is untouched by
-# the migration and stays readable for as long as this flag exists.
+# [build.environment]; to roll back, delete it — or set USE_POSTGRES=false in
+# the Netlify UI, which reaches the runtime directly and needs no redeploy. The
+# Blob data is untouched by the migration and stays readable for as long as this
+# flag exists.
 [context.deploy-preview.environment]
   USE_POSTGRES = "true"
 

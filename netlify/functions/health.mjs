@@ -21,7 +21,7 @@ export default route(async () => {
   const backend = backendName();
   try {
     await exists('posts', '__health__');
-    return json({ ok: true, backend, flag: process.env.USE_POSTGRES ?? null, context: process.env.CONTEXT ?? null, hasUrl: Boolean(process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL) }, 200, NO_STORE);
+    return json({ ok: true, backend }, 200, NO_STORE);
   } catch {
     // Deliberately not the error: it can carry a connection string.
     return json({ ok: false, backend }, 503, NO_STORE);

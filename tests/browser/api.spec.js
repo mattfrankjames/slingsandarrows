@@ -54,10 +54,10 @@ test.describe('read endpoints', () => {
     expect((await res.json()).error).toBeTruthy();
   });
 
-  // The backend is chosen by an environment variable, so a deploy can be
-  // flagged for a store it cannot actually reach — a missing DATABASE_URL on
-  // one context looks like nothing at all until a visitor hits a write path.
-  // This is the check that fails the build instead.
+  // The backend is chosen by a flag, so a deploy can be configured for a store
+  // it cannot actually reach — a missing DATABASE_URL on one context looks like
+  // nothing at all until a visitor hits a write path. This fails the build
+  // instead.
   test('the deployed backend is reachable, whichever one is flagged', async ({ request }) => {
     const res = await request.get('/api/v1/health');
     expect(res.status(), 'health is 503 when the flagged store does not answer').toBe(200);
@@ -66,6 +66,23 @@ test.describe('read endpoints', () => {
     expect(body.ok).toBe(true);
     expect(['postgres', 'blobs']).toContain(body.backend);
     console.log(`[health] this deploy is serving ${body.backend}`);
+  });
+
+  // Configuring a preview for Postgres is not the same as a preview running it:
+  // netlify.toml set USE_POSTGRES for every preview after the cutover and the
+  // functions never saw it, so the whole phase was validated against Blobs
+  // while looking green. Assert the deploy, not the setting.
+  test('a deploy preview really is reading Postgres, not just configured for it', async ({
+    request,
+  }) => {
+    // Read the same variable playwright.config.js reads, rather than the
+    // resolved project config, so this cannot drift with Playwright's merging.
+    test.skip(
+      !/deploy-preview-\d+--/.test(process.env.BASE_URL ?? ''),
+      'only deploy previews are flagged for Postgres'
+    );
+
+    expect((await (await request.get('/api/v1/health')).json()).backend).toBe('postgres');
   });
 
   test('health is not cached, or it reports the previous deploy', async ({ request }) => {
