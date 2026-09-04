@@ -69,23 +69,6 @@
 
 # ── Clean URLs ────────────────────────────────────────────────────────────────
 
-# DIAGNOSTIC: matched pair in the same deploy. The exact rule proves this file
-# is the one being deployed; the splat beside it is then a fair test.
-[[redirects]]
-  from = "/canary"
-  to = "/feed"
-  status = 301
-
-[[redirects]]
-  from = "/canary2/*"
-  to = "/feed"
-  status = 301
-
-[[redirects]]
-  from = "/early/*"
-  to = "/post.html"
-  status = 200
-
 [[redirects]]
   from = "/feed"
   to = "/feed.html"
@@ -134,43 +117,11 @@
 # Status 200 rewrite — the browser's address bar (and window.location) stays
 # on /post/<id>, it's never rewritten client-side, so post-view.js reads the
 # id back out of the pathname rather than a query string.
-# DIAGNOSTIC — three variants, ordered so each is reachable. Reverted before
-# merge; here only to find out which form Netlify actually matches.
-[[redirects]]
-  from = "/post/:id"
-  to = "/post.html"
-  status = 200
-  force = true
-
 [[redirects]]
   from = "/post/*"
   to = "/post.html"
   status = 200
   force = true
-
-[[redirects]]
-  from = "/pv/*"
-  to = "/post.html"
-  status = 200
-  force = true
-
-# Is it splats generally, or 200-rewrites-with-a-splat?
-[[redirects]]
-  from = "/dx/*"
-  to = "/feed"
-  status = 301
-
-# Same as /pv/* but without force.
-[[redirects]]
-  from = "/dy/*"
-  to = "/post.html"
-  status = 200
-
-# Splat with an explicit :splat in the target.
-[[redirects]]
-  from = "/dz/*"
-  to = "/post.html?id=:splat"
-  status = 200
 
 # RSS feeds are served directly by the rss-feed / rss-community functions,
 # which register /feed.xml and /community.xml via their config.path. A 200
