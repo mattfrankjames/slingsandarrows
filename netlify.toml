@@ -69,6 +69,13 @@
 
 # ── Clean URLs ────────────────────────────────────────────────────────────────
 
+# DIAGNOSTIC: a splat as the FIRST rule. If this matches, splats are fine and
+# the problem is that rules from position 10 onward are never applied.
+[[redirects]]
+  from = "/early/*"
+  to = "/post.html"
+  status = 200
+
 [[redirects]]
   from = "/feed"
   to = "/feed.html"
