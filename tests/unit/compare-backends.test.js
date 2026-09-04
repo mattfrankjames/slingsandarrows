@@ -6,7 +6,7 @@ const post = (id, over = {}) => ({ id, title: 'T', author: 'a@x.test', likeCount
 describe('backend comparison', () => {
   it('reports nothing when both sides agree', () => {
     const d = diff([post('1'), post('2')], [post('1'), post('2')]);
-    expect(d).toEqual({ ordering: null, missing: [], extra: [], fields: [], counts: [] });
+    expect(d).toEqual({ ordering: null, missing: [], extra: [], fields: [], counts: [], normalised: [] });
   });
 
   it('names a record missing from postgres', () => {
@@ -63,5 +63,31 @@ describe('backend comparison', () => {
     expect(d.ordering).toBeNull();
     expect(d.missing).toEqual(['2']);
     expect(d.extra).toEqual(['3']);
+  });
+
+  // store-pg maps every nullable text column through `?? ''`, so Postgres emits
+  // keys that Blobs simply lacks on older records. Both are falsy and every
+  // consumer reads them as such, so this is normalisation rather than data —
+  // but only while the other side is empty too.
+  it('separates empty-vs-absent from a genuine value difference', () => {
+    const d = diff(
+      [{ id: '1', mediaUrl: undefined }, { id: '2' }],
+      [{ id: '1', mediaUrl: '' }, { id: '2', mediaUrl: '' }]
+    );
+    expect(d.fields).toEqual([]);
+    // Both: an explicit `undefined` and a missing key are the same thing here.
+    expect(d.normalised.map(n => n.id)).toEqual(['1', '2']);
+  });
+
+  it('still blocks when one side has a real value and the other has none', () => {
+    const d = diff([{ id: '1' }], [{ id: '1', mediaUrl: 'https://res.cloudinary.com/x/a.jpg' }]);
+    expect(d.normalised).toEqual([]);
+    expect(d.fields).toHaveLength(1);
+  });
+
+  it('does not treat a false or zero value as empty', () => {
+    const d = diff([{ id: '1', caption: '' }], [{ id: '1', caption: 0 }]);
+    expect(d.normalised).toEqual([]);
+    expect(d.fields).toHaveLength(1);
   });
 });

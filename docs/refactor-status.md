@@ -239,9 +239,35 @@ saying so.
 
 **Blobs is untouched** and remains the rollback.
 
-**What is still untested.** Nothing has exercised the flag end to end — no
-deploy has run with `USE_POSTGRES=true`, so no handler has served a real request
-from Postgres. That is the cutover, and it is the last thing this phase needs.
+**The flag did not work, and the reason is worth keeping.** This section used to
+end by saying nothing had exercised the flag end to end. That stayed true far
+longer than anyone noticed, because the fix looked like it had already landed:
+`USE_POSTGRES = "true"` sat in netlify.toml's `[context.deploy-preview]` block
+from the cutover onward, and not one preview used Postgres.
+
+Netlify has two environment-variable systems and they do not overlap. Variables
+declared in netlify.toml exist only while the build runs. Functions execute
+later, in a process that sees only what the UI/API supplies — so
+`process.env.USE_POSTGRES` was `undefined` at runtime and `store.mjs` took the
+Blobs branch on every request. `DATABASE_URL` was set in the UI and therefore
+*was* visible, which made the setup look complete.
+
+Nothing failed. That is what let it survive: previews rendered correctly, the
+browser suite passed, and `compare-backends` would have diffed Blobs against
+Blobs and reported a flawless match — a green light that measured nothing. A
+flag whose only evidence is the setting that turns it on cannot be verified.
+
+Two changes came out of it:
+
+- `scripts/write-build-flags.mjs` runs first in `npm run build`, reads the
+  variable while it still exists, and writes `netlify/lib/build-flags.mjs` into
+  the function bundle. An explicitly set environment variable still wins, so a
+  UI value can force a rollback with no redeploy.
+- `GET /api/v1/health` reports the backend a deploy is *serving*, proven with a
+  read that deliberately misses, rather than the one it was configured for. The
+  browser suite asserts a preview says `postgres`.
+
+Preview #104 is the first deploy that has ever served a request from Postgres.
 
 Two things worth knowing when working with this:
 
