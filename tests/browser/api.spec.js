@@ -53,6 +53,25 @@ test.describe('read endpoints', () => {
     expect(res.status()).toBe(400);
     expect((await res.json()).error).toBeTruthy();
   });
+
+  // The backend is chosen by an environment variable, so a deploy can be
+  // flagged for a store it cannot actually reach — a missing DATABASE_URL on
+  // one context looks like nothing at all until a visitor hits a write path.
+  // This is the check that fails the build instead.
+  test('the deployed backend is reachable, whichever one is flagged', async ({ request }) => {
+    const res = await request.get('/api/v1/health');
+    expect(res.status(), 'health is 503 when the flagged store does not answer').toBe(200);
+
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(['postgres', 'blobs']).toContain(body.backend);
+    console.log(`[health] this deploy is serving ${body.backend}`);
+  });
+
+  test('health is not cached, or it reports the previous deploy', async ({ request }) => {
+    const res = await request.get('/api/v1/health');
+    expect(res.headers()['cache-control']).toBe('no-store');
+  });
 });
 
 test.describe('authorization', () => {
