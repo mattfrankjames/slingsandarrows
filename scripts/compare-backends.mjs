@@ -34,6 +34,25 @@ const ENDPOINTS = [
 /** Fields whose disagreement is expected and possibly an improvement. */
 const COUNT_FIELDS = new Set(['likeCount', 'commentCount', 'replyCount']);
 
+/**
+ * Absent on one side, empty string on the other.
+ *
+ * Blobs stored whatever JSON the handler wrote, so a record created before an
+ * optional field existed simply lacks the key. store-pg maps every nullable
+ * text column through `?? ''`, so Postgres always emits the key. Neither the
+ * renderers nor the API consumers can tell: every use of these fields is a
+ * truthiness check, and the client itself posts `mediaUrl: ''` when there is no
+ * upload — so `''` is already the shape the frontend produces.
+ *
+ * Reported apart rather than ignored, because "one side has no value" is only
+ * benign when the other side's value is empty too. A real value against an
+ * absent one stays blocking.
+ */
+function isEmptyBothWays(a, b) {
+  const empty = v => v === undefined || v === '';
+  return empty(a) && empty(b);
+}
+
 async function fetchJson(base, path) {
   // Cache-bust: /api/* responses sit at Netlify's edge for 30-60s, and a
   // comparison against a cached body proves nothing about what was deployed.
@@ -59,6 +78,7 @@ export function diff(a, b, key = 'id') {
 
   const fields = [];
   const counts = [];
+  const normalised = [];
 
   for (const [id, recordA] of A) {
     const recordB = B.get(id);
@@ -68,7 +88,13 @@ export function diff(a, b, key = 'id') {
       const left = recordA[field];
       const right = recordB[field];
       if (JSON.stringify(left) === JSON.stringify(right)) continue;
-      (COUNT_FIELDS.has(field) ? counts : fields).push({ id, field, a: left, b: right });
+
+      const bucket = COUNT_FIELDS.has(field)
+        ? counts
+        : isEmptyBothWays(left, right)
+          ? normalised
+          : fields;
+      bucket.push({ id, field, a: left, b: right });
     }
   }
 
@@ -80,7 +106,7 @@ export function diff(a, b, key = 'id') {
       ? null
       : `order differs — blobs: ${orderA.slice(0, 4).join(', ')}… postgres: ${orderB.slice(0, 4).join(', ')}…`;
 
-  return { ordering, missing, extra, fields, counts };
+  return { ordering, missing, extra, fields, counts, normalised };
 }
 
 async function main() {
@@ -115,21 +141,26 @@ async function main() {
     for (const c of d.counts) {
       console.log(`  ${c.id} .${c.field}: blobs ${c.a} vs postgres ${c.b}  (aggregate — postgres is authoritative)`);
     }
+    if (d.normalised.length) {
+      const fieldNames = [...new Set(d.normalised.map(n => n.field))].join(', ');
+      console.log(`  ${d.normalised.length} empty-vs-absent on ${fieldNames} (both falsy — normalisation, not data)`);
+    }
 
     blocking += problems;
-    advisory += d.counts.length;
+    advisory += d.counts.length + d.normalised.length;
   }
 
   console.log('');
   if (advisory) {
-    console.log(`${advisory} count difference(s). Expected where a denormalised`);
-    console.log('count had drifted; Postgres computes them from the rows.');
+    console.log(`${advisory} advisory difference(s): drifted denormalised counts,`);
+    console.log('which Postgres computes from the rows, and empty-vs-absent');
+    console.log('optional fields, which every consumer reads as falsy either way.');
   }
   if (blocking) {
-    console.error(`\n${blocking} difference(s) that are not counts. Do not promote.`);
+    console.error(`\n${blocking} substantive difference(s). Do not promote.`);
     process.exit(1);
   }
-  console.log('No differences outside the counts. Safe to promote.');
+  console.log('No substantive differences. Safe to promote.');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('compare-backends.mjs')) {

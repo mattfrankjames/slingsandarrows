@@ -26,6 +26,7 @@
  */
 
 import { unauthorized, forbidden } from './http.mjs';
+import { usingPostgres } from './store.mjs';
 
 /** How long a successfully verified token is trusted without re-asking GoTrue. */
 const CACHE_TTL_MS = 60_000;
@@ -168,9 +169,10 @@ export async function getUser(req) {
  * These became async as a result. Nothing outside this file called them
  * directly; the require* wrappers below were already async.
  */
-function usingPostgres() {
-  return process.env.USE_POSTGRES === 'true';
-}
+// Imported rather than re-derived: this used to read process.env directly, and
+// so did store.mjs, which is two places to get a two-system flag wrong. See the
+// USE_POSTGRES note in store.mjs for why the environment is not the whole
+// answer on Netlify.
 
 /** Parse a comma-separated allowlist env var into lowercased addresses. */
 function emailList(value) {
