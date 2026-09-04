@@ -241,6 +241,21 @@ async function main() {
     console.error(`\n${wrong} table(s) hold fewer rows than were written. Re-run; writes are upserts.`);
     process.exit(1);
   }
+
+  // Roles are not Blob data — they were ALLOWED_AUTHORS / ALLOWED_ADMINS, and
+  // they live in the Netlify UI, so there is nothing here for this script to
+  // copy. That is exactly why it is worth checking: a migration that reports
+  // success while nobody can publish looks finished and is not. Every read path
+  // works without a role, so the gap only surfaces when someone tries to post.
+  const [{ n: authors }] = await query("select count(*)::int as n from roles where role = 'author'");
+  if (authors === 0) {
+    console.error('\nNo author role is granted, so nobody can publish. Content migrated,');
+    console.error('permissions did not — they were environment variables, not Blobs.');
+    console.error('\n  node scripts/grant-role.mjs --author <email>\n');
+    process.exit(1);
+  }
+  console.log(`  ${'roles'.padEnd(16)} ${authors} author(s) granted`);
+
   console.log('\nDone. Blob data is untouched — it stays the rollback.');
 }
 

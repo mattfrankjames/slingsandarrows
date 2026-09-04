@@ -150,3 +150,66 @@ describeLive('read endpoints on the Postgres backend', () => {
     expect(body[0]).toMatchObject({ threadId: 't-test', body: 'a reply' });
   });
 });
+
+/**
+ * Authorisation on the Postgres path.
+ *
+ * The read tests above all pass with an empty `roles` table, which is precisely
+ * how the cutover shipped with nobody able to publish: content migrated,
+ * permissions did not — they had been ALLOWED_AUTHORS / ALLOWED_ADMINS, which
+ * are environment variables in the Netlify UI and so were never Blob data for
+ * the migration to copy.
+ *
+ * These assert the table is actually consulted, in both directions.
+ */
+describeLive('roles on the Postgres backend', () => {
+  let db;
+  let auth;
+  const AUTHOR = 'author-test@example.test';
+  const NOBODY = 'nobody-test@example.test';
+
+  beforeAll(async () => {
+    process.env.USE_POSTGRES = 'true';
+    db = await import('../../netlify/lib/db.mjs');
+    auth = await import('../../netlify/lib/auth.mjs');
+    await db.query('delete from roles where email = any($1)', [[AUTHOR, NOBODY]]);
+    await db.query(
+      "insert into roles (email, role) values ($1,'author') on conflict do nothing",
+      [AUTHOR]
+    );
+  });
+
+  afterAll(async () => {
+    await db.query('delete from roles where email = any($1)', [[AUTHOR, NOBODY]]);
+    delete process.env.USE_POSTGRES;
+  });
+
+  it('grants the author role from the table', async () => {
+    expect(await auth.isAuthor({ email: AUTHOR })).toBe(true);
+  });
+
+  // The failure that went unnoticed: an account with no row cannot publish, and
+  // an empty table means nobody can.
+  it('refuses someone with no row', async () => {
+    expect(await auth.isAuthor({ email: NOBODY })).toBe(false);
+  });
+
+  it('matches regardless of the case the token presents', async () => {
+    expect(await auth.isAuthor({ email: AUTHOR.toUpperCase() })).toBe(true);
+  });
+
+  // The env path let an unset ALLOWED_ADMINS fall back to the author list. The
+  // table has no fallback, so an author is not automatically an admin.
+  it('does not make an author an admin', async () => {
+    expect(await auth.isAdmin({ email: AUTHOR })).toBe(false);
+  });
+
+  it('grants admin only where the row says so', async () => {
+    await db.query("insert into roles (email, role) values ($1,'admin')", [AUTHOR]);
+    expect(await auth.isAdmin({ email: AUTHOR })).toBe(true);
+  });
+
+  it('has no role for a missing user', async () => {
+    expect(await auth.isAuthor(null)).toBe(false);
+  });
+});
