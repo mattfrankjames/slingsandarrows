@@ -1,7 +1,11 @@
 # Refactor status
 
-Where the rebuild stands, what was decided and why, and what Phase 4 needs.
+Where the rebuild stands, what was decided and why, and what is left.
 Written to be picked up cold — by a new session, or by you in three months.
+
+**Phase 4 is done and live.** Production reads Postgres as of 2026-09-04.
+Confirm any deploy with `GET /api/v1/health`, which reports the backend it is
+actually serving rather than the one it was configured for.
 
 The full plan (findings, target stack, all eight phases) is the artifact
 "Slings & Arrows Refactor". This file is the working state.
@@ -20,10 +24,14 @@ The full plan (findings, target stack, all eight phases) is the artifact
 | 3.2 — Eleventy | #92 | Eight page shells become one layout |
 | 3.3 — CSS layers | #93 | Tokens, cascade layers, components defined once |
 | 3.4 — Accessibility | #94 | Native `<dialog>`, reduced motion, focus ring |
+| 4.0 — Postgres | #98 | Schema, migrations, `store-pg`, flag, CI database job |
+| 4.1 — Comparison | — | `compare-backends.mjs`, `#101` CI database job |
+| 4.5 — Loading | #102, #103 | Loading state only when there is a wait; lazy Identity widget |
+| 4.2 — Health | #104 | `/api/v1/health`; the cutover flag made to actually work |
+| 4.3 — Roles | #105 | `grant-role.mjs`; permissions carried across the cutover |
+| 4.4 — Cutover | #106 | Every context reads Postgres |
 
-**#94 is open at time of writing.** Its browser job failed once on
-`net::ERR_ABORTED` — preview redeploying mid-run, not assertion failures. The
-full suite passes locally against its preview (163/163).
+Only #100 remains open — the 9/16 home banner, deliberately held until the 6th.
 
 ---
 
@@ -124,9 +132,12 @@ Settled — don't relitigate without a reason:
 
 ---
 
-## Phase 4 — Postgres
+## Phase 4 — Postgres *(done, live 2026-09-04)*
 
-The next phase, and a prerequisite for the store. Blobs cannot do what a shop
+Kept in full because the reasoning still explains the schema. What changed
+against the plan is recorded in *How the cutover actually went* below.
+
+Was the next phase, and a prerequisite for the store. Blobs cannot do what a shop
 needs: no transactions, no unique constraints, no atomic counters.
 
 ### Why it is blocking
@@ -149,12 +160,16 @@ needs: no transactions, no unique constraints, no atomic counters.
 - One migration script: read every Blob store, insert, verify counts. **Little
   live data**, so a single pass — no batching. Cut reads over behind a flag,
   confirm, then writes. Leave the Blob data as a rollback for a few deploys.
-- RLS replaces `ALLOWED_AUTHORS` / `ALLOWED_ADMINS`; roles move to a table.
+- ~~RLS replaces~~ a `roles` table replaces `ALLOWED_AUTHORS` /
+  `ALLOWED_ADMINS`. **RLS was dropped deliberately**: Postgres cannot read a
+  Netlify Identity token, so a policy would evaluate against a null identity
+  while looking like a defence. Authorisation stays in `auth.mjs`, where the
+  verified identity actually exists.
 - `shows.json` becomes a table, with upcoming/past computed from the date.
 - Migrations committed and runnable from zero, applied by `scripts/migrate.mjs`
   rather than pasted into a console. CI should run them against a throwaway
   Postgres per pull request, which continuously proves the bootstrap path the
-  template will depend on. Not built yet.
+  template will depend on. Built in #101; required by the Main Gate ruleset.
 
 ### What Phase 4 will not fix
 
@@ -334,12 +349,88 @@ The package is gone. `db.mjs` selects the transport itself — Neon's HTTP clien
 for a `*.neon.tech` host, `pg` for anything else — which is a dozen lines and
 was the only thing that package was doing for us.
 
+### How the cutover actually went
+
+Three bugs decided this phase, and none of them could fail a test. Each passed
+every automated check while being broken, which is the pattern worth carrying
+forward: **the checks verified configuration, not behaviour.**
+
+**1. The flag never reached the functions.** `USE_POSTGRES = "true"` sat under
+`[context.deploy-preview.environment]` from the cutover onward and not one
+preview used Postgres. Netlify has two environment-variable systems that do not
+overlap: netlify.toml values exist only during the build, and functions run
+later in a process that sees only UI/API values. `DATABASE_URL` *was* visible,
+because it is set in the UI — which is exactly what made the setup look
+complete.
+
+Nothing failed. Previews rendered, the browser suite passed, and
+`compare-backends` would have diffed Blobs against Blobs and reported a
+flawless match — a green light measuring nothing. Fixed by
+`scripts/write-build-flags.mjs`, which reads the variable during the build and
+writes it into the function bundle.
+
+**2. Permissions did not migrate.** Roles moved from environment variables to a
+table, and the data migration was never taught to seed it — it could not have
+been, since those variables live in the Netlify UI and were never Blob data.
+The `roles` table was empty, `hasRole` refused everyone, and publishing was
+impossible. Every read path works without a role, so nothing caught it until a
+human tried to post. `scripts/grant-role.mjs` manages roles now, and the
+migration fails rather than reporting success when no author exists.
+
+**3. `/post/:id` had 404'd since 2026-08-19.** Unrelated to Postgres, found by
+smoke-testing routes after the cutover. Netlify's deploy-time redirect table was
+frozen at the 2026-07-12 state — every rule added since was silently dropped —
+while build environment variables from the same file stayed current. The deploy
+summary reported *"9 redirect rules processed"* against a 10-rule file and
+called it a success. A cache-clear redeploy fixed it; the repo was correct
+throughout. See the README's Deployment note for how to catch a recurrence.
+
+**What made the difference** was asking the deployment what it was doing rather
+than trusting what it was told to do. `/api/v1/health` exists for that reason,
+and the browser suite asserts a preview *reports* `postgres` rather than that it
+was configured for it.
+
+### The soak
+
+Publishing, liking, commenting, threads, replies, gallery uploads and deletes,
+all through a real Identity token against Postgres — the first writes it ever
+served. The cascade was verified on genuine UI deletes, not only in unit tests:
+zero orphaned comments, likes or replies afterwards, and no test residue left in
+the database.
+
+The final comparison before promotion was clean — 13 posts, 31 gallery items,
+4 threads matching on both sides, with differences only in drifted denormalised
+counts (Postgres computes them from the rows and is authoritative) and
+empty-vs-absent optional fields that every consumer reads as falsy.
+
+### What is left of Phase 4
+
+- **The frontend still does not send `?limit` / `?cursor`.** The endpoints and
+  `store.page()` have supported them since Phase 1. Nothing pages yet.
+- **`shows.json` is migrated but not read from.** The `shows` table holds all 15
+  rows with status computed from the date; the site still renders the JSON file.
+- **Blobs is still the rollback.** Removing `store-blobs.mjs` and the
+  `ALLOWED_AUTHORS` path is a later, deliberate deletion — not urgent, but the
+  asymmetry above means the rollback window is not indefinite in practice.
+
 ### Phase 4.5 — first paint without a loading state
 
-Agreed to follow this phase rather than join it, so the migration stays
-reviewable on its own.
+Half done. What shipped:
 
-Render the first screen into the HTML at build time. Eleventy already builds
+- **A loading state only when there is a wait** (#102). `loadingIndicator()`
+  holds the indicator back for 250ms, so a fast response never flashes one.
+- **The Identity widget loads lazily** (#103), only when a page needs it or a
+  confirmation token is in the URL. It was the slowest resource on the page
+  (~481ms) and was being fetched on every view.
+
+Neither made content arrive sooner, and that was said plainly at the time: the
+widget was already `async`, so it never blocked. Removing it took a competitor
+out of the race. Content still waits on `feed.js` and `app.css`, ~450ms on a
+cold visit. **The measured wait was never the API** — 3ms warm, and the ~380ms
+seen once after promotion is Neon's scale-to-zero wake, which the loading state
+now covers properly instead of showing nothing.
+
+**Still to do:** render the first screen into the HTML at build time. Eleventy already builds
 these pages; having `feed.njk` and `gallery.njk` emit the first N items
 server-side means first paint has content and the client only revalidates.
 That removes the loading state on cold *and* warm visits, and it is the only
@@ -350,23 +441,57 @@ build step gets written once, against the data source it will keep.
 
 ### Where the seams already are
 
-- `netlify/lib/store.mjs` is the only file importing `@netlify/blobs` (ESLint
-  enforces it). Rewriting it is most of the data layer.
+- `netlify/lib/store-blobs.mjs` is the only file importing `@netlify/blobs`
+  (ESLint enforces it). `store.mjs` is now the dispatcher over it and
+  `store-pg.mjs`, and the handlers still name no storage model — which is what
+  made the cutover a flag rather than a rewrite.
 - `netlify/lib/auth.mjs` exports `getUser` / `isAuthor` / `isAdmin` /
-  `canModerate` / `require*`. These keep their signatures; `isAuthor` and
-  `isAdmin` change from reading `ALLOWED_AUTHORS` / `ALLOWED_ADMINS` to querying
-  the `roles` table. Sign-in stays on Netlify Identity, so token verification is
-  untouched.
+  `canModerate` / `require*`. Signatures unchanged through the migration, as
+  planned; `isAuthor` and `isAdmin` now query the `roles` table. Sign-in stays
+  on Netlify Identity, so token verification was untouched.
+- **One flag resolver.** `auth.mjs` used to read `USE_POSTGRES` independently of
+  `store.mjs` — two places to get a two-system variable wrong. It imports
+  `usingPostgres()` now, so authorisation and storage cannot disagree about
+  which era they are in.
 - `src/core/js/lib/api.js` names every endpoint in one place.
 - `store.page()` returns `{ items, nextCursor, total }`; list endpoints already
-  accept `?limit` and `?cursor`. **The frontend does not send them yet** —
-  wiring that up is part of Phase 4.
+  accept `?limit` and `?cursor`. **The frontend still does not send them.**
 
 ---
 
 ## Things that cost time to learn
 
-Worth reading before touching the test suite or CI.
+Worth reading before touching the test suite, CI, or anything Netlify.
+
+**Netlify has two environment-variable systems and they do not overlap.**
+Values declared in `netlify.toml` exist only while the build runs. Functions
+execute later, in a process that sees only what the UI/API supplies. A flag set
+in `netlify.toml` and read with `process.env` inside a function is silently
+`undefined` — no error, no warning, just the other branch. This cost the whole
+of Phase 4's preview validation. The fix is to bake build-time values into the
+bundle (`scripts/write-build-flags.mjs`); the guard is an endpoint that reports
+what a deploy is *doing*.
+
+**Netlify's redirect table can go stale independently of the rest of the
+config.** Rules added to `netlify.toml` were dropped for six weeks while build
+environment variables from the same file stayed current. The deploy summary said
+*"9 redirect rules processed"* against a 10-rule file and reported no errors —
+so the count is the only signal, and it has to be compared against the file by
+hand. `Clear cache and deploy` fixes it. Check any new redirect actually
+resolves before believing it shipped.
+
+**Configuration is not behaviour, and a check that reads configuration is not a
+test.** Every bug in the cutover passed CI: the flag that was set but unread,
+the roles table that was empty, the redirect that was correct in the file and
+absent from the deploy. In each case something asserted the *intent* and nothing
+asserted the *result*. Where a setting matters, make the deployment answer for
+itself — `/api/v1/health` exists because "the flag is set" was not evidence that
+anything read it.
+
+**A green comparison can measure nothing.** `compare-backends` would have
+reported a flawless Blobs-vs-Postgres match while both sides were Blobs. A
+differ is only as meaningful as the proof that the two sides are what you think
+they are.
 
 **A test that cannot fail is worse than no test.** Four separate versions of
 this: the feed baseline masked to a pink rectangle, the gallery baseline with
@@ -471,12 +596,43 @@ and commit — reviewing the images first.
 
 ```bash
 npm run verify        # lint + typecheck + unit tests — before pushing
-npm test              # Vitest, 101 unit tests, no network
-npm run build         # Eleventy then Parcel
-BASE_URL=<preview> npx playwright test          # 163 browser tests
-BASE_URL=<preview> npm run test:visual          # 60 baselines
+npm test              # Vitest: 183 pass, 22 skip without a database
+npm run test:db       # the same suite with DATABASE_URL set — nothing skips
+npm run build         # write-build-flags, then Eleventy, then Parcel
+BASE_URL=<preview> npx playwright test          # browser suite
+BASE_URL=<preview> npm run test:visual          # visual baselines
 ```
 
 Browser tests need a deployed target — `netlify.toml`'s rewrites, headers and
 functions do not exist in front of `parcel serve`. See
 [testing.md](testing.md).
+
+### Database and deployment
+
+```bash
+node scripts/migrate.mjs --dry-run                      # pending migrations
+node scripts/migrate.mjs                                # apply them
+node --env-file=.env scripts/grant-role.mjs --list      # who may publish
+node --env-file=.env scripts/grant-role.mjs --author <email>
+node scripts/compare-backends.mjs <blobs-url> <postgres-url>
+```
+
+`scripts/migrate-blobs-to-pg.mjs` needs `NETLIFY_SITE_ID` and
+`NETLIFY_AUTH_TOKEN` as well as `DATABASE_URL`, because `@netlify/blobs` finds
+no credentials outside a function. Every write is an upsert, so it is
+re-runnable and a half-finished run is repaired by starting again.
+
+**A Neon connection string contains `&`.** Sourcing `.env` in a shell splits on
+it and fails confusingly — `node --env-file=.env` works, `set -a && . ./.env`
+does not.
+
+### Confirming a deploy
+
+```bash
+curl -s https://slingsandarrows.band/api/v1/health   # {"ok":true,"backend":"postgres"}
+curl -s -o /dev/null -w '%{http_code}\n' https://slingsandarrows.band/post/x
+```
+
+The first is the only trustworthy answer to "which backend is live" — the flag
+that configures it is not evidence. The second guards a redirect table that has
+gone stale once and reported success while doing it.
