@@ -269,6 +269,34 @@ Two changes came out of it:
 
 Preview #104 is the first deploy that has ever served a request from Postgres.
 
+**Permissions did not come across either, and for a different reason.** Phase 4
+moved authorship from ALLOWED_AUTHORS / ALLOWED_ADMINS into a `roles` table, and
+the data migration was never taught to seed it — it could not have been, since
+those are Netlify UI variables and were never Blob data. The table was empty, so
+`hasRole` refused everyone and an account that publishes in production could not
+publish on a preview.
+
+Every read path works without a role, which is why nothing caught it: the
+browser suite, the smoke tests and compare-backends all pass green against a
+database where publishing is impossible. It surfaced the first time a human
+tried to post. `scripts/grant-role.mjs` seeds and manages roles, and the
+migration now fails rather than reporting success when no author exists.
+
+**The soak.** Publishing, liking, commenting, threads, replies, gallery uploads
+and deletes were all exercised through a real Identity token against Postgres.
+The cascade was verified on genuine UI deletes, not just in unit tests — zero
+orphaned comments, likes or replies afterwards, and no test residue left behind.
+
+**Promoted.** USE_POSTGRES moved to `[build.environment]`, so every context
+reads Postgres. The final comparison before the cutover was clean: 13 posts, 31
+gallery items and 4 threads matching on both sides, with differences only in
+drifted denormalised counts and empty-vs-absent optional fields.
+
+Blobs still holds a full copy and stays the rollback — but note the asymmetry:
+writes made after the cutover exist only in Postgres, because Blobs stops
+receiving them. Rolling back hides those writes rather than destroying them, and
+recovering them is manual. The migration only ever copies Blobs → Postgres.
+
 Two things worth knowing when working with this:
 
 - **A Neon statement costs a round trip.** The database tests take ~2.4s against
