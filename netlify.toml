@@ -137,6 +137,24 @@
   status = 200
   force = true
 
+# Is it splats generally, or 200-rewrites-with-a-splat?
+[[redirects]]
+  from = "/dx/*"
+  to = "/feed"
+  status = 301
+
+# Same as /pv/* but without force.
+[[redirects]]
+  from = "/dy/*"
+  to = "/post.html"
+  status = 200
+
+# Splat with an explicit :splat in the target.
+[[redirects]]
+  from = "/dz/*"
+  to = "/post.html?id=:splat"
+  status = 200
+
 # RSS feeds are served directly by the rss-feed / rss-community functions,
 # which register /feed.xml and /community.xml via their config.path. A 200
 # rewrite here would NOT chain to a v2 function's in-code path, so it must
