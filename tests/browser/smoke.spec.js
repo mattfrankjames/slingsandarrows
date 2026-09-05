@@ -135,9 +135,26 @@ test.describe('service worker', () => {
 test.describe('hero background', () => {
   const PAGES_WITH_FROSTING = ['/feed', '/community', '/gallery', '/shows', '/studio', '/app', '/post'];
 
-  async function heroOf(page, path) {
+  /**
+   * @param {import('@playwright/test').Page} page
+   * @param {string} path
+   * @param {string} [ready] a locator that only resolves once the page's async
+   *   content has rendered. Required wherever `pageHeight` is asserted.
+   */
+  async function heroOf(page, path, ready) {
     await page.goto(path);
     await page.waitForLoadState('domcontentloaded');
+
+    // `pageHeight` is a measurement of rendered length, and the feed renders
+    // its posts client-side — so waiting on domcontentloaded alone measured an
+    // empty page. An empty feed is exactly as tall as the home page, both
+    // pinned to min-h-screen, so the ratio the test exists to check silently
+    // became 1.00 and the assertion compared nothing.
+    //
+    // It passed for months by winning a race against the API. The Postgres
+    // cutover made losing it routine: Neon scales to zero, and the first
+    // request after idle costs a few hundred milliseconds.
+    if (ready) await page.locator(ready).first().waitFor({ timeout: 15_000 });
     return page.evaluate(() => {
       const wrapper = document.querySelector('.wrapper');
       const backdrop = getComputedStyle(wrapper, '::before');
@@ -157,13 +174,18 @@ test.describe('hero background', () => {
   }
 
   test('is sized by the viewport, not by page length', async ({ page }) => {
-    const feed = await heroOf(page, '/feed');
+    const feed = await heroOf(page, '/feed', '.post-card');
     const home = await heroOf(page, '/');
 
     // The feed is many times taller than the home page. If the backdrop were
     // sized by the element rather than the viewport, `cover` would scale the
     // image by that ratio.
-    expect(feed.pageHeight).toBeGreaterThan(home.pageHeight * 1.5);
+    //
+    // Guard the guard: if the feed ever renders empty again, this says so
+    // instead of comparing two identical viewport-height pages and passing.
+    expect(feed.pageHeight, 'the feed must have rendered posts to be taller').toBeGreaterThan(
+      home.pageHeight * 1.5
+    );
     expect(feed.position, 'the hero backdrop must be viewport-fixed').toBe('fixed');
     expect(home.position).toBe('fixed');
     expect(feed.size).toBe(home.size);
