@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { PAGES } from './pages.js';
+import { signIn } from './fixtures.js';
 
 /**
  * Automated accessibility checks. axe catches roughly a third of real issues —
@@ -77,6 +78,46 @@ test.describe('keyboard', () => {
  * if the implementation changed again — and they fail against the old
  * hand-rolled version, which is the point.
  */
+/**
+ * The upload button is unhidden by initAuth() but wired by initUploadModal(),
+ * and those used to sit on opposite sides of `await loadGallery()`. Between
+ * them the button was visible, focusable and completely inert: a click landed
+ * on an element with no listener and produced nothing — no dialog, no error.
+ *
+ * The window was short enough to pass for non-existent until the Postgres
+ * cutover widened it. Neon scales to zero, so the first gallery fetch after
+ * idle costs a few hundred milliseconds rather than a few, and the browser
+ * suite began failing here intermittently.
+ *
+ * Holding the gallery response open makes that window arbitrarily wide, so this
+ * fails outright against the old ordering instead of failing one run in five.
+ */
+test('gallery upload opens while the gallery is still loading', async ({ page }) => {
+  let release;
+  const held = new Promise(resolve => {
+    release = resolve;
+  });
+
+  // Signed in, or the button this is about is never rendered.
+  await signIn(page);
+
+  await page.route('**/api/v1/gallery', async route => {
+    await held;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+
+  await page.goto('/gallery');
+
+  const opener = page.locator('#upload-btn');
+  await opener.waitFor();
+  await opener.click();
+
+  // Still loading — the fetch has not been released yet.
+  await expect(page.locator('#upload-modal')).toHaveAttribute('open', '');
+
+  release();
+});
+
 const DIALOGS = [
   { name: 'gallery upload', path: '/gallery',   trigger: '#upload-btn',     dialog: '#upload-modal' },
   { name: 'new thread',     path: '/community', trigger: '#new-thread-btn', dialog: '#new-thread-modal' },
