@@ -81,9 +81,25 @@ const formStatus    = document.getElementById('form-status');
   initAuthBar();
   registerServiceWorker();
   listenForSWMessages();
-  await loadGallery();
-  initLightbox();
+
+  // Before the await, deliberately. initAuth() has just unhidden #upload-btn,
+  // so the button is visible and clickable from this point — but its click
+  // handler lives in initUploadModal(). Running that after `await loadGallery()`
+  // left a window where clicking Upload did nothing at all: no dialog, no
+  // error, the event landing on a button with no listener.
+  //
+  // The window was short enough to look like it did not exist. Moving to
+  // Postgres widened it — Neon scales to zero, so the first gallery fetch after
+  // idle costs a few hundred milliseconds instead of a few. The browser suite
+  // started failing here intermittently, which is what surfaced it.
+  //
+  // Neither of these needs gallery data: initUploadModal() wires the modal, and
+  // initLightbox() attaches document-level handlers. The per-item click
+  // handlers that do need data are attached by loadGallery() as it renders.
   initUploadModal();
+  initLightbox();
+
+  await loadGallery();
 })();
 
 // ─── Authentication ───────────────────────────────────────────────────────────
