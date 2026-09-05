@@ -64,8 +64,8 @@
   },
   "announcement": {
     "_comment": "Set to null to hide the banner on the home page.",
-    "emoji": "\ud83e\udeb9",
-    "text": "Slings & Arrows at <a href=\"https://www.instagram.com/thecrowsnestbar/p/DbvpCL_klnZ/\" target=\"_blank\" rel=\"noopener noreferrer\">Nest Fest</a>, 9/5 12pm",
+    "emoji": "\u2693",
+    "text": "Slings & Arrows with <a href=\"https://www.theheavyanchor.com/product/9-16-unwed-sailor-flow-clinic-slings-arrows/4F64MXQYVYM4UQF5K6N27AXJ\" target=\"_blank\" rel=\"noopener noreferrer\">Unwed Sailor</a> at The Heavy Anchor, 9/16 8pm",
     "href": "/shows",
     "linkLabel": "More Info"
   }
