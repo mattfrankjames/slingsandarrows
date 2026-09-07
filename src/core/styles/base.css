@@ -369,6 +369,23 @@
     }
   }
 
+  /* A show that did not happen as listed. line-through rather than <s>, because
+     the strike applies to a block of several elements — and because it is
+     decoration either way: no assistive technology announces it. The reason is
+     carried by .show-note, which is real text and deliberately not struck. */
+  .show-struck {
+    text-decoration: line-through;
+    opacity: 0.65;
+  }
+
+  .show-note {
+    margin-block: 0.25em 0;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.9em;
+  }
+
   /* ── Site nav ────────────────────────────────────────────────────────────── */
   .site-nav {
     display: flex;
