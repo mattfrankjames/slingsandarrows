@@ -99,17 +99,17 @@
 		"doorTime": "11am - 8pm",
 		"showTime": "S&A at 12pm",
 		"cost": "No Cover",
-		"status": "upcoming"
+		"status": "past"
 	},
 	{
 		"date": "2026-09-16",
 		"venue": "The Heavy Anchor",
-		"venueHref": "https://www.theheavyanchor.com/product/9-16-unwed-sailor-flow-clinic-slings-arrows/4F64MXQYVYM4UQF5K6N27AXJ",
 		"lineup": ["Unwed Sailor", "Flow Clinic"],
 		"setlist": ["<placeholder>"],
 		"doorTime": "7pm",
 		"showTime": "8pm",
 		"cost": "$12 adv / $15 dos",
-		"status": "upcoming"
+		"status": "past",
+		"note": "Postponed until further notice"
 	}
 ]

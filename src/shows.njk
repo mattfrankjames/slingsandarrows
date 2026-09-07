@@ -30,12 +30,16 @@ permalink: "/shows.html"
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
 		const pastShows = shows.filter(show => show.status === "past").reverse();
 
+			// Hide the container as well as the heading. #upcoming-shows carries a
+			// static-texture divider in its ::after, which with nothing above it
+			// renders as a stray bar between a hidden heading and "Past shows".
+			// Nothing had ever emptied this list before, so the empty state had
+			// never actually been looked at.
 			const upcomingHeading = document.querySelector('#shows h2:first-of-type');
-			if (upcomingShows.length === 0) {
-				upcomingHeading.style.display = 'none';
-			} else {
-				upcomingHeading.style.display = 'block';
-			}
+			const upcomingContainer = document.getElementById('upcoming-shows');
+			const noneUpcoming = upcomingShows.length === 0;
+			upcomingHeading.hidden = noneUpcoming;
+			upcomingContainer.hidden = noneUpcoming;
 
 			function createShowList(shows, containerId) {
 			const container = document.getElementById(containerId);
@@ -49,7 +53,15 @@ permalink: "/shows.html"
 						? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
 						: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
 					const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
-					showDiv.innerHTML = `
+
+					// A note means the show did not happen as listed. Its details are
+					// struck through, but the note itself is not — the strike is
+					// decoration, and decoration is not announced, so the reason has to
+					// be readable text rather than a visual effect on the old details.
+					const note = show.note
+						? `<p class="show-note">${show.note}</p>`
+						: '';
+					const details = `
 									${heading}
 									<h4 class="mb-0">With:</h4>
 									<ul class="lineup mb-1">
@@ -57,6 +69,9 @@ permalink: "/shows.html"
 									</ul>
 									${showDetails}
 							`;
+					showDiv.innerHTML = show.note
+						? `<div class="show-struck">${details}</div>${note}`
+						: details;
 					container.appendChild(showDiv);
 				});
 		}
