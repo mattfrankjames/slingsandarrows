@@ -30,12 +30,16 @@ permalink: "/shows.html"
 		const upcomingShows = shows.filter(show => show.status === "upcoming");
 		const pastShows = shows.filter(show => show.status === "past").reverse();
 
+			// Hide the container as well as the heading. #upcoming-shows carries a
+			// static-texture divider in its ::after, which with nothing above it
+			// renders as a stray bar between a hidden heading and "Past shows".
+			// Nothing had ever emptied this list before, so the empty state had
+			// never actually been looked at.
 			const upcomingHeading = document.querySelector('#shows h2:first-of-type');
-			if (upcomingShows.length === 0) {
-				upcomingHeading.style.display = 'none';
-			} else {
-				upcomingHeading.style.display = 'block';
-			}
+			const upcomingContainer = document.getElementById('upcoming-shows');
+			const noneUpcoming = upcomingShows.length === 0;
+			upcomingHeading.hidden = noneUpcoming;
+			upcomingContainer.hidden = noneUpcoming;
 
 			function createShowList(shows, containerId) {
 			const container = document.getElementById(containerId);
