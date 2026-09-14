@@ -64,8 +64,8 @@
   },
   "announcement": {
     "_comment": "Set to null to hide the banner on the home page.",
-    "emoji": "\ud83d\udeab",
-    "text": "The 9/16 Unwed Sailor show at The Heavy Anchor is postponed until further notice",
+    "emoji": "\ud83d\udecd\ufe0f",
+    "text": "Free show 10/5: Punk Rock Flea Market at The Music Stand, Tower Grove Park, 5\u20139pm",
     "href": "/shows",
     "linkLabel": "More Info"
   }
