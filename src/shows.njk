@@ -52,7 +52,23 @@ permalink: "/shows.html"
 					const heading = isUpcoming && show.venueHref
 						? `<h3 class="text-xl font-bold mb-2"><a href="${show.venueHref}" target="_blank" rel="noopener noreferrer">${show.date}: ${show.venue}</a></h3>`
 						: `<h3 class="text-xl font-bold mb-2">${show.date}: ${show.venue}</h3>`;
-					const showDetails = show.doorTime ? `<div class="subtext"><span>Doors:</span> ${show.doorTime} | <span>Music:</span> ${show.showTime} |  ${show.cost} </div>` : '';
+					// Each part is optional and printed only if it is there. A show can
+					// have a start time and no separate door time, or be free with no
+					// ticket price; the single template this replaces keyed the whole
+					// line off doorTime and printed "undefined" for the rest.
+					const detailParts = [
+						show.doorTime ? `<span>Doors:</span> ${show.doorTime}` : '',
+						show.showTime ? `<span>Music:</span> ${show.showTime}` : '',
+						show.cost || '',
+					].filter(Boolean);
+					const showDetails = detailParts.length
+						? `<div class="subtext">${detailParts.join(' | ')}</div>`
+						: '';
+
+					// Whatever else is worth knowing about the event — who is putting it
+					// on, what is there besides the bands. Inside the details block, so a
+					// note strikes it along with everything else that did not happen.
+					const info = show.info ? `<div class="subtext">${show.info}</div>` : '';
 
 					// A note means the show did not happen as listed. Its details are
 					// struck through, but the note itself is not — the strike is
@@ -68,6 +84,7 @@ permalink: "/shows.html"
 											${show.lineup.map(artist => `<li>${artist}</li>`).join('')}
 									</ul>
 									${showDetails}
+									${info}
 							`;
 					showDiv.innerHTML = show.note
 						? `<div class="show-struck">${details}</div>${note}`

@@ -111,5 +111,15 @@
 		"cost": "$12 adv / $15 dos",
 		"status": "past",
 		"note": "Postponed until further notice"
+	},
+	{
+		"date": "2026-10-05",
+		"venue": "The Music Stand, Tower Grove Park // Punk Rock Flea Market",
+		"lineup": ["Nowhere But Down"],
+		"setlist": ["<placeholder>"],
+		"showTime": "5pm - 9pm",
+		"cost": "Free",
+		"info": "Mondays at the Music Stand, presented by the St. Louis Punk Rock Flea Market. Vendors, food & drinks.",
+		"status": "upcoming"
 	}
 ]
