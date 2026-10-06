@@ -11,6 +11,17 @@ name: Update visual baselines
 #   gh workflow run update-baselines.yml -f preview_url=<a deploy preview URL>
 #   gh run download <run-id> -n visual-baselines
 #   cp -R visual-baselines/linux tests/browser/__screenshots__/
+#
+# Or, without downloading anything, name the pages whose captures should be
+# kept and run it on the pull request's branch:
+#
+#   gh workflow run update-baselines.yml --ref <branch> \
+#     -f preview_url=<a deploy preview URL> -f commit_pages="home shows"
+#
+# Those pages' captures (desktop and mobile) are committed to a new branch,
+# baselines/<run id>, ready to cherry-pick onto the pull request. Not onto the
+# pull request itself: a push made with the workflow's own token does not start
+# CI, so the commit has to reach the pull request through an ordinary push.
 on:
   workflow_dispatch:
     inputs:
@@ -18,6 +29,13 @@ on:
         description: 'URL to capture from (a Deploy Preview, or the live site)'
         required: true
         default: 'https://slingsandarrows.band'
+      commit_pages:
+        description: 'Optional: page names whose captures to commit to baselines/<run id>, e.g. "home shows"'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
 
 jobs:
   capture:
@@ -74,3 +92,29 @@ jobs:
           name: visual-baselines
           path: tests/browser/__screenshots__/
           retention-days: 14
+
+      # Only the named pages. --update-snapshots=all rewrites every capture,
+      # including byte-level PNG noise on pages nothing changed, and that noise
+      # should not ride along into a commit.
+      - name: Commit the named pages
+        if: ${{ success() && inputs.commit_pages != '' }}
+        env:
+          PAGES: ${{ inputs.commit_pages }}
+          PREVIEW: ${{ inputs.preview_url }}
+          TARGET_BRANCH: baselines/${{ github.run_id }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898+github-actions[bot]@users.noreply.github.com'
+          for page in $PAGES; do
+            case "$page" in
+              *[!a-z0-9-]*) echo "::error::Not a page name: $page"; exit 1 ;;
+            esac
+            git add -- "tests/browser/__screenshots__/linux/*/$page.png"
+          done
+          if git diff --cached --quiet; then
+            echo "::notice::The captures for $PAGES match the committed baselines; nothing to commit."
+            exit 0
+          fi
+          git commit -m "test: refresh the $PAGES baselines" -m "Captured from $PREVIEW by update-baselines run $GITHUB_RUN_ID."
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          echo "::notice::Committed to $TARGET_BRANCH: $(git rev-parse HEAD)"
