@@ -120,6 +120,18 @@
 		"showTime": "5pm - 9pm",
 		"cost": "Free",
 		"info": "Mondays at the Music Stand, presented by the St. Louis Punk Rock Flea Market. Vendors, food & drinks.",
+		"status": "past"
+	},
+	{
+		"date": "2026-11-07",
+		"venue": "The Studio at the Kranzberg Arts Center // Free 4 All STL",
+		"venueHref": "https://free4allstl.com",
+		"lineup": ["Many local bands"],
+		"setlist": ["<placeholder>"],
+		"doorTime": "12pm - 12am",
+		"showTime": "S&A at 4:30pm",
+		"cost": "Free",
+		"info": "501 N. Grand Blvd. Free 4 All: a free, all-local music festival across 10+ stages in the Grand Center Arts District.",
 		"status": "upcoming"
 	}
 ]

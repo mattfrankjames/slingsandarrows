@@ -64,8 +64,8 @@
   },
   "announcement": {
     "_comment": "Set to null to hide the banner on the home page.",
-    "emoji": "\ud83d\udecd\ufe0f",
-    "text": "Free show 10/5: Punk Rock Flea Market at The Music Stand, Tower Grove Park, 5\u20139pm",
+    "emoji": "\ud83c\udfb8",
+    "text": "Free show 11/7: Free 4 All STL at The Studio at the Kranzberg Arts Center, 4:30pm",
     "href": "/shows",
     "linkLabel": "More Info"
   }
