@@ -132,6 +132,16 @@
 		"showTime": "S&A at 4:30pm",
 		"cost": "Free",
 		"info": "501 N. Grand Blvd. Part of Free 4 All STL, a free, all-local music festival across 10+ stages in the Grand Center Arts District.",
+		"status": "past"
+	},
+	{
+		"date": "2026-12-12",
+		"venue": "The Record Space // 8th Anniversary Party",
+		"lineup": ["Freddy vs. Queen Deer", "Maximum Effort", "Johnny Gun & The Empty Shells"],
+		"setlist": ["<placeholder>"],
+		"showTime": "5pm",
+		"cost": "Free",
+		"info": "8716 Gravois Rd, St. Louis, MO 63123. The Record Space turns 8! Free food and drinks from The Crow's Nest and Perennial Artisan Ales.",
 		"status": "upcoming"
 	}
 ]
