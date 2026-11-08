@@ -64,8 +64,8 @@
   },
   "announcement": {
     "_comment": "Set to null to hide the banner on the home page.",
-    "emoji": "\ud83c\udfb8",
-    "text": "Free show 11/7: Free 4 All STL at The Studio at the Kranzberg Arts Center, 4:30pm",
+    "emoji": "\ud83d\udcbf",
+    "text": "Free show 12/12: The Record Space 8th Anniversary Party, 5pm",
     "href": "/shows",
     "linkLabel": "More Info"
   }
