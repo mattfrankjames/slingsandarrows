@@ -4,6 +4,7 @@ import { authModal } from './auth-modal.js';
 import { lightbox } from './lightbox.js';
 import { isLoggedIn } from './lib/session.js';
 import { api } from './lib/api.js';
+import { renderBodyHtml } from './lib/post-body.js';
 
 // posts.js imports isLoggedIn from here; session.js is the implementation.
 export { isLoggedIn };
@@ -48,27 +49,6 @@ function cloudinaryOptimize(url, width) {
   if (!url || !isCloudinaryUrl(url)) return url;
   if (url.includes('/upload/f_auto')) return url; // already optimized
   return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
-}
-
-function escapeHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// Escape the whole body first, then convert the admin-composer's
-// `[text](https://…)` link syntax into real anchors. Because the conversion
-// runs on already-escaped text, there is no way for a post body to inject
-// arbitrary HTML — only this one exact, http(s)-only pattern becomes a tag.
-function renderBodyHtml(body) {
-  const escaped = escapeHtml(body);
-  return escaped.replace(
-    /\[([^[\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)/g,
-    (_match, text, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`
-  );
 }
 
 function formatDate(iso) {
@@ -193,14 +173,14 @@ export function renderPost(post, { pending = false, fullView = false } = {}) {
   p.className = 'post-body';
   if (hasBreak && !fullView) {
     // renderBodyHtml() escapes the whole body first and only then converts
-    // the composer's [text](url) syntax to anchors, so a post body cannot
-    // introduce any other markup.
+    // [text](url) links and YouTube videos (iframes it builds itself from a
+    // validated video ID), so a post body cannot introduce any other markup.
     // eslint-disable-next-line no-restricted-syntax
     p.innerHTML = renderBodyHtml(post.body.slice(0, breakIdx).trimEnd());
   } else {
     // renderBodyHtml() escapes the whole body first and only then converts
-    // the composer's [text](url) syntax to anchors, so a post body cannot
-    // introduce any other markup.
+    // [text](url) links and YouTube videos (iframes it builds itself from a
+    // validated video ID), so a post body cannot introduce any other markup.
     // eslint-disable-next-line no-restricted-syntax
     p.innerHTML = renderBodyHtml(
       hasBreak
